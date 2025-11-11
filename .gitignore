@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.log
+
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Editor specific
+.cursor/
+.cursorignore
+.DS_Store
+
+# Supabase related (if you're keeping local files that shouldn't be pushed)
+# For now, I will keep menu.json, as it's the source for DB injection if not using Supabase, 
+# but if you intend to *only* use Supabase as source of truth and don't want the local file versioned,
+# you might uncomment the line below:
+# app/data/menu.json
