@@ -54,6 +54,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let hasGreeted = false;
   let isSending = false;
+  const conversationHistory = [];
+  const MAX_HISTORY_ITEMS = 12;
+
+  const recordHistory = (role, content) => {
+    if (!content?.trim()) {
+      return;
+    }
+    conversationHistory.push({ role, content });
+    if (conversationHistory.length > MAX_HISTORY_ITEMS) {
+      conversationHistory.shift();
+    }
+  };
 
   const scrollToBottom = () => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -186,13 +198,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const typingMessage = showTypingIndicator();
 
+    const payload = {
+      message: userMessage,
+      history: conversationHistory.slice()
+    };
+
+    recordHistory("user", userMessage);
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -203,6 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
       messagesContainer.removeChild(typingMessage);
       const reply = data?.reply || "Désolé, une erreur est survenue. Réessayez plus tard.";
       appendMessage(reply, "assistant");
+      recordHistory("assistant", reply);
     } catch (error) {
       console.error(error);
       if (messagesContainer.contains(typingMessage)) {

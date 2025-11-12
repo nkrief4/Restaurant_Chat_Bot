@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, TypedDict
 
 from openai import APIError
 
 from app.config.openai_client import client
 from app.config.supabase_client import DEFAULT_RESTAURANT_SLUG, get_supabase_client
+
+
+class ChatMessage(TypedDict):
+    role: str
+    content: str
 
 
 def _build_dietary_index(menu_data: Dict[str, Any]) -> Dict[str, List[str]]:
@@ -63,6 +67,7 @@ if MENU_DATA is None:
 MENU_CONTEXT = json.dumps(MENU_DATA, ensure_ascii=False)
 DIETARY_INDEX = _build_dietary_index(MENU_DATA)
 DIETARY_CONTEXT = json.dumps(DIETARY_INDEX, ensure_ascii=False, indent=2)
+MAX_HISTORY_MESSAGES = 12
 
 SYSTEM_PROMPT = (
     "Tu es l'assistant virtuel du restaurant La Trattoria di Nathan. "
@@ -77,18 +82,18 @@ SYSTEM_PROMPT = (
     "Chaque plat doit être formaté comme suit : \"• Nom (Catégorie) – Prix € – ce que contient le plat\"."
     "A la fin de la réponse, ne propose pas autres choses, simplement réponds à la question de la personne qui te pose la question."
     "Lorsque tu evoques un plat, donne la description du plat, le prix et le contenu du plat."
-    "Réponds en français ou en anglais ou en espagnol (cela dépend de la langue de la personne qui te pose la question), avec un ton poli, des phrases courtes et des suggestions basées uniquement sur les données ci-dessous.\n\n"
+    "Réponds avec la même langue que la personne qui te pose la question, avec un ton poli, des phrases courtes et des suggestions basées uniquement sur les données ci-dessous.\n\n"
     f"Données complètes du menu (issues de la base de données, JSON):\n{MENU_CONTEXT}\n\n"
     f"Index des régimes (tag -> plats):\n{DIETARY_CONTEXT}"
 )
 
 
-def _request_completion(message: str) -> str:
+def _request_completion(messages: Sequence[ChatMessage]) -> str:
     completion = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": message},
+            *messages,
         ],
     )
     if completion.choices:
@@ -97,10 +102,26 @@ def _request_completion(message: str) -> str:
     return "Désolé, je n'ai pas pu générer de réponse."
 
 
-async def get_chat_response(user_message: str) -> str:
+def _prepare_history(history: Optional[Sequence[ChatMessage]]) -> List[ChatMessage]:
+    """Return only the latest relevant messages with safe roles/content."""
+    if not history:
+        return []
+
+    cleaned: List[ChatMessage] = []
+    for message in history[-MAX_HISTORY_MESSAGES:]:
+        role = message.get("role")
+        content = (message.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            cleaned.append({"role": role, "content": content})
+    return cleaned[-MAX_HISTORY_MESSAGES:]
+
+
+async def get_chat_response(user_message: str, history: Optional[Sequence[ChatMessage]] = None) -> str:
     """Call OpenAI asynchronously and return the assistant reply."""
+    conversation: List[ChatMessage] = _prepare_history(history)
+    conversation.append({"role": "user", "content": user_message.strip()})
     try:
-        return await asyncio.to_thread(_request_completion, user_message)
+        return await asyncio.to_thread(_request_completion, conversation)
     except APIError as exc:  # pragma: no cover - depends on network
         print(f"Erreur OpenAI: {exc}")
         return "Désolé, une erreur est survenue avec le service d'IA."
