@@ -2,38 +2,454 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>Assistant IA du restaurant - Dev</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="/static/chat.js" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RestauBot | Chatbot IA pour restaurant et carte gastronomique</title>
+    <meta name="description" content="RestauBot est le chatbot IA pour restaurant qui modernise votre carte, conseille chaque client et offre un dashboard premium pour piloter votre menu." />
+    <meta name="keywords" content="chatbot IA restaurant, chatbot carte restaurant, restaurant IA, assistant IA pour menu" />
+    <link rel="canonical" href="https://restaubot.ai/" />
+    <meta name="robots" content="index,follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="RestauBot | Chatbot IA pour restaurant" />
+    <meta property="og:description" content="Assistant IA pour menu, statistiques complètes et dashboard premium dédiés aux restaurants traditionnels." />
+    <meta property="og:url" content="https://restaubot.ai/" />
+    <meta property="og:image" content="https://restaubot.ai/static/og-restaubot.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RestauBot | Assistant IA pour menu" />
+    <meta name="twitter:description" content="Le chatbot carte restaurant qui répond 24/7, conseille vos clients et alimente votre dashboard RestauBot." />
+    <meta name="twitter:image" content="https://restaubot.ai/static/og-restaubot.jpg" />
+    <meta name="theme-color" content="#050914" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <main class="page-content">
-      <div class="intro-card">
-        <p class="eyebrow">Version développeur</p>
-        <h1>Assistant IA du restaurant</h1>
-        <p class="intro-text">
-          Discutez avec notre assistant pour explorer la carte, dénicher des options pour
-          chaque régime alimentaire ou vérifier les horaires. Cliquez sur la bulle en bas à droite
-          pour démarrer la conversation.
-        </p>
-        <div class="quick-hints">
-          <div>
-            <span>💡</span>
-            <strong>Astuces</strong>
-            <p>Demandez “Plats halal” ou “Options sans crustacés”.</p>
+    <header class="site-header">
+      <div class="container nav-bar">
+        <a class="logo" href="#hero" aria-label="Accueil RestauBot">RestauBot</a>
+        <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
+          <a href="#benefices">Bénéfices</a>
+          <a href="#features">Fonctionnalités</a>
+          <a href="#pricing">Tarifs</a>
+          <a href="#temoignages">Témoignages</a>
+          <a href="#faq">FAQ</a>
+          <a class="nav-auth" href="/login">Se connecter</a>
+        </nav>
+        <a class="btn ghost login-link" href="/login">Se connecter</a>
+        <a class="btn primary desktop-cta" href="/signup">Créer un compte</a>
+        <button class="nav-toggle" aria-controls="main-nav" aria-expanded="false" aria-label="Ouvrir la navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section id="hero" class="hero section" data-animate="fade-up">
+        <div class="container hero-grid">
+          <div class="hero-text" data-animate="fade-up" style="--reveal-delay: 0.1s">
+            <p class="eyebrow">Assistant IA pour carte gastronomique</p>
+            <h1>Le chatbot IA pour restaurant qui maîtrise chaque plat et chaque client</h1>
+            <p class="lead">
+              RestauBot accompagne vos visiteurs en ligne, recommande les mets adaptés à leurs goûts ou allergies et convertit ces échanges en statistiques limpides dans un dashboard premium. Votre restaurant IA reste disponible 24/7.
+            </p>
+            <div class="hero-ctas">
+              <a class="btn primary" href="/signup">Créer un compte</a>
+              <a class="btn secondary" href="/login">Se connecter</a>
+              <a class="text-link" href="#features">Découvrir le dashboard</a>
+            </div>
+            <div class="hero-steps" aria-label="Étapes d'onboarding">
+              <div>
+                <span>1</span>
+                <p>Créer un compte en quelques minutes</p>
+              </div>
+              <div>
+                <span>2</span>
+                <p>Ajouter votre restaurant et votre carte</p>
+              </div>
+              <div>
+                <span>3</span>
+                <p>Accéder au dashboard et activer RestauBot</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <span>🧾</span>
-            <strong>Transparence</strong>
-            <p>L’IA ne répond que selon les informations du menu.</p>
-          </div>
-          <div>
-            <span>🕒</span>
-            <strong>Disponibilité</strong>
-            <p>Service accessible 24/7 depuis cette page locale.</p>
+          <div class="hero-visual" aria-hidden="true" data-animate="fade-up" style="--reveal-delay: 0.2s">
+            <div class="visual-glow"></div>
+            <div class="visual-panel">
+              <div class="panel-top">
+                <p>RestauBot Console</p>
+                <span>Restaurant IA</span>
+              </div>
+              <div class="panel-body">
+                <div class="panel-stat">
+                  <p>Suggestions personnalisées</p>
+                  <strong>+62 %</strong>
+                </div>
+                <div class="panel-stat">
+                  <p>Questions sur allergènes</p>
+                  <strong>371</strong>
+                </div>
+                <div class="panel-chart">
+                  <p>Assistant IA pour menu</p>
+                  <div class="chart-bars">
+                    <span style="height: 65%"></span>
+                    <span style="height: 90%"></span>
+                    <span style="height: 45%"></span>
+                    <span style="height: 78%"></span>
+                  </div>
+                </div>
+                <div class="panel-chip">Widget actif 24/7</div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section id="benefices" class="section benefits">
+        <div class="container">
+          <div class="section-header" data-animate="fade-up">
+            <p class="eyebrow">Bénéfices</p>
+            <h2>Pourquoi votre restaurant mérite un assistant IA premium</h2>
+            <p class="section-intro">Le chatbot carte restaurant RestauBot fluidifie chaque interaction digitale et valorise votre menu sans effort.</p>
+          </div>
+          <div class="cards-grid">
+            <article class="card" data-animate="fade-up">
+              <h3>Conseils adaptés</h3>
+              <p>Proposez des plats alignés sur les goûts, les régimes et les allergies de chaque client.</p>
+            </article>
+            <article class="card" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <h3>Moins de questions répétées</h3>
+              <p>Laissez RestauBot répondre automatiquement aux questions fréquentes sur la carte.</p>
+            </article>
+            <article class="card" data-animate="fade-up" style="--reveal-delay: 0.1s">
+              <h3>Expérience digitale soignée</h3>
+              <p>Offrez un parcours fluide sur votre site ou via QR code en salle, sans temps d’attente.</p>
+            </article>
+            <article class="card" data-animate="fade-up">
+              <h3>Disponibilité 24/7</h3>
+              <p>Votre restaurant IA accueille les visiteurs en continu, même en dehors des services.</p>
+            </article>
+            <article class="card" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <h3>Découverte de nouveaux plats</h3>
+              <p>Boostez les ventes de vos spécialités grâce à des recommandations contextuelles.</p>
+            </article>
+            <article class="card" data-animate="fade-up" style="--reveal-delay: 0.1s">
+              <h3>Statistiques utiles</h3>
+              <p>Synthétisez les préférences clients et les performances des plats depuis le dashboard.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="section features">
+        <div class="container feature-grid">
+          <div data-animate="fade-up">
+            <p class="eyebrow">Fonctionnalités</p>
+            <h2>Une plateforme IA conçue pour les restaurateurs exigeants</h2>
+            <p class="section-intro">RestauBot s’intègre facilement à votre site et offre un pilotage complet du chatbot, des menus et des statistiques.</p>
+            <ul class="feature-list">
+              <li data-animate="fade-up">
+                <h3>Intégration simple</h3>
+                <p>Un script unique connecte RestauBot à votre site en quelques minutes.</p>
+              </li>
+              <li data-animate="fade-up" style="--reveal-delay: 0.05s">
+                <h3>Réponses intelligentes</h3>
+                <p>Ingrédients, allergènes, accords mets-vins : le chatbot connaît votre carte par cœur.</p>
+              </li>
+              <li data-animate="fade-up" style="--reveal-delay: 0.1s">
+                <h3>Statistiques détaillées</h3>
+                <p>Visualisez les tendances de demandes, les plats les plus suggérés et les intentions clients.</p>
+              </li>
+              <li data-animate="fade-up" style="--reveal-delay: 0.15s">
+                <h3>Gestion multi-restaurants</h3>
+                <p>Centralisez plusieurs établissements avec droits utilisateurs différenciés.</p>
+              </li>
+              <li data-animate="fade-up" style="--reveal-delay: 0.2s">
+                <h3>Édition complète du menu</h3>
+                <p>Modifiez descriptions, photos et disponibilités directement depuis le dashboard.</p>
+              </li>
+            </ul>
+          </div>
+          <div class="feature-visual" data-animate="fade-up" style="--reveal-delay: 0.15s">
+            <img src="/static/placeholder-dashboard.png" alt="Aperçu du dashboard RestauBot" />
+            <p class="visual-caption">Dashboard RestauBot — statistiques en temps réel</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="temoignages" class="section testimonials">
+        <div class="container">
+          <div class="section-header" data-animate="fade-up">
+            <p class="eyebrow">Témoignages</p>
+            <h2>Des restaurateurs premium font confiance à RestauBot</h2>
+            <p class="section-intro">Cuisine gastronomique, bistronomie ou étoilés : tous valorisent leur carte grâce à notre assistant IA.</p>
+          </div>
+          <div class="testimonial-grid">
+            <article class="testimonial-card" data-animate="fade-up">
+              <p>« Nos invités obtiennent instantanément des recommandations adaptées à leurs allergies. RestauBot a réduit les appels au service d’accueil. »</p>
+              <div>
+                <strong>Claire Dubois</strong>
+                <span>Chef propriétaire · Maison Lyria</span>
+              </div>
+            </article>
+            <article class="testimonial-card" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <p>« Nous gérons trois brasseries gastronomiques avec un seul compte. Les statistiques nous inspirent pour nos menus saisonniers. »</p>
+              <div>
+                <strong>Julien Perrot</strong>
+                <span>Directeur · Groupe Bruma</span>
+              </div>
+            </article>
+            <article class="testimonial-card" data-animate="fade-up" style="--reveal-delay: 0.1s">
+              <p>« Le widget RestauBot accompagne les clients depuis notre site jusqu’au QR code en salle, avec un ton digne de notre maison étoilée. »</p>
+              <div>
+                <strong>Sarah Mancini</strong>
+                <span>Cheffe · Atelier Mancini</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" class="section pricing">
+        <div class="container">
+          <div class="section-header" data-animate="fade-up">
+            <p class="eyebrow">Tarifs</p>
+            <h2>Des plans clairs pour activer RestauBot selon vos besoins</h2>
+            <p class="section-intro">Choisissez l’offre qui correspond à votre établissement, puis créez votre compte pour finaliser l’activation.</p>
+          </div>
+          <div class="pricing-grid">
+            <article class="pricing-card" data-animate="fade-up">
+              <p class="plan-name">Découverte</p>
+              <p class="plan-price">À partir de 79 € / mois</p>
+              <ul>
+                <li>Chatbot IA pour un restaurant</li>
+                <li>Gestion du menu depuis le dashboard</li>
+                <li>Support email prioritaire</li>
+              </ul>
+              <a class="btn outline" href="/signup">Créer un compte</a>
+            </article>
+            <article class="pricing-card featured" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <p class="plan-name">Pro</p>
+              <p class="plan-price">À partir de 149 € / mois</p>
+              <ul>
+                <li>Multi-restaurants</li>
+                <li>Statistiques avancées et exports</li>
+                <li>Widget personnalisable</li>
+              </ul>
+              <a class="btn primary" href="/signup">Créer un compte</a>
+            </article>
+            <article class="pricing-card" data-animate="fade-up" style="--reveal-delay: 0.1s">
+              <p class="plan-name">Premium</p>
+              <p class="plan-price">Sur devis dédié</p>
+              <ul>
+                <li>Accompagnement onboarding</li>
+                <li>Conseils data & IA</li>
+                <li>Gestion multi-équipes et SLA</li>
+              </ul>
+              <a class="btn outline" href="mailto:contact@restaubot.ai">Parler à un expert</a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="section faq">
+        <div class="container">
+          <div class="section-header" data-animate="fade-up">
+            <p class="eyebrow">FAQ</p>
+            <h2>Toutes vos questions sur RestauBot</h2>
+            <p class="section-intro">Choisissez votre plan, créez un compte puis configurez votre assistant en toute autonomie.</p>
+          </div>
+          <div class="faq-list">
+            <article class="faq-item" data-animate="fade-up">
+              <button aria-expanded="false">Comment intégrer RestauBot sur mon site ?</button>
+              <div class="faq-answer">
+                <p>Ajoutez le script RestauBot fourni dans votre dashboard ou déployez le widget via QR code. Aucun développement complexe n’est requis.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <button aria-expanded="false">Puis-je gérer plusieurs restaurants avec un seul compte ?</button>
+              <div class="faq-answer">
+                <p>Oui, le dashboard multi-restaurants vous permet d’ajouter vos établissements et d’attribuer des droits spécifiques à chaque équipe.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up" style="--reveal-delay: 0.1s">
+              <button aria-expanded="false">Le chatbot répond-il aux questions sur les allergies ?</button>
+              <div class="faq-answer">
+                <p>RestauBot cartographie les allergènes, les ingrédients et les alternatives afin de répondre précisément aux demandes sensibles.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up">
+              <button aria-expanded="false">Combien de temps faut-il pour être opérationnel ?</button>
+              <div class="faq-answer">
+                <p>Après la création de votre compte, la configuration du menu et l’intégration du widget prennent généralement moins d’une semaine.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <button aria-expanded="false">Puis-je personnaliser le ton et l’apparence du chatbot ?</button>
+              <div class="faq-answer">
+                <p>Vous ajustez la charte, la voix éditoriale et certaines réponses types directement dans le dashboard RestauBot.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up" style="--reveal-delay: 0.1s">
+              <button aria-expanded="false">Comment sont sécurisées mes données et celles de mes clients ?</button>
+              <div class="faq-answer">
+                <p>Les données sont hébergées en Europe, chiffrées et conformes aux exigences RGPD, avec audit continu.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up">
+              <button aria-expanded="false">Le chatbot peut-il fonctionner sur mobile et en salle ?</button>
+              <div class="faq-answer">
+                <p>Le widget responsive fonctionne sur tous les appareils et peut être affiché via QR code pour accompagner le service.</p>
+              </div>
+            </article>
+            <article class="faq-item" data-animate="fade-up" style="--reveal-delay: 0.05s">
+              <button aria-expanded="false">Proposez-vous un accompagnement humain ?</button>
+              <div class="faq-answer">
+                <p>Notre équipe Customer Success vous aide à configurer RestauBot, forme vos équipes et suit vos objectifs sur la durée.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid" data-animate="fade-up">
+        <div>
+          <a class="logo" href="#hero">RestauBot</a>
+          <p>Le chatbot IA pour restaurant qui valorise votre carte et fidélise vos clients.</p>
+        </div>
+        <div>
+          <p class="footer-title">Contact</p>
+          <a href="mailto:contact@restaubot.ai">contact@restaubot.ai</a>
+          <a href="#">Mentions légales</a>
+        </div>
+        <div>
+          <p class="footer-title">Passer à l’action</p>
+          <a class="btn link" href="/signup">Créer un compte</a>
+        </div>
+      </div>
+      <p class="copyright">© <span id="year"></span> RestauBot. Tous droits réservés.</p>
+    </footer>
+
+    <script>
+      const navToggle = document.querySelector('.nav-toggle');
+      const nav = document.getElementById('main-nav');
+      navToggle?.addEventListener('click', () => {
+        const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+        navToggle.setAttribute('aria-expanded', String(!expanded));
+        nav?.classList.toggle('open');
+      });
+
+      document.querySelectorAll('.faq-item button').forEach((button) => {
+        button.addEventListener('click', () => {
+          const expanded = button.getAttribute('aria-expanded') === 'true';
+          button.setAttribute('aria-expanded', String(!expanded));
+          const answer = button.nextElementSibling;
+          if (!answer) return;
+          if (expanded) {
+            answer.style.maxHeight = null;
+          } else {
+            answer.style.maxHeight = answer.scrollHeight + 'px';
+          }
+        });
+      });
+
+      const animatedElements = document.querySelectorAll('[data-animate]');
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.2 }
+      );
+      animatedElements.forEach((el) => revealObserver.observe(el));
+
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": ["Product", "SoftwareApplication"],
+            "name": "RestauBot",
+            "description": "Chatbot IA pour restaurant, assistant IA pour menu et dashboard statistiques.",
+            "applicationCategory": "CustomerServiceApplication",
+            "operatingSystem": "Web",
+            "url": "https://restaubot.ai/",
+            "brand": {
+              "@type": "Brand",
+              "name": "RestauBot"
+            },
+            "offers": {
+              "@type": "Offer",
+              "priceCurrency": "EUR",
+              "price": "79",
+              "availability": "https://schema.org/InStock"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Comment intégrer RestauBot sur mon site ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Ajoutez le script RestauBot fourni dans votre dashboard ou déployez le widget via QR code."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Puis-je gérer plusieurs restaurants avec un seul compte ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Oui, le dashboard multi-restaurants centralise vos établissements et vos équipes."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Le chatbot répond-il aux questions sur les allergies ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "RestauBot cartographie les allergènes, ingrédients et suggestions alternatives." 
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Combien de temps faut-il pour être opérationnel ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "La configuration complète prend généralement moins d'une semaine après la création du compte." 
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Puis-je personnaliser le ton et l’apparence du chatbot ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Le dashboard propose des options de branding, de ton et de scénarios pour adapter RestauBot à votre maison." 
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Comment sont sécurisées mes données ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Les données RestauBot sont hébergées en Europe, chiffrées et conformes aux exigences RGPD." 
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </body>
 </html>

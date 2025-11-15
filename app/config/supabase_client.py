@@ -34,4 +34,6 @@ def get_supabase_client() -> Optional["Client"]:
 __all__ = [
     "get_supabase_client",
     "DEFAULT_RESTAURANT_SLUG",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
 ]

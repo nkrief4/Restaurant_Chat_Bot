@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Créer un compte | RestauBot</title>
+    <meta name="description" content="Créez votre espace RestauBot, configurez votre restaurant et accédez à un dashboard IA complet en quelques étapes." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/auth.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="/static/js/supabaseClient.js" defer></script>
+    <script src="/static/js/signup.js" defer></script>
+  </head>
+  <body class="auth-body">
+    <div class="auth-shell">
+      <header class="auth-header">
+        <a class="auth-logo" href="/">RestauBot</a>
+        <a class="header-link" href="/login">Déjà client ? Connexion</a>
+      </header>
+      <main class="auth-card signup-card">
+        <section class="signup-hero">
+          <p class="eyebrow">Onboarding restaurateur</p>
+          <h1>Créez votre compte en 3 étapes</h1>
+          <p class="intro-text">
+            Nous configurons pour vous un tenant Supabase sécurisé et un premier restaurant prêt à être
+            personnalisé. Comptez moins de deux minutes avec votre adresse professionnelle et un mot de passe
+            robuste.
+          </p>
+        <ul class="hero-checklist">
+          <li>Tenant Supabase isolé pour votre équipe</li>
+          <li>Restaurant démo prêt à éditer</li>
+          <li>Accès immédiat au tableau de bord</li>
+        </ul>
+        </section>
+
+        <div class="signup-progress" role="list" aria-label="Étapes de l'inscription">
+          <button type="button" class="progress-chip active" data-progress="0">1. Identité</button>
+        <button type="button" class="progress-chip" data-progress="1">2. Restaurant</button>
+        <button type="button" class="progress-chip" data-progress="2">3. Validation</button>
+      </div>
+
+      <form id="signup-form" class="auth-form signup-form" novalidate>
+        <section class="form-step" data-step="0" aria-live="polite">
+          <header>
+            <h2>Vos informations</h2>
+            <p class="muted">Nous ne les utilisons que pour les notifications et la facturation.</p>
+          </header>
+          <div class="form-field">
+            <label for="full_name">Nom complet</label>
+            <input type="text" id="full_name" name="full_name" placeholder="Camille Dupont" required />
+            <p class="field-error" data-error-for="full_name"></p>
+          </div>
+          <div class="form-field">
+            <label for="company_name">Structure (optionnel)</label>
+            <input type="text" id="company_name" name="company_name" placeholder="Groupe Sésame" />
+            <p class="field-error" data-error-for="company_name"></p>
+          </div>
+          <div class="form-field">
+            <label for="email">Email professionnel</label>
+            <input type="email" id="email" name="email" placeholder="vous@restaurant.com" required />
+            <p class="field-error" data-error-for="email"></p>
+          </div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="password">Mot de passe</label>
+              <input type="password" id="password" name="password" placeholder="Minimum 8 caractères" required minlength="8" />
+              <div class="password-meter" id="password-meter" aria-live="polite">
+                <div class="password-meter-bar" data-strength="0"></div>
+                <p class="password-meter-label">Choisissez au moins 8 caractères, mélangeant chiffres et lettres.</p>
+              </div>
+              <p class="field-error" data-error-for="password"></p>
+            </div>
+            <div class="form-field">
+              <label for="password_confirm">Confirmation</label>
+              <input type="password" id="password_confirm" name="password_confirm" placeholder="Répétez le mot de passe" required />
+              <p class="field-error" data-error-for="password_confirm"></p>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="preferred_language">Langue préférée</label>
+            <select id="preferred_language" name="preferred_language">
+              <option value="fr" selected>Français</option>
+              <option value="en">Anglais</option>
+            </select>
+          </div>
+          <label class="checkbox-field">
+            <input type="checkbox" id="newsletter_opt_in" name="newsletter_opt_in" />
+            <span>Recevoir les astuces produit et newsletters (1 fois par mois max).</span>
+          </label>
+        </section>
+
+        <section class="form-step" data-step="1" hidden aria-live="polite">
+          <header>
+            <h2>Votre restaurant</h2>
+            <p class="muted">Nous créons automatiquement le tenant et un premier établissement à partir de ces données.</p>
+          </header>
+          <div class="form-field">
+            <label for="restaurant_name">Nom public</label>
+            <input type="text" id="restaurant_name" name="restaurant_name" placeholder="Maison Sésame" required />
+            <p class="field-error" data-error-for="restaurant_name"></p>
+          </div>
+          <div class="form-field">
+            <label for="restaurant_slug">Adresse unique</label>
+            <div class="input-with-btn">
+              <input type="text" id="restaurant_slug" name="restaurant_slug" placeholder="maison-sesame" required />
+              <button type="button" id="slug-refresh" class="ghost-btn small">Regénérer</button>
+            </div>
+            <p class="field-hint">Lettre minuscules, chiffres et tirets uniquement. Utilisé pour préremplir vos URLs.</p>
+            <p class="field-error" data-error-for="restaurant_slug"></p>
+          </div>
+          <div class="form-field">
+            <label for="menu-upload-file">Importer votre menu (optionnel)</label>
+            <input type="file" id="menu-upload-file" accept="image/*,.pdf" />
+            <p class="field-hint">Formats acceptés : toutes les images et PDF (8&nbsp;Mo max).</p>
+            <div class="menu-upload-actions">
+              <button type="button" id="menu-generate-btn" class="ghost-btn small">Laisser l'IA résumer</button>
+              <p id="menu-upload-status" class="form-message" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="restaurant_menu_document">Menu structuré</label>
+            <textarea
+              id="restaurant_menu_document"
+              name="restaurant_menu_document"
+              class="json-input"
+              rows="8"
+              placeholder='{"categories": []}'
+            ></textarea>
+            <div class="input-with-btn menu-actions">
+              <p class="field-hint">
+                Utilisez le format JSON de notre chatbot (catégories → plats). Vous pourrez l'éditer ensuite dans le dashboard.
+              </p>
+              <button type="button" id="menu-example-btn" class="ghost-btn small">Charger un exemple</button>
+            </div>
+            <p class="field-error" data-error-for="restaurant_menu_document"></p>
+          </div>
+          <div class="form-field">
+            <label for="use_case">Usage principal</label>
+            <select id="use_case" name="use_case">
+              <option value="single_location">Un seul établissement</option>
+              <option value="multi_location">Plusieurs établissements</option>
+              <option value="agency">Agence / franchise</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="referral_code">Code partenaire (optionnel)</label>
+            <input type="text" id="referral_code" name="referral_code" placeholder="CHEF2024" />
+          </div>
+          <label class="checkbox-field">
+            <input type="checkbox" id="terms_accepted" name="terms_accepted" required />
+            <span>
+              J'ai lu et j'accepte les <a href="#" target="_blank" rel="noopener">conditions d'utilisation</a> et la
+              <a href="#" target="_blank" rel="noopener">politique de confidentialité</a>.
+            </span>
+          </label>
+          <p class="field-error" data-error-for="terms_accepted"></p>
+        </section>
+
+        <section class="form-step" data-step="2" hidden aria-live="polite">
+          <header>
+            <h2>Vérification finale</h2>
+            <p class="muted">Relisez les informations avant de lancer la création de votre espace.</p>
+          </header>
+          <dl class="summary-list">
+            <div>
+              <dt>Nom</dt>
+              <dd data-summary="full_name">—</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd data-summary="email">—</dd>
+            </div>
+            <div>
+              <dt>Langue</dt>
+              <dd data-summary="preferred_language">—</dd>
+            </div>
+            <div>
+              <dt>Restaurant</dt>
+              <dd data-summary="restaurant_name">—</dd>
+            </div>
+            <div>
+              <dt>Slug</dt>
+              <dd data-summary="restaurant_slug">—</dd>
+            </div>
+            <div>
+              <dt>Usage</dt>
+              <dd data-summary="use_case">—</dd>
+            </div>
+            <div>
+              <dt>Sections du menu</dt>
+              <dd data-summary="menu_sections">0</dd>
+            </div>
+          </dl>
+          <p class="muted small">
+            À la validation, nous créons un compte Supabase sécurisé, un tenant dédié et un restaurant de démonstration.
+            Vous serez redirigé automatiquement vers le tableau de bord.
+          </p>
+        </section>
+
+        <div class="form-nav">
+          <button type="button" class="ghost-btn" data-prev disabled>Étape précédente</button>
+          <button type="button" class="primary-btn" data-next>Continuer</button>
+          <button type="submit" class="primary-btn" data-submit hidden>Créer mon espace</button>
+        </div>
+        <p id="signup-feedback" class="form-message" role="alert"></p>
+        <p class="muted small">Déjà un compte ? <a href="/login">Connectez-vous ici</a>.</p>
+      </form>
+      </main>
+      <footer class="auth-footer">
+        Besoin d’aide lors de l’onboarding ? <a href="mailto:contact@restaubot.ai">contact@restaubot.ai</a>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Sequence, TypedDict
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict
 
 from openai import APIError
+from langdetect import DetectorFactory, LangDetectException, detect
 
 from app.config.openai_client import client
-from app.config.supabase_client import DEFAULT_RESTAURANT_SLUG, get_supabase_client
+from app.config.supabase_client import get_supabase_client
 
 
 class ChatMessage(TypedDict):
@@ -29,48 +30,29 @@ def _build_dietary_index(menu_data: Dict[str, Any]) -> Dict[str, List[str]]:
     return index
 
 
-def _load_menu_from_supabase() -> Optional[Dict[str, Any]]:
-    client_instance = get_supabase_client()
-    if client_instance is None:
-        return None
-
-    try:
-        response = (
-            client_instance.table("restaurants")
-            .select("menu_document")
-            .eq("slug", DEFAULT_RESTAURANT_SLUG)
-            .limit(1)
-            .execute()
-        )
-    except Exception as exc:  # pragma: no cover - depends on network
-        print(f"Erreur Supabase: {exc}")
-        return None
-
-    rows = getattr(response, "data", None) or []
-    if not rows:
-        return None
-
-    document = rows[0].get("menu_document")
-    if isinstance(document, dict):
-        return document
-
-    try:
-        return json.loads(document)
-    except Exception:
-        return None
-
-
-MENU_DATA: Dict[str, Any] = _load_menu_from_supabase()
-if MENU_DATA is None:
-    raise RuntimeError("Failed to load menu from Supabase. Database access error or menu not found.")
-
-MENU_CONTEXT = json.dumps(MENU_DATA, ensure_ascii=False)
-DIETARY_INDEX = _build_dietary_index(MENU_DATA)
-DIETARY_CONTEXT = json.dumps(DIETARY_INDEX, ensure_ascii=False, indent=2)
 MAX_HISTORY_MESSAGES = 12
 
-SYSTEM_PROMPT = (
-    "Tu es l'assistant virtuel du restaurant La Trattoria di Nathan. "
+DetectorFactory.seed = 0  # make language detection deterministic
+
+DEFAULT_LANGUAGE_CODE = "fr"
+
+LANGUAGE_LABELS = {
+    "ar": "arabe",
+    "de": "allemand",
+    "en": "anglais",
+    "es": "espagnol",
+    "fr": "français",
+    "he": "hébreu",
+    "it": "italien",
+    "pt": "portugais",
+    "ru": "russe",
+    "zh-cn": "chinois simplifié",
+    "zh-tw": "chinois traditionnel",
+}
+
+
+SYSTEM_PROMPT_TEMPLATE = (
+    "Tu es l'assistant virtuel du restaurant {restaurant_name}. "
     "Tu ne gères que les questions liées à ce restaurant (menu, régimes, horaires, coordonnées). "
     "Tu ne prends pas de réservations ni de commandes et tu n'inventes aucune information. "
     "Utilise strictement les champs fournis dans le menu, notamment 'tags', 'contains' et 'dietaryGuide'. "
@@ -81,18 +63,35 @@ SYSTEM_PROMPT = (
     "(ex. 'Section : Plats casher disponibles') et sous chaque section affiche des listes à puces avec le symbole '•'. "
     "Chaque plat doit être formaté comme suit : \"• Nom (Catégorie) – Prix € – ce que contient le plat\"."
     "A la fin de la réponse, ne propose pas autres choses, simplement réponds à la question de la personne qui te pose la question."
-    "Lorsque tu evoques un plat, donne la description du plat, le prix et le contenu du plat."
-    "Réponds avec la même langue que la personne qui te pose la question, avec un ton poli, des phrases courtes et des suggestions basées uniquement sur les données ci-dessous.\n\n"
-    f"Données complètes du menu (issues de la base de données, JSON):\n{MENU_CONTEXT}\n\n"
-    f"Index des régimes (tag -> plats):\n{DIETARY_CONTEXT}"
+    "Lorsque tu évoques un plat, donne la description du plat, le prix et le contenu du plat."
+    "La personne s'exprime en {user_language_label}. Réponds strictement dans cette langue avec un ton poli, des phrases courtes et des suggestions basées uniquement sur les données ci-dessous.\n\n"
+    "Données complètes du menu (issues de la base de données, JSON):\n{menu_context}\n\n"
+    "Index des régimes (tag -> plats):\n{dietary_context}"
 )
 
 
-def _request_completion(messages: Sequence[ChatMessage]) -> str:
+def _build_system_prompt(
+    restaurant_name: str,
+    menu_document: Dict[str, Any],
+    user_language_label: str,
+) -> str:
+    safe_name = restaurant_name.strip() or "ce restaurant"
+    menu_context = json.dumps(menu_document, ensure_ascii=False)
+    dietary_index = _build_dietary_index(menu_document)
+    dietary_context = json.dumps(dietary_index, ensure_ascii=False, indent=2)
+    return SYSTEM_PROMPT_TEMPLATE.format(
+        restaurant_name=safe_name,
+        menu_context=menu_context,
+        dietary_context=dietary_context,
+        user_language_label=user_language_label,
+    )
+
+
+def _request_completion(messages: Sequence[ChatMessage], system_prompt: str) -> str:
     completion = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             *messages,
         ],
     )
@@ -116,15 +115,58 @@ def _prepare_history(history: Optional[Sequence[ChatMessage]]) -> List[ChatMessa
     return cleaned[-MAX_HISTORY_MESSAGES:]
 
 
-async def get_chat_response(user_message: str, history: Optional[Sequence[ChatMessage]] = None) -> str:
+def _detect_user_language(user_message: str) -> Tuple[str, str]:
+    cleaned = (user_message or "").strip()
+    if not cleaned:
+        return DEFAULT_LANGUAGE_CODE, LANGUAGE_LABELS[DEFAULT_LANGUAGE_CODE]
+    try:
+        code = detect(cleaned)
+    except LangDetectException:
+        code = DEFAULT_LANGUAGE_CODE
+    label = LANGUAGE_LABELS.get(code, code)
+    return code, label
+
+
+async def get_chat_response(
+    user_message: str,
+    history: Optional[Sequence[ChatMessage]] = None,
+    *,
+    restaurant_name: str,
+    menu_document: Dict[str, Any],
+) -> str:
     """Call OpenAI asynchronously and return the assistant reply."""
     conversation: List[ChatMessage] = _prepare_history(history)
     conversation.append({"role": "user", "content": user_message.strip()})
+    _, user_language_label = _detect_user_language(user_message)
+    system_prompt = _build_system_prompt(restaurant_name, menu_document, user_language_label)
     try:
-        return await asyncio.to_thread(_request_completion, conversation)
+        return await asyncio.to_thread(_request_completion, conversation, system_prompt)
     except APIError as exc:  # pragma: no cover - depends on network
         print(f"Erreur OpenAI: {exc}")
         return "Désolé, une erreur est survenue avec le service d'IA."
     except Exception as exc:  # pragma: no cover - unexpected
         print(f"Erreur inattendue: {exc}")
         return "Désolé, je rencontre un problème technique pour le moment."
+
+async def sign_up(email, password):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise ValueError("Supabase client not initialized.")
+    try:
+        response = await asyncio.to_thread(supabase.auth.sign_up, {"email": email, "password": password})
+        return response
+    except Exception as e:
+        print(f"Error during sign-up: {e}")
+        return None
+
+
+async def sign_in(email, password):
+    supabase = get_supabase_client()
+    if not supabase:
+        raise ValueError("Supabase client not initialized.")
+    try:
+        response = await asyncio.to_thread(supabase.auth.sign_in_with_password, {"email": email, "password": password})
+        return response
+    except Exception as e:
+        print(f"Error during sign-in: {e}")
+        return None

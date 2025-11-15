@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RestauBot | Chatbot du restaurant</title>
+    <meta name="description" content="Dialogue en direct avec l'assistant IA RestauBot de votre restaurant." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="/static/js/supabaseClient.js" defer></script>
+    <script src="/static/js/chat.js" defer></script>
+  </head>
+  <body class="chat-simple">
+    <main class="tester-shell">
+      <section class="tester-card tester-hero">
+        <div class="hero-text">
+          <p class="assistant-label">ASSISTANT RESTAUBOT</p>
+          <h1 id="chat-restaurant-name">Sélectionnez un établissement</h1>
+          <p class="hero-subtitle">Testez vos réponses en direct avant de publier l'assistant.</p>
+        </div>
+        <div class="hero-controls">
+          <div class="hero-selector">
+            <label class="sr-only" for="restaurant-selector">Restaurant</label>
+            <select id="restaurant-selector" class="hero-select" aria-label="Choisir le restaurant">
+              <option value="">Chargement…</option>
+            </select>
+            <span id="user-email" class="hero-email">—</span>
+          </div>
+          <div class="hero-actions">
+            <button id="clear-chat" class="chat-btn ghost">Effacer</button>
+            <a href="/dashboard" class="chat-btn outline">Retour au dashboard</a>
+            <button id="logout-btn" class="chat-btn danger">Déconnexion</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tester-card suggestion-card">
+        <div class="card-header">
+          <h2>Questions suggérées</h2>
+          <p>Inspirez-vous de nos scénarios pour challenger votre assistant.</p>
+        </div>
+        <div class="chat-suggestions">
+          <button type="button" class="suggestion-chip" data-suggestion="Quels plats dois-je choisir si j'évite totalement la viande ?">
+            Repas sans viande
+          </button>
+          <button type="button" class="suggestion-chip" data-suggestion="Propose une entrée et un plat sans fromage ni lactose.">
+            Sans fromage / lactose
+          </button>
+          <button type="button" class="suggestion-chip" data-suggestion="Peux-tu bâtir un menu complet sans gluten pour ce soir ?">
+            Menu sans gluten
+          </button>
+          <button type="button" class="suggestion-chip" data-suggestion="Quels desserts recommandes-tu pour quelqu'un allergique aux noix ?">
+            Desserts sans noix
+          </button>
+        </div>
+      </section>
+
+      <section class="tester-card chat-panel" aria-label="Conversation avec le chatbot">
+        <div id="chat-status" class="chat-status" role="status">Chargement du chatbot…</div>
+        <div class="chat-body">
+          <div id="chat-messages" class="chat-messages" aria-live="polite" aria-label="Historique des messages"></div>
+          <div id="chat-empty-state" class="chat-empty">
+            <p>Posez une question pour commencer ou sélectionnez une suggestion ci-dessus.</p>
+          </div>
+          <div id="typing-indicator" class="typing-indicator" hidden>
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+        <form id="chat-form" class="chat-input-area" autocomplete="off">
+          <label for="chat-input" class="sr-only">Votre message</label>
+          <input
+            type="text"
+            id="chat-input"
+            name="message"
+            placeholder="Demandez un menu sans viande, des conseils allergènes…"
+            autocomplete="off"
+            required
+          />
+          <button type="submit" id="chat-send" class="chat-btn primary">Envoyer</button>
+        </form>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

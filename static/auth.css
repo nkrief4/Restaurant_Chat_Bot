@@ -1,0 +1,469 @@
+:root {
+  --auth-bg: #02040a;
+  --auth-panel: rgba(8, 13, 26, 0.9);
+  --auth-card: rgba(9, 14, 28, 0.88);
+  --auth-muted: rgba(244, 246, 255, 0.7);
+  --auth-text: #f6f7ff;
+  --auth-border: rgba(255, 255, 255, 0.08);
+  --auth-accent: #6c63ff;
+  --auth-accent-strong: #4ef1d7;
+  --auth-shadow: 0 25px 70px rgba(3, 5, 15, 0.65);
+  font-family: 'Space Grotesk', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body.auth-body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(76, 241, 215, 0.12), transparent 45%),
+    radial-gradient(circle at 20% 20%, rgba(108, 99, 255, 0.2), transparent 35%),
+    var(--auth-bg);
+  color: var(--auth-text);
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px 80px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body.auth-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(108, 99, 255, 0.15), transparent 35%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.auth-shell {
+  width: min(1100px, 100%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.auth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.auth-logo {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--auth-text);
+  text-decoration: none;
+}
+
+.header-link {
+  color: var(--auth-accent-strong);
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-link::after {
+  content: '→';
+  transition: transform 0.2s ease;
+}
+
+.header-link:hover::after {
+  transform: translateX(4px);
+}
+
+.auth-card {
+  background: var(--auth-card);
+  border: 1px solid var(--auth-border);
+  border-radius: 32px;
+  padding: 48px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 48px;
+  box-shadow: var(--auth-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.auth-card > * {
+  position: relative;
+}
+
+.auth-card.signup-card {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+}
+
+.signup-hero {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.signup-hero h1 {
+  margin: 0;
+}
+
+.auth-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 0.75rem;
+  color: var(--auth-accent-strong);
+  margin: 0;
+}
+
+.auth-intro h1,
+.auth-intro h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+}
+
+.intro-text,
+.muted {
+  color: var(--auth-muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.hero-checklist {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--auth-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hero-checklist li {
+  list-style: none;
+  padding-left: 28px;
+  position: relative;
+}
+
+.hero-checklist li::before {
+  content: '✔';
+  position: absolute;
+  left: 0;
+  color: var(--auth-accent-strong);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-field label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(3, 6, 16, 0.6);
+  color: var(--auth-text);
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-field textarea {
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--auth-accent-strong);
+  box-shadow: 0 0 0 2px rgba(78, 241, 215, 0.3);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  color: var(--auth-muted);
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+}
+
+.primary-btn,
+.ghost-btn {
+  border-radius: 20px;
+  padding: 14px 22px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+}
+
+.primary-btn {
+  background: linear-gradient(120deg, var(--auth-accent), var(--auth-accent-strong));
+  color: #02040a;
+  border: none;
+  box-shadow: 0 12px 32px rgba(108, 99, 255, 0.35);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--auth-text);
+}
+
+.primary-btn:hover,
+.ghost-btn:hover {
+  transform: translateY(-2px);
+}
+
+.muted.small {
+  font-size: 0.85rem;
+}
+
+.auth-form a {
+  color: var(--auth-accent-strong);
+  text-decoration: none;
+}
+
+.form-message {
+  min-height: 18px;
+  color: var(--auth-accent-strong);
+  font-size: 0.95rem;
+}
+
+.form-message.error {
+  color: #ff9d9d;
+}
+
+.form-step header h2 {
+  margin-bottom: 4px;
+  font-size: 1.4rem;
+}
+
+.field-hint {
+  color: var(--auth-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.field-error {
+  color: #ff9d9d;
+  min-height: 16px;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.password-meter {
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.password-meter-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #ffb347, #ffcc33);
+  width: 25%;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.password-meter-bar[data-strength='2'] {
+  width: 60%;
+  background: linear-gradient(120deg, #ffe259, #ffa751);
+}
+
+.password-meter-bar[data-strength='3'] {
+  width: 85%;
+  background: linear-gradient(120deg, var(--auth-accent), var(--auth-accent-strong));
+}
+
+.password-meter-label {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--auth-muted);
+}
+
+.signup-progress {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 8px 0 16px;
+}
+
+.progress-chip {
+  flex: 1;
+  min-width: 180px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 12px 18px;
+  background: transparent;
+  color: var(--auth-muted);
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.progress-chip.active {
+  border-color: var(--auth-accent-strong);
+  color: var(--auth-text);
+  background: rgba(78, 241, 215, 0.08);
+  transform: translateY(-2px);
+}
+
+.form-nav {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.form-nav button[data-prev] {
+  flex: 1 1 180px;
+}
+
+.form-nav button[data-next],
+.form-nav button[data-submit] {
+  flex: 1 1 220px;
+}
+
+.summary-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.summary-list div {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.summary-list dt {
+  font-size: 0.85rem;
+  color: var(--auth-muted);
+  margin: 0 0 6px;
+}
+
+.summary-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.input-with-btn {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.input-with-btn button.small {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-radius: 14px;
+}
+
+.menu-upload-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.json-input {
+  font-family: 'JetBrains Mono', 'Space Mono', monospace;
+}
+
+.auth-footer {
+  text-align: center;
+  color: var(--auth-muted);
+  font-size: 0.85rem;
+}
+
+.auth-footer a {
+  color: var(--auth-accent-strong);
+  text-decoration: none;
+}
+
+@media (max-width: 960px) {
+  .auth-card {
+    grid-template-columns: 1fr;
+    padding: 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  body.auth-body {
+    padding: 24px 12px 60px;
+  }
+
+  .auth-card {
+    padding: 28px;
+  }
+
+  .form-nav {
+    flex-direction: column;
+  }
+
+  .progress-chip {
+    min-width: auto;
+    width: 100%;
+  }
+}
