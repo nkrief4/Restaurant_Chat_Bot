@@ -10,6 +10,8 @@
     restaurantName: '',
     history: [],
     isSending: false,
+    sessionId: null,
+    hasInteracted: false,
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -65,6 +67,29 @@
       );
     }
     focusInput();
+  }
+
+  function createSessionId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    const random = Math.random().toString(16).slice(2, 10);
+    return `${Date.now().toString(36)}-${random}`;
+  }
+
+  function startChatSession() {
+    state.sessionId = createSessionId();
+  }
+
+  function ensureChatSession() {
+    if (!state.sessionId) {
+      startChatSession();
+    }
+    return state.sessionId;
+  }
+
+  function resetChatSession() {
+    state.sessionId = null;
   }
 
   function bindAuthListener() {
@@ -213,6 +238,19 @@
       return;
     }
     form.addEventListener('submit', handleSendMessage);
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+        }
+      });
+    }
   }
 
   function bindSuggestionChips() {
@@ -232,6 +270,11 @@
     button.addEventListener('click', () => {
       state.history = [];
       clearThread();
+      if (state.restaurantId) {
+        startChatSession();
+      } else {
+        resetChatSession();
+      }
       showStatus('Conversation réinitialisée. Posez une nouvelle question.');
       focusInput();
     });
@@ -257,10 +300,12 @@
   }
 
   function setActiveRestaurant(id, fallbackName, options = { updateUrl: true }) {
+    const previousId = state.restaurantId;
     state.restaurantId = id || null;
     if (!state.restaurantId) {
       state.restaurantName = 'Sélectionnez un établissement';
       state.history = [];
+      resetChatSession();
       updateRestaurantName(state.restaurantName);
       const select = document.getElementById('restaurant-selector');
       if (select) {
@@ -275,6 +320,10 @@
     const resolvedName = cachedName || fallbackName || 'Votre restaurant';
     state.restaurantName = resolvedName;
     updateRestaurantName(resolvedName);
+
+    if (previousId !== state.restaurantId) {
+      startChatSession();
+    }
 
     const select = document.getElementById('restaurant-selector');
     if (select) {
@@ -352,14 +401,17 @@
 
     appendMessage(message, 'user');
     input.value = '';
+    state.hasInteracted = true;
     setSendingState(true);
 
     const historySnapshot = state.history.slice(-MAX_HISTORY);
     const pendingUserEntry = { role: 'user', content: message };
+    const sessionId = ensureChatSession();
 
     try {
-      const reply = await requestChatCompletion(message, historySnapshot);
-      appendMessage(reply, 'assistant');
+      const reply = await requestChatCompletion(message, historySnapshot, sessionId);
+      const assistantElements = appendMessage('', 'assistant', { skipFormat: true, returnElements: true });
+      await streamAssistantReply(assistantElements?.body || null, reply);
       pushToHistory(pendingUserEntry);
       pushToHistory({ role: 'assistant', content: reply });
     } catch (error) {
@@ -370,7 +422,7 @@
     }
   }
 
-  async function requestChatCompletion(message, historySnapshot) {
+  async function requestChatCompletion(message, historySnapshot, sessionId) {
     const token = state.session?.access_token;
     if (!token) {
       window.location.href = '/login';
@@ -381,12 +433,13 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         restaurant_id: state.restaurantId,
         message,
         history: historySnapshot,
+        session_id: sessionId,
       }),
     });
 
@@ -413,18 +466,94 @@
     }
   }
 
-  function appendMessage(text, role) {
+  function appendMessage(text, role, options = {}) {
     const container = document.getElementById('chat-messages');
     if (!container) {
       return;
     }
     const item = document.createElement('div');
     item.className = `chat-message ${role}`;
-    item.setAttribute('data-label', role === 'assistant' ? 'RestauBot' : 'Vous');
-    item.innerHTML = formatMessage(text);
+    const label = role === 'assistant' ? 'RestauBot' : 'Vous';
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-message-avatar';
+    avatar.textContent = role === 'assistant' ? 'RB' : 'Vous';
+
+    const content = document.createElement('div');
+    content.className = 'chat-message-content';
+
+    const author = document.createElement('div');
+    author.className = 'chat-message-author';
+    author.textContent = label;
+
+    const body = document.createElement('div');
+    body.className = 'chat-message-body';
+    const rawText = (text || '').toString();
+    if (options.skipFormat) {
+      body.textContent = rawText;
+    } else if (rawText) {
+      body.innerHTML = formatMessage(rawText);
+    }
+
+    content.append(author, body);
+    item.append(avatar, content);
     container.appendChild(item);
     container.scrollTop = container.scrollHeight;
     toggleEmptyState(false);
+    if (options.returnElements) {
+      return { item, body };
+    }
+    return null;
+  }
+
+  function streamAssistantReply(target, text) {
+    return streamRichContent(target, text, formatMessage);
+  }
+
+  // Animate replies to mimic a live stream even without server-sent chunks.
+  function streamRichContent(target, text, formatter) {
+    return new Promise((resolve) => {
+      if (!target) {
+        resolve();
+        return;
+      }
+      const fullText = (text || '').toString();
+      if (!fullText) {
+        target.classList.remove('is-streaming');
+        target.innerHTML = typeof formatter === 'function' ? formatter('') : '';
+        resolve();
+        return;
+      }
+
+      const characters = Array.from(fullText);
+      const chunkSize = 4;
+      const baseDelay = 18;
+      let index = 0;
+      let buffer = '';
+
+      target.classList.add('is-streaming');
+      target.textContent = '';
+
+      const write = () => {
+        const chunk = characters.slice(index, index + chunkSize).join('');
+        buffer += chunk;
+        target.textContent = buffer;
+        index += chunkSize;
+        if (index < characters.length) {
+          const jitter = Math.random() * 40;
+          window.setTimeout(write, baseDelay + jitter);
+        } else {
+          target.classList.remove('is-streaming');
+          if (typeof formatter === 'function') {
+            target.innerHTML = formatter(buffer);
+          } else {
+            target.textContent = buffer;
+          }
+          resolve();
+        }
+      };
+
+      write();
+    });
   }
 
   function clearThread() {
@@ -433,6 +562,7 @@
       container.innerHTML = '';
     }
     toggleEmptyState(true);
+    state.hasInteracted = false;
   }
 
   function formatMessage(text) {
@@ -505,8 +635,27 @@
 
   function showTypingIndicator(isVisible) {
     const indicator = document.getElementById('typing-indicator');
-    if (indicator) {
-      indicator.hidden = !isVisible;
+    if (!indicator) {
+      return;
+    }
+    const shouldShow = Boolean(isVisible && state.hasInteracted);
+    indicator.hidden = !shouldShow;
+    indicator.setAttribute('aria-hidden', (!shouldShow).toString());
+    indicator.classList.toggle('is-visible', Boolean(isVisible));
+
+    const textEl = indicator.querySelector("[data-role='typing-text']");
+    if (textEl) {
+      if (!textEl.dataset.defaultText) {
+        textEl.dataset.defaultText = textEl.textContent || 'RestauBot rédige une réponse';
+      }
+      if (shouldShow) {
+        const assistantName = state.restaurantName && state.restaurantName !== 'Sélectionnez un établissement'
+          ? state.restaurantName
+          : 'RestauBot';
+        textEl.textContent = `${assistantName} rédige une réponse`;
+      } else {
+        textEl.textContent = textEl.dataset.defaultText;
+      }
     }
   }
 

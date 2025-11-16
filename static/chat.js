@@ -56,6 +56,26 @@ document.addEventListener("DOMContentLoaded", () => {
   let isSending = false;
   const conversationHistory = [];
   const MAX_HISTORY_ITEMS = 12;
+  let currentSessionId = null;
+
+  const generateSessionId = () => {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    const random = Math.random().toString(16).slice(2, 10);
+    return `${Date.now().toString(36)}-${random}`;
+  };
+
+  const ensureSessionId = () => {
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+    }
+    return currentSessionId;
+  };
+
+  const resetSessionId = () => {
+    currentSessionId = null;
+  };
 
   const recordHistory = (role, content) => {
     if (!content?.trim()) {
@@ -177,9 +197,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const isOpen = chatWindow.classList.contains("open");
     if (isOpen) {
       chatWindow.classList.remove("open");
+      resetSessionId();
       return;
     }
     chatWindow.classList.add("open");
+    ensureSessionId();
     input.focus();
     greetIfNeeded();
   };
@@ -200,7 +222,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const payload = {
       message: userMessage,
-      history: conversationHistory.slice()
+      history: conversationHistory.slice(),
+      session_id: ensureSessionId()
     };
 
     recordHistory("user", userMessage);

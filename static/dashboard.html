@@ -1,385 +1,608 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RestauBot | Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/static/dashboard.css" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="/static/js/supabaseClient.js" defer></script>
-    <script src="/static/js/dashboard.js" defer></script>
-  </head>
-  <body>
-    <div class="dashboard">
-      <aside class="sidebar">
-        <div class="logo">
-          <span class="logo-icon">RB</span>
-          <div>
-            <p class="logo-title">RestauBot</p>
-            <p class="logo-subtitle">Assistant IA</p>
-          </div>
-        </div>
-        <nav class="nav" aria-label="Navigation principale">
-          <button type="button" class="nav-link active" data-section="overview">Vue d'ensemble</button>
-          <button type="button" class="nav-link" data-section="restaurants">Restaurants</button>
-          <button type="button" class="nav-link" data-section="create">Créer un restaurant</button>
-          <button type="button" class="nav-link" data-section="chatbot">Chatbot</button>
-          <button type="button" class="nav-link" data-section="statistics">Statistiques</button>
-          <button type="button" class="nav-link" data-section="billing">Facturation & abonnement</button>
-          <button type="button" class="nav-link" data-section="profile">Profil</button>
-        </nav>
-        <div class="sidebar-footer">
-          <p class="muted">Support premium</p>
-          <a class="support-link" href="mailto:support@restaubot.ai">Nous contacter</a>
-        </div>
-      </aside>
 
-      <main class="main">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">RestauBot</p>
-            <h1 id="welcome-title">Bonjour, Jean Dupont</h1>
-            <p class="subtitle" id="welcome-subtitle">Gérez vos restaurants, vos conversations IA et votre abonnement en toute simplicité.</p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RestauBot | Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="/static/js/supabaseClient.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <script src="/static/js/dashboard.js" defer></script>
+</head>
+
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="dashboard-sidebar" aria-label="Navigation principale">
+      <div class="logo">
+        <span class="logo-icon">RB</span>
+        <div>
+          <p class="logo-title">RestauBot</p>
+          <p class="logo-subtitle">Assistant IA</p>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Navigation principale">
+        <button type="button" class="nav-link active" data-section="overview">Vue d'ensemble</button>
+        <button type="button" class="nav-link" data-section="restaurants">Restaurants</button>
+        <button type="button" class="nav-link" data-section="create">Créer un restaurant</button>
+        <button type="button" class="nav-link" data-section="edit">Modifier un restaurant</button>
+        <button type="button" class="nav-link" data-section="chatbot">Chatbot</button>
+        <button type="button" class="nav-link" data-section="statistics">Statistiques</button>
+        <button type="button" class="nav-link" data-section="billing">Facturation & abonnement</button>
+        <button type="button" class="nav-link" data-section="profile">Profil</button>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="muted">Support premium</p>
+        <a class="support-link" href="mailto:support@restaubot.ai">Nous contacter</a>
+      </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <button type="button" class="ghost-btn icon-btn sidebar-toggle" id="sidebar-toggle"
+          aria-controls="dashboard-sidebar" aria-expanded="false">
+          <span class="sr-only">Ouvrir le menu</span>
+          <span class="sidebar-toggle-icon" aria-hidden="true"></span>
+        </button>
+        <div class="topbar-content">
+          <p class="eyebrow">RestauBot</p>
+          <h1 id="welcome-title">Bonjour, Jean Dupont</h1>
+          <p class="subtitle" id="welcome-subtitle">Gérez vos restaurants, vos conversations IA et votre abonnement en
+            toute simplicité.</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="user-pill">
+            <span class="user-name" id="user-pill-name">Jean Dupont</span>
+            <span class="user-plan" id="user-plan-label">Plan Pro</span>
           </div>
-          <div class="topbar-actions">
-            <div class="user-pill">
-              <span class="user-name" id="user-pill-name">Jean Dupont</span>
-              <span class="user-plan" id="user-plan-label">Plan Pro</span>
+          <button type="button" class="ghost-btn" id="logout-btn">Se déconnecter</button>
+        </div>
+      </header>
+
+      <section id="overview" class="section active-section" aria-label="Vue d'ensemble">
+
+
+        <div class="section-header overview-header">
+          <div>
+            <h2>Vue d'ensemble</h2>
+            <p id="overview-range-label">Période non définie</p>
+          </div>
+          <div class="overview-header-right">
+            <form id="date-range-form" class="range-filter" aria-label="Choisir la période analysée">
+              <div class="filter-inputs">
+                <label>
+                  <span>Du</span>
+                  <input type="date" id="filter-start-date" required />
+                </label>
+                <label>
+                  <span>Au</span>
+                  <input type="date" id="filter-end-date" required />
+                </label>
+              </div>
+            </form>
+            <div class="overview-meta">
+              <div class="meta-pill">
+                <span class="meta-label">Conversations / jour</span>
+                <strong id="overview-average-per-day">—</strong>
+              </div>
+              <div class="meta-pill">
+                <span class="meta-label">Messages / conversation</span>
+                <strong id="overview-average-messages">—</strong>
+              </div>
             </div>
-            <button type="button" class="ghost-btn" id="logout-btn">Se déconnecter</button>
           </div>
-        </header>
+        </div>
 
-        <section id="overview" class="section active-section" aria-label="Vue d'ensemble">
-          <div class="kpi-grid">
-            <article class="kpi-card">
-              <p class="kpi-label">Restaurants actifs</p>
-              <h3 id="kpi-restaurants">—</h3>
-              <p class="kpi-detail">Total synchronisé</p>
-            </article>
-            <article class="kpi-card">
-              <p class="kpi-label">Conversations (30 jours)</p>
-              <h3 id="kpi-conversations">—</h3>
-              <p class="kpi-detail" id="kpi-conversations-detail">Analyse sur la période récente</p>
-            </article>
-            <article class="kpi-card">
-              <p class="kpi-label">Clients uniques</p>
-              <h3 id="kpi-customers">—</h3>
-              <p class="kpi-detail">Basé sur les conversations enregistrées</p>
-            </article>
-            <article class="kpi-card">
-              <p class="kpi-label">Statut du plan</p>
-              <h3 id="kpi-plan">Plan Pro</h3>
-              <p class="kpi-detail" id="kpi-plan-detail">Renouvellement automatique actif</p>
-            </article>
-          </div>
+        <div class="overview-layout">
+          <div class="overview-main">
+            <div class="kpi-grid overview-kpis">
+              <article class="kpi-card">
+                <p class="kpi-label">Restaurants</p>
+                <h3 id="kpi-restaurants">—</h3>
+                <p class="kpi-detail">Établissements connectés</p>
+              </article>
+              <article class="kpi-card">
+                <p class="kpi-label">Conversations</p>
+                <h3 id="kpi-conversations">—</h3>
+                <p class="kpi-detail">Sessions IA sur la période</p>
+              </article>
+              <article class="kpi-card">
+                <p class="kpi-label">Messages envoyés</p>
+                <h3 id="kpi-messages">—</h3>
+                <p class="kpi-detail">Échanges cumulés client & bot</p>
+              </article>
+              <article class="kpi-card">
+                <p class="kpi-label">Clients uniques</p>
+                <h3 id="kpi-customers">—</h3>
+                <p class="kpi-detail">Visiteurs accompagnés par RestauBot</p>
+              </article>
+            </div>
 
-          <div class="overview-grid">
-            <article class="card chart-card">
+            <article class="card conversation-card">
               <div class="card-header">
                 <div>
-                  <h2>Conversations par jour</h2>
-                  <p class="muted">Données des 14 derniers jours</p>
+                  <h3>Activité des conversations</h3>
+                  <p class="muted">Évolution quotidienne sur la période sélectionnée.</p>
                 </div>
-                <span class="badge">Temps réel</span>
               </div>
-              <div class="chart-placeholder" id="overview-conversation-chart" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+              <div id="overview-conversation-chart" class="chart-placeholder" aria-live="polite"></div>
             </article>
 
-            <article class="card shortcut-card">
+            <div class="overview-columns">
+              <div class="overview-restaurants-block">
+                <div class="overview-restaurants-header">
+                  <h3>Vos établissements</h3>
+                  <p class="muted">Accédez rapidement aux restaurants que vous gérez.</p>
+                </div>
+                <div id="overview-restaurant-cards" class="overview-restaurant-cards">
+                  <p class="muted empty-state">Ajoutez un restaurant pour commencer.</p>
+                </div>
+              </div>
+
+              <div class="overview-chat-wrapper">
+                <div class="overview-chat-config">
+                  <h3>Tester le chatbot</h3>
+                  <label for="overview-restaurant-select">Choisissez un restaurant</label>
+                  <select id="overview-restaurant-select" aria-label="Sélectionner le restaurant pour le test">
+                    <option value="">Sélectionnez un restaurant</option>
+                  </select>
+                  <p class="form-hint" id="overview-chat-hint">Sélectionnez un restaurant pour activer l'aperçu.</p>
+                </div>
+                <div class="overview-chat-preview" aria-live="polite">
+                  <div class="chat-preview-body">
+                    <div id="overview-chat-empty" class="chat-preview-empty">
+                      <p>Choisissez un restaurant puis envoyez une question pour voir la réponse de RestauBot.</p>
+                    </div>
+                    <div id="overview-chat-messages" class="chat-preview-messages"
+                      aria-label="Historique de l'aperçu du chatbot"></div>
+                  </div>
+                  <form id="overview-chat-form" class="chat-preview-form" autocomplete="off">
+                    <label class="sr-only" for="overview-chat-input">Votre message</label>
+                    <input type="text" id="overview-chat-input" name="message"
+                      placeholder="Demandez un menu, une allergie, un évènement…" autocomplete="off" />
+                    <button type="submit" id="overview-chat-send" class="primary-btn">Envoyer</button>
+                  </form>
+                  <p class="form-hint" id="overview-chat-status"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="overview-sidebar">
+            <article class="card insights-card">
+              <div class="card-header">
+                <div>
+                  <h3>Restaurant le plus actif</h3>
+                  <p class="muted">Basé sur le volume de conversations.</p>
+                </div>
+              </div>
+              <p id="overview-top-restaurant" class="insight-value">—</p>
+            </article>
+
+            <article class="plan-card overview-plan-card">
               <div>
-                <h2>Ajouter un restaurant</h2>
-                <p>Créez une nouvelle fiche, chargez votre menu et configurez votre chatbot en quelques minutes.</p>
+                <h3>Votre abonnement</h3>
+                <p class="muted">Résumé du plan en cours pour ce compte.</p>
               </div>
-              <button type="button" class="primary-btn" data-open-section="create">Aller au formulaire</button>
+              <div class="plan-details">
+                <p class="plan-name" id="overview-plan-name">Plan Pro</p>
+                <p class="muted" id="overview-plan-detail">—</p>
+              </div>
             </article>
-          </div>
-        </section>
 
-        <section id="restaurants" class="section" aria-label="Restaurants">
-          <div class="section-header">
-            <div>
-              <h2>Vos restaurants</h2>
-              <p>Visualisez vos établissements et testez leur chatbot.</p>
+            <div class="overview-cta">
+              <p>Besoin d'ajouter un nouvel établissement&nbsp;?</p>
+              <button type="button" class="primary-btn" data-open-section="create">Créer un restaurant</button>
             </div>
-            <button type="button" class="secondary-btn" data-open-section="create">Créer un nouveau restaurant</button>
-          </div>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Slug public</th>
-                  <th>Sections menu</th>
-                  <th>Dernière mise à jour</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="restaurants-table-body">
-                <tr>
-                  <td colspan="5">Chargement des restaurants…</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+          </aside>
+        </div>
+      </section>
 
-        <section id="create" class="section" aria-label="Créer un restaurant">
-          <div class="section-header">
-            <div>
-              <h2>Créer ou mettre à jour un restaurant</h2>
-              <p>Complétez les informations pour connecter votre carte à RestauBot.</p>
-            </div>
+      <section id="restaurants" class="section" aria-label="Restaurants">
+        <div class="section-header">
+          <div>
+            <h2>Vos restaurants</h2>
+            <p>Visualisez vos établissements et testez leur chatbot.</p>
           </div>
-          <form class="form-grid" id="restaurant-form" data-mode="create" novalidate>
-            <p class="form-mode" id="form-mode-label">Mode création — aucun restaurant en cours d'édition.</p>
-            <label>
-              <span>Nom du restaurant</span>
-              <input type="text" id="restaurant-name" name="display_name" placeholder="Ex : Le Jardin Secret" required />
-            </label>
-            <label>
-              <span>Slug public</span>
-              <input type="text" id="restaurant-slug" name="slug" placeholder="lejardin-secret" required />
-            </label>
-            <label>
-              <span>Langue principale</span>
-              <select id="restaurant-language" disabled>
-                <option>Français</option>
-              </select>
-            </label>
-            <label>
-              <span>Site web (optionnel)</span>
-              <input type="url" id="restaurant-website" placeholder="https://monsite.com" disabled />
-            </label>
-            <label class="full-width">
-              <span>Menu structuré (JSON)</span>
-              <textarea rows="6" id="restaurant-menu" name="menu_document" placeholder='{"categories": []}'></textarea>
-            </label>
-            <div class="upload-card full-width">
+        </div>
+        <button type="button" class="secondary-btn" data-open-section="create">Créer un nouveau restaurant</button>
+
+        <div class="restaurants-grid" id="restaurants-card-list" aria-live="polite">
+          <article class="restaurant-card loading-card">
+            <div class="restaurant-card-header">
+              <div class="skeleton name"></div>
+              <span class="status-badge">Chargement…</span>
+            </div>
+            <p class="skeleton line"></p>
+            <p class="skeleton line short"></p>
+          </article>
+        </div>
+        <div class="sr-only" aria-live="polite" aria-atomic="true">
+          <table>
+            <tbody id="restaurants-table-body"></tbody>
+          </table>
+        </div>
+        <div class="restaurants-cta">
+          <div>
+            <h3>Prêt à ajouter un nouvel établissement&nbsp;?</h3>
+            <p class="muted">Connectez votre carte en quelques minutes pour entraîner RestauBot.</p>
+          </div>
+          <button type="button" class="primary-btn" data-open-section="create">Créer un restaurant</button>
+        </div>
+      </section>
+
+      <section id="create" class="section" aria-label="Créer un restaurant">
+        <div class="section-header">
+          <div>
+            <h2>Créer un nouveau restaurant</h2>
+            <p>Complétez les informations pour connecter votre carte à RestauBot.</p>
+          </div>
+        </div>
+        <form class="form-grid restaurant-form" id="restaurant-create-form" data-form-type="create" novalidate>
+          <p class="form-mode" data-role="form-mode">Création d'un nouvel établissement.</p>
+          <label>
+            <span>Nom du restaurant</span>
+            <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
+          </label>
+          <label>
+            <span>Slug public</span>
+            <input type="text" name="slug" placeholder="lejardin-secret" required />
+          </label>
+          <label>
+            <span>Langue principale</span>
+            <select disabled>
+              <option>Français</option>
+            </select>
+          </label>
+          <label>
+            <span>Site web (optionnel)</span>
+            <input type="url" placeholder="https://monsite.com" disabled />
+          </label>
+          <label class="full-width">
+            <span>Menu structuré (JSON)</span>
+            <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
+          </label>
+          <div class="upload-card full-width">
+            <div class="upload-card-header">
               <div>
                 <h3>Analyser un fichier menu</h3>
                 <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
               </div>
-              <div class="upload-controls">
-                <input type="file" id="menu-file" accept="application/pdf,image/*" />
-                <button type="button" class="secondary-btn" id="menu-upload-btn">Analyser avec l'IA</button>
+              <span class="upload-card-chip">PDF, PNG ou JPG</span>
+            </div>
+            <label class="upload-dropzone" data-role="menu-dropzone">
+              <input type="file" data-role="menu-file" accept="application/pdf,image/*"
+                aria-label="Sélectionner un menu à analyser" />
+              <div class="dropzone-illustration" aria-hidden="true"></div>
+              <div class="dropzone-copy">
+                <strong>Glissez-déposez votre menu</strong>
+                <span>ou cliquez pour parcourir vos fichiers</span>
+                <small>10 Mo maximum · Formats PDF / image</small>
               </div>
-              <p class="form-hint" id="menu-upload-status"></p>
+            </label>
+            <div class="upload-preview" data-role="upload-preview">
+              <div class="preview-info" data-role="preview-info"
+                data-default-text="Aucun fichier importé pour le moment.">
+                Aucun fichier importé pour le moment.
+              </div>
+              <img data-role="preview-image" alt="Aperçu du menu" hidden />
             </div>
-            <div class="form-footer">
-              <button type="submit" class="primary-btn" id="restaurant-submit-btn">Enregistrer le restaurant</button>
-              <button type="button" class="ghost-btn" id="restaurant-reset-btn">Réinitialiser le formulaire</button>
-              <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être testé dans la section Chatbot.</p>
-              <p class="form-hint" id="restaurant-form-message"></p>
-            </div>
-          </form>
-        </section>
-
-        <section id="chatbot" class="section" aria-label="Configuration du chatbot">
-          <div class="section-header">
-            <div>
-              <h2>Configuration du chatbot</h2>
-              <p>Personnalisez le ton et les actions de RestauBot pour vos clients.</p>
-            </div>
-            <div class="section-actions">
-              <button type="button" class="secondary-btn" data-open-chat>
-                Lancer le chatbot en plein écran
+            <div class="upload-controls">
+              <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                <span class="ai-glow" aria-hidden="true"></span>
+                <span class="ai-scanlines" aria-hidden="true"></span>
               </button>
             </div>
+            <p class="form-hint" data-role="menu-upload-status"></p>
           </div>
-          <div class="card-grid">
-            <article class="card">
-              <h3>Message de bienvenue</h3>
-              <label>
-                <span>Message affiché à l'ouverture de la conversation</span>
-                <textarea rows="4" placeholder="Bonjour, je suis votre assistant. Comment puis-je vous aider à choisir votre plat aujourd'hui ?"></textarea>
-              </label>
-            </article>
-            <article class="card">
-              <h3>Objectif du chatbot</h3>
-              <ul class="bullet-list">
-                <li>Aider vos clients à choisir leurs plats</li>
-                <li>Tenir compte des régimes alimentaires et allergies</li>
-                <li>Répondre aux questions sur les horaires et évènements</li>
-              </ul>
-            </article>
-            <article class="card integration-card">
-              <div>
-                <h3>Snippet d'intégration</h3>
-                <p class="muted">Copiez ce script pour intégrer RestauBot sur votre site dès que vous serez prêt.</p>
-              </div>
-              <pre><code>&lt;script src="https://cdn.restaubot.ai/widget.js" data-restaurant="123"&gt;&lt;/script&gt;</code></pre>
-            </article>
+          <div class="form-footer">
+            <button type="submit" class="primary-btn" data-role="submit-btn">Enregistrer le restaurant</button>
+            <button type="button" class="ghost-btn" data-action="reset-form">Réinitialiser le formulaire</button>
+            <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être testé dans la
+              section Chatbot.</p>
+            <p class="form-hint" data-role="form-message"></p>
           </div>
-        </section>
+        </form>
+      </section>
 
-        <section id="statistics" class="section" aria-label="Statistiques détaillées">
-          <div class="section-header">
-            <div>
-              <h2>Statistiques détaillées</h2>
-              <p>Analysez la performance et les questions clés de vos clients.</p>
-            </div>
-            <select class="filter-select">
-              <option>30 derniers jours</option>
-              <option>7 derniers jours</option>
-              <option>90 derniers jours</option>
-            </select>
+      <section id="edit" class="section" aria-label="Modifier un restaurant">
+        <div class="section-header">
+          <div>
+            <h2>Modifier un restaurant existant</h2>
+            <p>Sélectionnez un établissement dans la section Restaurants pour charger ses informations.</p>
           </div>
-          <div class="kpi-grid">
-            <article class="kpi-card">
-              <p class="kpi-label">Conversations totales</p>
-              <h3 id="stats-total-conversations">2 764</h3>
-              <p class="kpi-detail">Sur la période sélectionnée</p>
-            </article>
-            <article class="kpi-card">
-              <p class="kpi-label">Conversations / jour</p>
-              <h3 id="stats-average-per-day">92</h3>
-              <p class="kpi-detail">Moyenne mobile</p>
-            </article>
-            <article class="kpi-card">
-              <p class="kpi-label">Questions les plus posées</p>
-              <ul class="top-questions" id="stats-top-questions">
-                <li>Collecte des tendances en cours…</li>
-              </ul>
-            </article>
-            <article class="kpi-card">
-              <p class="kpi-label">Clients aidés</p>
-              <h3 id="stats-resolution-rate">88%</h3>
-              <p class="kpi-detail">Conversations résolues par le bot</p>
-            </article>
-          </div>
-          <div class="card-grid">
-            <article class="card chart-card">
-              <div class="card-header">
-                <h3>Volume de conversations</h3>
-                <span class="badge">Vue détaillée</span>
-              </div>
-              <div class="chart-placeholder lines" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </article>
-            <article class="card chart-card">
-              <div class="card-header">
-                <h3>Régimes alimentaires demandés</h3>
-                <span class="badge">Top 5</span>
-              </div>
-              <div class="diet-chart" id="stats-diet-breakdown" aria-hidden="true"></div>
-            </article>
-          </div>
-        </section>
-
-        <section id="billing" class="section" aria-label="Facturation et abonnement">
-          <div class="section-header">
-            <div>
-              <h2>Facturation & abonnement</h2>
-              <p>Suivez votre plan actuel et vos paiements récents.</p>
-            </div>
-          </div>
-          <div class="billing-grid">
-            <article class="card">
-              <h3>Plan actuel</h3>
-              <p class="kpi-label" id="billing-plan-name">Plan Pro</p>
-              <p class="muted" id="billing-plan-description">Plan Pro — 5 restaurants inclus, assistance prioritaire.</p>
-              <div class="plan-status">
-                <p id="billing-next-payment">Prochain prélèvement le 12/11/2024</p>
-                <button class="primary-btn">Mettre à niveau</button>
-              </div>
-            </article>
-            <article class="card">
-              <h3>Historique des paiements</h3>
-              <div class="table-wrapper compact">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Montant</th>
-                      <th>Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody id="billing-history-body">
-                    <tr>
-                      <td colspan="4">Chargement des paiements…</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section id="profile" class="section" aria-label="Profil du compte">
-          <div class="section-header">
-            <div>
-              <h2>Profil du compte</h2>
-              <p>Mettez à jour vos informations pour personnaliser votre expérience RestauBot.</p>
-            </div>
-          </div>
-          <form class="form-grid" id="profile-form" novalidate>
-            <label>
-              <span>Nom & prénom</span>
-              <input type="text" id="profile-full-name" placeholder="Jean Dupont" autocomplete="name" />
-            </label>
-            <label>
-              <span>Email</span>
-              <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email" />
-            </label>
-            <label>
-              <span>Nom de l'entreprise</span>
-              <input type="text" id="profile-company" placeholder="Groupe Saveurs" autocomplete="organization" />
-            </label>
-            <label>
-              <span>Pays</span>
-              <input type="text" id="profile-country" placeholder="France" autocomplete="country" />
-            </label>
-            <label>
-              <span>Fuseau horaire</span>
-              <select id="profile-timezone">
-                <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
-                <option value="Europe/Brussels">Europe/Bruxelles (UTC+1)</option>
-                <option value="Europe/Zurich">Europe/Zurich (UTC+1)</option>
-              </select>
-            </label>
-            <div class="form-footer">
-              <button class="primary-btn" type="submit">Enregistrer les modifications</button>
-              <p class="form-hint" id="profile-form-message"></p>
-            </div>
-          </form>
-        </section>
-      </main>
-    </div>
-
-    <div class="modal" id="chatbot-modal" aria-hidden="true" role="dialog" aria-modal="true">
-      <div class="modal-content">
-        <button class="modal-close" data-modal-close aria-label="Fermer le modal">&times;</button>
-        <h3>Chatbot — <span id="modal-restaurant-name">Nom du restaurant</span></h3>
-        <div class="chat-mock">
-          <div class="chat-bubble bot">Bonjour, je suis votre assistant RestauBot. Que puis-je faire pour vous ?</div>
-          <div class="chat-bubble user">Bonjour, avez-vous des options vegan ?</div>
-          <div class="chat-bubble bot">Oui, nous proposons un risotto de saison et un burger vegan. Souhaitez-vous en savoir plus ?</div>
-          <div class="chat-input">Zone de saisie fictive</div>
         </div>
+        <p class="form-mode" data-role="form-mode">Aucun restaurant sélectionné pour édition.</p>
+
+        <div class="full-width">
+          <p>Sélectionner un restaurant</p>
+          <select id="edit-restaurant-select" data-role="restaurant-selector">
+            <option value="">Sélectionnez un restaurant</option>
+          </select>
+        </div>
+        <br>
+        
+
+        <form class="form-grid restaurant-form is-idle" id="restaurant-edit-form" data-form-type="edit" novalidate>
+          <label>
+            <span>Nom du restaurant</span>
+            <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
+          </label>
+          <label>
+            <span>Slug public</span>
+            <input type="text" name="slug" placeholder="lejardin-secret" required />
+          </label>
+          <label>
+            <span>Langue principale</span>
+            <select disabled>
+              <option>Français</option>
+            </select>
+          </label>
+          <label>
+            <span>Site web (optionnel)</span>
+            <input type="url" placeholder="https://monsite.com" disabled />
+          </label>
+          <label class="full-width">
+            <span>Menu structuré (JSON)</span>
+            <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
+          </label>
+          <div class="upload-card full-width">
+            <div class="upload-card-header">
+              <div>
+                <h3>Analyser un fichier menu</h3>
+                <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
+              </div>
+              <span class="upload-card-chip">PDF, PNG ou JPG</span>
+            </div>
+            <label class="upload-dropzone" data-role="menu-dropzone">
+              <input type="file" data-role="menu-file" accept="application/pdf,image/*"
+                aria-label="Sélectionner un menu à analyser" />
+              <div class="dropzone-illustration" aria-hidden="true"></div>
+              <div class="dropzone-copy">
+                <strong>Glissez-déposez votre menu</strong>
+                <span>ou cliquez pour parcourir vos fichiers</span>
+                <small>10 Mo maximum · Formats PDF / image</small>
+              </div>
+            </label>
+            <div class="upload-preview" data-role="upload-preview">
+              <div class="preview-info" data-role="preview-info"
+                data-default-text="Aucun fichier importé pour le moment.">
+                Aucun fichier importé pour le moment.
+              </div>
+              <img data-role="preview-image" alt="Aperçu du menu" hidden />
+            </div>
+            <div class="upload-controls">
+              <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                <span class="ai-glow" aria-hidden="true"></span>
+                <span class="ai-scanlines" aria-hidden="true"></span>
+              </button>
+            </div>
+            <p class="form-hint" data-role="menu-upload-status"></p>
+          </div>
+          <div class="form-footer">
+            <button type="submit" class="primary-btn" data-role="submit-btn">Mettre à jour le restaurant</button>
+            <button type="button" class="ghost-btn" data-action="reset-form">Terminer l'édition</button>
+            <p class="muted">Utilisez les cartes de la section Restaurants pour choisir l'établissement à modifier.</p>
+            <p class="form-hint" data-role="form-message"></p>
+          </div>
+        </form>
+      </section>
+
+      <section id="chatbot" class="section chatbot-section" aria-label="Espace chatbot">
+        <div class="chatbot-shell">
+          <div class="chatbot-header">
+            <div class="chatbot-heading">
+              <p class="eyebrow">RestauBot</p>
+              <h2>Discutez avec votre assistant</h2>
+              <p>Choisissez un établissement, chargez son contexte puis testez vos scénarios en direct.</p>
+            </div>
+            <button type="button" class="chatbot-fullscreen-btn" id="chatbot-fullscreen-btn" data-open-chat disabled>
+              Lancer en plein écran
+            </button>
+          </div>
+
+          <div class="chatbot-toolbar" aria-describedby="chatbot-selection-hint">
+            <div class="chatbot-select">
+              <label for="chatbot-restaurant-select">Restaurant</label>
+              <div class="chatbot-select-wrapper">
+                <select id="chatbot-restaurant-select" aria-label="Sélectionner le restaurant pour le chatbot">
+                  <option value="">Sélectionnez un restaurant</option>
+                </select>
+                <span class="chatbot-select-icon" aria-hidden="true"></span>
+              </div>
+            </div>
+            <p class="chatbot-status-text" id="chatbot-selection-hint" role="status" aria-live="polite">
+              Ajoutez un restaurant pour activer le chatbot.
+            </p>
+          </div>
+
+          <div class="chatbot-surface" aria-live="polite">
+            <div id="chatbot-thread" class="chatbot-thread" aria-label="Historique de la conversation"></div>
+            <div id="chatbot-empty-state" class="chatbot-empty">
+              <p>Sélectionnez un restaurant puis dites bonjour à votre assistant.</p>
+            </div>
+            <div id="chatbot-typing" class="chatbot-typing" role="status" aria-live="polite" hidden>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          </div>
+
+          <form id="chatbot-form" class="chatbot-form" autocomplete="off">
+            <label for="chatbot-input" class="sr-only">Votre message</label>
+            <textarea id="chatbot-input" name="message" placeholder="Posez votre question…" rows="1" disabled
+              required></textarea>
+            <button type="submit" id="chatbot-send-btn" class="primary-btn" disabled>Envoyer</button>
+          </form>
+          <p id="chatbot-feedback" class="chatbot-feedback" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="statistics" class="section" aria-label="Statistiques détaillées">
+        <div class="section-header">
+          <div>
+            <h2>Statistiques détaillées</h2>
+            <p id="statistics-range-label">Filtre synchronisé avec la vue d'ensemble.</p>
+          </div>
+        </div>
+        <div class="kpi-grid stats-kpis">
+          <article class="kpi-card">
+            <p class="kpi-label">Conversations</p>
+            <h3 id="stats-total-conversations">—</h3>
+            <p class="kpi-detail">Volume global sur la période</p>
+          </article>
+          <article class="kpi-card">
+            <p class="kpi-label">Messages échangés</p>
+            <h3 id="stats-total-messages">—</h3>
+            <p class="kpi-detail">Somme des messages clients et bot</p>
+          </article>
+          <article class="kpi-card">
+            <p class="kpi-label">Conversations / jour</p>
+            <h3 id="stats-average-per-day">—</h3>
+            <p class="kpi-detail">Moyenne journalière</p>
+          </article>
+          <article class="kpi-card">
+            <p class="kpi-label">Messages / conversation</p>
+            <h3 id="stats-average-messages">—</h3>
+            <p class="kpi-detail">Intensité moyenne des échanges</p>
+          </article>
+        </div>
+        <div class="card-grid stats-detail-grid">
+          <article class="card">
+            <div class="card-header">
+              <h3>Questions les plus posées</h3>
+            </div>
+            <ul class="top-questions" id="stats-top-questions">
+              <li>Collecte des tendances en cours…</li>
+            </ul>
+          </article>
+          <article class="card chart-card">
+            <div class="card-header">
+              <h3>Régimes alimentaires demandés</h3>
+              <span class="badge">Top 5</span>
+            </div>
+            <div class="diet-chart" id="stats-diet-breakdown" aria-hidden="true"></div>
+          </article>
+          <article class="card">
+            <div class="card-header">
+              <h3>Restaurants les plus sollicités</h3>
+            </div>
+            <ul class="busiest-list" id="stats-busiest-list">
+              <li>En attente de données.</li>
+            </ul>
+          </article>
+          <article class="card resolution-card">
+            <div class="card-header">
+              <h3>Taux de résolution</h3>
+            </div>
+            <p class="resolution-value" id="stats-resolution-rate">—</p>
+            <p class="muted">Part des conversations clôturées automatiquement.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="billing" class="section" aria-label="Facturation et abonnement">
+        <div class="section-header">
+          <div>
+            <h2>Facturation & abonnement</h2>
+            <p>Suivez votre plan actuel et vos paiements récents.</p>
+          </div>
+        </div>
+        <div class="billing-grid">
+          <article class="card">
+            <h3>Plan actuel</h3>
+            <p class="kpi-label" id="billing-plan-name">Plan Pro</p>
+            <p class="muted" id="billing-plan-description">Plan Pro — 5 restaurants inclus, assistance prioritaire.</p>
+            <div class="plan-status">
+              <p id="billing-next-payment">Prochain prélèvement le 12/11/2024</p>
+              <button class="primary-btn">Mettre à niveau</button>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Historique des paiements</h3>
+            <div class="table-wrapper compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody id="billing-history-body">
+                  <tr>
+                    <td colspan="4">Chargement des paiements…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="profile" class="section" aria-label="Profil du compte">
+        <div class="section-header">
+          <div>
+            <h2>Profil du compte</h2>
+            <p>Mettez à jour vos informations pour personnaliser votre expérience RestauBot.</p>
+          </div>
+        </div>
+        <form class="form-grid" id="profile-form" novalidate>
+          <label>
+            <span>Nom & prénom</span>
+            <input type="text" id="profile-full-name" placeholder="Jean Dupont" autocomplete="name" />
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email" />
+          </label>
+          <label>
+            <span>Nom de l'entreprise</span>
+            <input type="text" id="profile-company" placeholder="Groupe Saveurs" autocomplete="organization" />
+          </label>
+          <label>
+            <span>Pays</span>
+            <input type="text" id="profile-country" placeholder="France" autocomplete="country" />
+          </label>
+          <label>
+            <span>Fuseau horaire</span>
+            <select id="profile-timezone">
+              <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+              <option value="Europe/Brussels">Europe/Bruxelles (UTC+1)</option>
+              <option value="Europe/Zurich">Europe/Zurich (UTC+1)</option>
+            </select>
+          </label>
+          <div class="form-footer">
+            <button class="primary-btn" type="submit">Enregistrer les modifications</button>
+            <p class="form-hint" id="profile-form-message"></p>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="chatbot-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="modal-close" data-modal-close aria-label="Fermer le modal">&times;</button>
+      <h3>Chatbot — <span id="modal-restaurant-name">Nom du restaurant</span></h3>
+      <div class="chat-mock">
+        <div class="chat-bubble bot">Bonjour, je suis votre assistant RestauBot. Que puis-je faire pour vous ?</div>
+        <div class="chat-bubble user">Bonjour, avez-vous des options vegan ?</div>
+        <div class="chat-bubble bot">Oui, nous proposons un risotto de saison et un burger vegan. Souhaitez-vous en
+          savoir plus ?</div>
+        <div class="chat-input">Zone de saisie fictive</div>
       </div>
     </div>
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  </body>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+
 </html>

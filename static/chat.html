@@ -65,20 +65,34 @@
           <div id="chat-empty-state" class="chat-empty">
             <p>Posez une question pour commencer ou sélectionnez une suggestion ci-dessus.</p>
           </div>
-          <div id="typing-indicator" class="typing-indicator" hidden>
-            <span></span><span></span><span></span>
+          <div
+            id="typing-indicator"
+            class="typing-indicator"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            <div class="typing-avatar" aria-hidden="true">
+              <span>AI</span>
+            </div>
+            <div class="typing-bubble">
+              <div class="typing-text" data-role="typing-text">RestauBot rédige une réponse</div>
+              <div class="typing-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
           </div>
         </div>
         <form id="chat-form" class="chat-input-area" autocomplete="off">
           <label for="chat-input" class="sr-only">Votre message</label>
-          <input
-            type="text"
+          <textarea
             id="chat-input"
             name="message"
-            placeholder="Demandez un menu sans viande, des conseils allergènes…"
+            placeholder="Décrivez votre besoin culinaire et appuyez sur Entrée"
+            rows="1"
             autocomplete="off"
             required
-          />
+          ></textarea>
           <button type="submit" id="chat-send" class="chat-btn primary">Envoyer</button>
         </form>
       </section>

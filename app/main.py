@@ -1,12 +1,13 @@
 """FastAPI application exposing chat endpoint and serving static frontend."""
 
 import asyncio
+import base64
 import json
 import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -65,6 +66,7 @@ class ChatRequest(BaseModel):
     restaurant_id: UUID
     message: str
     history: List[ChatMessagePayload] = Field(default_factory=list)
+    session_id: Optional[UUID] = Field(default=None, description="Identifiant de session conversationnelle")
 
 
 class MenuUploadResponse(BaseModel):
@@ -140,16 +142,13 @@ async def chat_endpoint(
         restaurant_name=restaurant_name,
         menu_document=menu_document,
     )
-
-    conversation_history = [*history]
-    conversation_history.append({"role": "user", "content": request.message.strip()})
-    conversation_history.append({"role": "assistant", "content": reply})
     await _insert_chat_history(
         restaurant_id=str(request.restaurant_id),
         access_token=bearer_token,
         user_message=request.message.strip(),
         assistant_reply=reply,
-        history=conversation_history,
+        session_id=str(request.session_id) if request.session_id else None,
+        user_id=_extract_user_id(bearer_token),
     )
 
     return {"reply": reply}
@@ -245,9 +244,11 @@ async def menu_from_upload_signup(file: UploadFile = File(...)) -> MenuUploadRes
 @app.get("/api/dashboard/snapshot")
 async def dashboard_snapshot_endpoint(
     authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
 ) -> Dict[str, Any]:
     token = extract_bearer_token(authorization)
-    return await build_dashboard_snapshot(token)
+    return await build_dashboard_snapshot(token, start_date=start_date, end_date=end_date)
 
 
 @app.post("/api/dashboard/restaurants")
@@ -318,21 +319,26 @@ async def _insert_chat_history(
     access_token: str,
     user_message: str,
     assistant_reply: str,
-    history: List[Dict[str, str]],
+    session_id: Optional[str],
+    user_id: Optional[str],
 ) -> None:
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         return
 
+    resolved_session_id = session_id or str(uuid4())
+
+    payload: Dict[str, Any] = {
+        "restaurant_id": restaurant_id,
+        "session_id": resolved_session_id,
+        "user_prompt": user_message,
+        "ai_response": assistant_reply,
+    }
+    if user_id:
+        payload["user_id"] = user_id
+
     def _request() -> None:
         with create_postgrest_client(access_token, prefer="return=minimal") as client:
-            client.table("chat_history").insert(
-                {
-                    "restaurant_id": restaurant_id,
-                    "user_message": user_message,
-                    "assistant_reply": assistant_reply,
-                    "messages": history,
-                }
-            ).execute()
+            client.table("chat_history").insert(payload).execute()
 
     try:
         await asyncio.to_thread(_request)
@@ -354,3 +360,16 @@ def _parse_menu_document(raw_document: Any) -> Dict[str, Any]:
         except json.JSONDecodeError as exc:  # pragma: no cover - depends on DB content
             raise HTTPException(status_code=422, detail="Menu JSON invalide.") from exc
     raise HTTPException(status_code=422, detail="Menu non configuré pour ce restaurant.")
+
+
+def _extract_user_id(access_token: Optional[str]) -> Optional[str]:
+    if not access_token:
+        return None
+    try:
+        payload_segment = access_token.split(".")[1]
+        padding = "=" * (-len(payload_segment) % 4)
+        decoded = base64.urlsafe_b64decode((payload_segment + padding).encode("ascii"))
+        data = json.loads(decoded.decode("utf-8"))
+        return data.get("sub")
+    except Exception:  # pragma: no cover - best effort only
+        return None
