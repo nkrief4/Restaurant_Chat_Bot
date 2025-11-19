@@ -8,7 +8,7 @@ import logging
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Any, Dict, Literal, Optional, Annotated
+from typing import Any, Dict, Literal, Optional, Annotated, Tuple
 
 from postgrest import APIError as PostgrestAPIError
 from supabase import Client
@@ -25,6 +25,17 @@ from pydantic import FieldValidationInfo
 from app.config.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
+
+
+DISPOSABLE_EMAIL_DOMAINS = {
+    "yopmail.com",
+    "yopmail.fr",
+    "mailinator.com",
+    "tempmail.com",
+    "guerrillamail.com",
+    "guerrillamail.net",
+    "33mail.com",
+}
 
 
 class SignupError(RuntimeError):
@@ -52,9 +63,11 @@ class SignupPayload(BaseModel):
     full_name: Optional[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]] = None
     company_name: Optional[Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]] = None
     email: EmailStr
-    password: Annotated[str, StringConstraints(min_length=8, max_length=72)]
+    password: Annotated[str, StringConstraints(min_length=12, max_length=72)]
     restaurant_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120)]
     restaurant_slug: Optional[Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120)]] = None
+    phone_number: Annotated[str, StringConstraints(strip_whitespace=True, min_length=6, max_length=32)]
+    timezone: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=64)]
     use_case: Literal["single_location", "multi_location", "agency", "other"] = "single_location"
     preferred_language: Literal["fr", "en"] = "fr"
     newsletter_opt_in: bool = False
@@ -80,6 +93,16 @@ class SignupPayload(BaseModel):
         if len(slug) < 3:
             raise ValueError("Le slug doit contenir au moins 3 caractères alphanumériques.")
         return slug
+
+    @field_validator("password")
+    @classmethod
+    def _validate_password_strength(cls, value: str) -> str:
+        if not _is_strong_password(value):
+            raise ValueError(
+                "Le mot de passe doit contenir au moins 12 caractères, "
+                "avec majuscules, minuscules, chiffres et symboles."
+            )
+        return value
 
     @model_validator(mode="after")
     @classmethod
@@ -121,6 +144,89 @@ def slugify(value: str) -> str:
     return cleaned or "restaurant"
 
 
+def _build_identity_profile(payload: SignupPayload) -> Dict[str, Optional[str]]:
+    first_name, last_name = _split_full_name(payload.full_name)
+    normalized_full_name = _normalize_full_name(payload.full_name)
+    return {
+        "full_name": payload.full_name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "full_name_normalized": normalized_full_name,
+        "phone_number": _normalize_phone_number(payload.phone_number),
+        "preferred_language": payload.preferred_language,
+        "timezone": payload.timezone,
+    }
+
+
+def _split_full_name(full_name: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    if not full_name:
+        return None, None
+    tokens = [part for part in full_name.strip().split() if part]
+    if not tokens:
+        return None, None
+    if len(tokens) == 1:
+        return tokens[0], None
+    return tokens[0], " ".join(tokens[1:])
+
+
+def _normalize_full_name(full_name: Optional[str]) -> Optional[str]:
+    if not full_name:
+        return None
+    cleaned = " ".join(full_name.strip().split())
+    return cleaned or None
+
+
+def _upsert_profile_record(
+    client: Client,
+    user_id: str,
+    email: str,
+    identity: Dict[str, Optional[str]],
+) -> None:
+    username = (email or "utilisateur").split("@")[0]
+    payload = {
+        "id": user_id,
+        "username": username,
+        "first_name": identity.get("first_name"),
+        "last_name": identity.get("last_name"),
+        "full_name_normalized": identity.get("full_name_normalized"),
+        "phone_number": identity.get("phone_number"),
+        "preferred_language": identity.get("preferred_language"),
+        "timezone": identity.get("timezone"),
+    }
+    client.table("profiles").upsert(payload, on_conflict="id").execute()
+
+
+def _normalize_phone_number(raw: str) -> str:
+    trimmed = (raw or "").strip()
+    if trimmed.startswith("+"):
+        return "+" + re.sub(r"[^0-9]", "", trimmed)
+    if trimmed.startswith("00"):
+        return "+" + re.sub(r"[^0-9]", "", trimmed[2:])
+    return re.sub(r"[^0-9]", "", trimmed)
+
+
+def _is_valid_phone_number(value: str) -> bool:
+    digits = re.sub(r"[^0-9]", "", value or "")
+    if len(digits) < 10 or len(digits) > 15:
+        return False
+    stripped = (value or "").strip()
+    if stripped.startswith("+33") or stripped.startswith("0033"):
+        return len(digits) == 11
+    if digits.startswith("0"):
+        return len(digits) == 10
+    return True
+
+
+def _is_strong_password(value: str) -> bool:
+    if len(value or "") < 12:
+        return False
+    has_upper = any(ch.isupper() for ch in value)
+    has_lower = any(ch.islower() for ch in value)
+    has_digit = any(ch.isdigit() for ch in value)
+    has_symbol = any(not ch.isalnum() for ch in value)
+    return has_upper and has_lower and has_digit and has_symbol
+
+
 def _run_signup(client: Client, payload: SignupPayload) -> SignupResult:
     slug = payload.restaurant_slug or slugify(payload.restaurant_name)
     _ensure_slug_available(client, slug)
@@ -128,11 +234,13 @@ def _run_signup(client: Client, payload: SignupPayload) -> SignupResult:
     tenant_id = None
     user_id = None
     restaurant_id = None
+    identity = _build_identity_profile(payload)
 
     try:
         tenant_id = _create_tenant(client, payload, slug)
-        user_id = _create_user(client, payload, tenant_id, slug)
+        user_id = _create_user(client, payload, tenant_id, slug, identity)
         _link_user_to_tenant(client, user_id, tenant_id)
+        _upsert_profile_record(client, user_id, payload.email, identity)
         restaurant_id = _create_restaurant(client, payload, tenant_id, slug)
         return SignupResult(user_id=user_id, tenant_id=tenant_id, restaurant_id=restaurant_id)
     except SignupValidationError:
@@ -175,14 +283,19 @@ def _create_tenant(client: Client, payload: SignupPayload, slug: str) -> str:
     return tenant_id
 
 
-def _create_user(client: Client, payload: SignupPayload, tenant_id: str, tenant_slug: str) -> str:
+def _create_user(
+    client: Client,
+    payload: SignupPayload,
+    tenant_id: str,
+    tenant_slug: str,
+    identity: Dict[str, Optional[str]],
+) -> str:
     metadata = {
-        "full_name": payload.full_name,
+        **identity,
         "company_name": payload.company_name,
         "tenant_id": tenant_id,
         "tenant_slug": tenant_slug,
         "use_case": payload.use_case,
-        "preferred_language": payload.preferred_language,
         "newsletter_opt_in": payload.newsletter_opt_in,
         "referral_code": payload.referral_code,
     }
@@ -284,3 +397,21 @@ def _rollback(
             client.table("tenants").delete().eq("id", tenant_id).execute()
         except Exception:  # pragma: no cover - best effort cleanup
             logger.warning("Unable to rollback tenant %s", tenant_id, exc_info=True)
+
+    @field_validator("email")
+    @classmethod
+    def _reject_disposable(cls, value: str) -> str:
+        domain = value.split("@")[-1].lower()
+        if domain in DISPOSABLE_EMAIL_DOMAINS:
+            raise ValueError("Les adresses temporaires ne sont pas acceptées.")
+        return value
+
+    @field_validator("phone_number")
+    @classmethod
+    def _validate_phone(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Le numéro de téléphone est requis.")
+        normalized = _normalize_phone_number(value)
+        if not _is_valid_phone_number(value):
+            raise ValueError("Le numéro doit contenir 10 à 15 chiffres valides.")
+        return normalized

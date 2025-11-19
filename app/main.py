@@ -6,23 +6,30 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Annotated
 from uuid import UUID, uuid4
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile, Request, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from httpx import HTTPError as HttpxError
 from postgrest import APIError as PostgrestAPIError
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, StringConstraints
 from openai import APIError
 
-from app.config.supabase_client import SUPABASE_ANON_KEY, SUPABASE_URL
+from app.config.supabase_client import SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
 from app.services.chat_service import get_chat_response
+from app.security.guards import enforce_same_origin, rate_limit_request
+from app.services.auth_service import (
+    AuthenticationError,
+    InvalidCredentials,
+    login_with_password,
+)
 from app.services.dashboard_service import (
     build_dashboard_snapshot,
+    build_statistics_view,
     create_restaurant as dashboard_create_restaurant,
     update_profile as dashboard_update_profile,
     update_restaurant as dashboard_update_restaurant,
@@ -73,12 +80,33 @@ class MenuUploadResponse(BaseModel):
     menu_document: Dict[str, Any]
 
 
+class PublicRestaurantResponse(BaseModel):
+    id: UUID
+    display_name: Optional[str] = None
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    menu_document: Dict[str, Any]
+
+
 class SignupSuccessResponse(BaseModel):
     message: str
     email: EmailStr
     tenant_id: UUID
     restaurant_id: UUID
     auto_login: bool = True
+
+
+class LoginPayload(BaseModel):
+    email: EmailStr
+    password: Annotated[str, StringConstraints(min_length=8, max_length=72)]
+
+
+class LoginSuccessResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int
+    expires_at: int
 
 
 class RestaurantUpsertPayload(BaseModel):
@@ -95,6 +123,7 @@ class ProfileUpdatePayload(BaseModel):
     company_name: Optional[str] = Field(default=None, max_length=120)
     country: Optional[str] = Field(default=None, max_length=120)
     timezone: Optional[str] = Field(default=None, max_length=64)
+    phone_number: Optional[str] = Field(default=None, max_length=32)
 
 
 @app.get("/", response_class=FileResponse)
@@ -161,8 +190,29 @@ def supabase_config() -> Dict[str, str]:
     return {"supabaseUrl": SUPABASE_URL, "supabaseAnonKey": SUPABASE_ANON_KEY}
 
 
+@app.get("/api/public/restaurants/{restaurant_id}", response_model=PublicRestaurantResponse)
+async def public_restaurant_details(restaurant_id: UUID) -> PublicRestaurantResponse:
+    record = await _fetch_public_restaurant(restaurant_id=str(restaurant_id))
+    menu_document = _parse_menu_document(record.get("menu_document"))
+    identifier = record.get("id") or str(restaurant_id)
+    try:
+        resolved_id = UUID(str(identifier))
+    except (TypeError, ValueError):  # pragma: no cover - depends on DB content
+        raise HTTPException(status_code=500, detail="Identifiant restaurant invalide.")
+
+    return PublicRestaurantResponse(
+        id=resolved_id,
+        display_name=record.get("display_name") or record.get("name"),
+        name=record.get("name"),
+        slug=record.get("slug"),
+        menu_document=menu_document,
+    )
+
+
 @app.post("/api/auth/signup", response_model=SignupSuccessResponse)
-async def signup_endpoint(payload: SignupPayload) -> SignupSuccessResponse:
+async def signup_endpoint(payload: SignupPayload, request: Request) -> SignupSuccessResponse:
+    enforce_same_origin(request)
+    rate_limit_request(request, scope="signup", limit=3, window_seconds=300)
     try:
         result = await execute_signup(payload)
     except SignupValidationError as exc:
@@ -187,6 +237,26 @@ async def signup_endpoint(payload: SignupPayload) -> SignupSuccessResponse:
 @app.get("/chat", include_in_schema=False)
 def deprecated_chat() -> None:
     raise HTTPException(status_code=404, detail="Le chatbot est disponible depuis le dashboard.")
+
+
+@app.post("/api/auth/login", response_model=LoginSuccessResponse)
+async def login_endpoint(payload: LoginPayload, request: Request) -> LoginSuccessResponse:
+    enforce_same_origin(request)
+    rate_limit_request(request, scope="login", limit=5, window_seconds=60)
+
+    try:
+        session = await login_with_password(payload.email, payload.password)
+    except InvalidCredentials as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    except AuthenticationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return LoginSuccessResponse(
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        expires_in=session.expires_in,
+        expires_at=session.expires_at,
+    )
 
 
 @app.get("/dashboard/chat", response_class=FileResponse)
@@ -221,7 +291,9 @@ async def menu_from_upload(
 
 
 @app.post("/api/signup/menu/from-upload", response_model=MenuUploadResponse)
-async def menu_from_upload_signup(file: UploadFile = File(...)) -> MenuUploadResponse:
+async def menu_from_upload_signup(request: Request, file: UploadFile = File(...)) -> MenuUploadResponse:
+    enforce_same_origin(request)
+    rate_limit_request(request, scope="menu-upload", limit=3, window_seconds=60)
     data = await file.read()
     try:
         document = await build_menu_document_from_upload(
@@ -249,6 +321,22 @@ async def dashboard_snapshot_endpoint(
 ) -> Dict[str, Any]:
     token = extract_bearer_token(authorization)
     return await build_dashboard_snapshot(token, start_date=start_date, end_date=end_date)
+
+
+@app.get("/api/dashboard/statistics")
+async def dashboard_statistics_endpoint(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    restaurant_id: Annotated[Optional[List[str]], Query(alias="restaurant_id")] = None,
+) -> Dict[str, Any]:
+    token = extract_bearer_token(authorization)
+    return await build_statistics_view(
+        token,
+        start_date=start_date,
+        end_date=end_date,
+        restaurant_ids=restaurant_id,
+    )
 
 
 @app.post("/api/dashboard/restaurants")
@@ -310,6 +398,39 @@ async def _fetch_restaurant(restaurant_id: UUID, access_token: str) -> Dict[str,
 
     if not rows:
         raise HTTPException(status_code=404, detail="Restaurant introuvable ou inaccessible.")
+    return rows[0]
+
+
+async def _fetch_public_restaurant(
+    *, restaurant_id: Optional[str] = None, slug: Optional[str] = None
+) -> Dict[str, Any]:
+    token = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
+    if not token:
+        raise HTTPException(status_code=503, detail="Consultation des restaurants indisponible.")
+
+    if not restaurant_id and not slug:
+        raise HTTPException(status_code=400, detail="Identifiant restaurant obligatoire.")
+
+    def _request() -> List[Dict[str, Any]]:
+        with create_postgrest_client(token) as client:
+            query = client.table("restaurants").select("id,display_name,slug,menu_document")
+            if restaurant_id:
+                query = query.eq("id", str(restaurant_id))
+            elif slug:
+                query = query.eq("slug", slug)
+            response = query.limit(1).execute()
+            return response.data or []
+
+    try:
+        rows = await asyncio.to_thread(_request)
+    except PostgrestAPIError as exc:  # pragma: no cover - network interaction
+        raise_postgrest_error(exc, context="public restaurant lookup")
+    except HttpxError as exc:  # pragma: no cover - depends on network
+        logger.error("Supabase unreachable during public restaurant lookup: %s", exc)
+        raise HTTPException(status_code=503, detail="Impossible de joindre Supabase.") from exc
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="Restaurant introuvable.")
     return rows[0]
 
 

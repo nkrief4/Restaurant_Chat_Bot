@@ -64,17 +64,35 @@
           </div>
           <div class="form-grid">
             <div class="form-field">
+              <label for="phone_number">Téléphone professionnel</label>
+              <input type="tel" id="phone_number" name="phone_number" placeholder="+33 1 23 45 67 89" required minlength="6" maxlength="32" autocomplete="tel" />
+              <p class="field-error" data-error-for="phone_number"></p>
+            </div>
+            <div class="form-field">
+              <label for="timezone">Fuseau horaire</label>
+              <select id="timezone" name="timezone" required>
+                <option value="">Sélectionnez votre zone</option>
+                <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+                <option value="Europe/Brussels">Europe/Bruxelles (UTC+1)</option>
+                <option value="Europe/London">Europe/Londres (UTC+0)</option>
+                <option value="America/Montreal">Amérique/Montréal (UTC-5)</option>
+              </select>
+              <p class="field-error" data-error-for="timezone"></p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-field">
               <label for="password">Mot de passe</label>
-              <input type="password" id="password" name="password" placeholder="Minimum 8 caractères" required minlength="8" />
+              <input type="password" id="password" name="password" placeholder="Minimum 12 caractères" required minlength="12" autocomplete="new-password" />
               <div class="password-meter" id="password-meter" aria-live="polite">
                 <div class="password-meter-bar" data-strength="0"></div>
-                <p class="password-meter-label">Choisissez au moins 8 caractères, mélangeant chiffres et lettres.</p>
+                <p class="password-meter-label">Utilisez 12+ caractères avec majuscules, minuscules, chiffres et symboles.</p>
               </div>
               <p class="field-error" data-error-for="password"></p>
             </div>
             <div class="form-field">
               <label for="password_confirm">Confirmation</label>
-              <input type="password" id="password_confirm" name="password_confirm" placeholder="Répétez le mot de passe" required />
+              <input type="password" id="password_confirm" name="password_confirm" placeholder="Répétez le mot de passe" required autocomplete="new-password" />
               <p class="field-error" data-error-for="password_confirm"></p>
             </div>
           </div>

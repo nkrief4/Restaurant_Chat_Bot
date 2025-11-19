@@ -14,6 +14,15 @@
       startDate: null,
       endDate: null,
     },
+    statistics: {
+      startDate: null,
+      endDate: null,
+      activeRangePreset: 7,
+      selectedRestaurants: [],
+      availableRestaurants: [],
+      isFetching: false,
+      hasInitialized: false,
+    },
     isFetchingSnapshot: false,
     overview: {
       restaurantId: null,
@@ -31,12 +40,19 @@
       sessionId: null,
       hasInteracted: false,
     },
+    chatTesterWindow: null,
+    isLaunchingChat: false,
   };
 
   let overviewConversationChart = null;
+  let statsActivityChart = null;
   let chartJsReadyPromise = null;
+  let overviewTypingNode = null;
+  const OVERVIEW_TYPING_LABEL = "RestauBot est en train d'écrire…";
 
   const CHAT_PAGE_PATH = "/dashboard/chat";
+  const CHAT_TESTER_WINDOW_NAME = "restaubot-chat-tester";
+  const CHAT_TESTER_WINDOW_FEATURES = "noopener,noreferrer";
 
   const shareModalState = {
     element: null,
@@ -81,6 +97,7 @@
     bindGlobalButtons();
     bindOverviewUI();
     bindChatbotUI();
+    bindStatisticsUI();
     setupDateFilters();
     initializeDashboard().catch(handleInitializationError);
   });
@@ -514,6 +531,321 @@
     });
   }
 
+  function bindStatisticsUI() {
+    ensureStatsRangeDefaults();
+    const rangeButtons = document.querySelectorAll("[data-stats-range]");
+    rangeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const days = parseInt(button.dataset.statsRange || "", 10);
+        if (!Number.isFinite(days)) {
+          return;
+        }
+        setStatsRangeFromPreset(days);
+      });
+    });
+
+    const applyButton = document.getElementById("stats-apply-range");
+    if (applyButton) {
+      applyButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        handleStatsRangeApply();
+      });
+    }
+
+    const toggle = document.getElementById("stats-restaurant-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        const panel = document.getElementById("stats-restaurant-panel");
+        if (!panel) {
+          return;
+        }
+        if (panel.hasAttribute("hidden")) {
+          openStatsRestaurantPanel(panel, toggle);
+        } else {
+          closeStatsRestaurantPanel(panel, toggle);
+        }
+      });
+    }
+
+    const panel = document.getElementById("stats-restaurant-panel");
+    if (panel) {
+      panel.addEventListener("click", (event) => {
+        const actionBtn = event.target.closest("[data-action]");
+        if (actionBtn) {
+          handleStatsPanelAction(actionBtn.dataset.action);
+          event.preventDefault();
+          return;
+        }
+        const option = event.target.closest("li[data-value]");
+        if (option) {
+          const value = option.dataset.value;
+          toggleStatsRestaurantSelection(value);
+        }
+      });
+    }
+
+    const searchInput = document.getElementById("stats-restaurant-search");
+    if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        filterStatsRestaurantOptions(searchInput.value || "");
+      });
+    }
+
+    document.addEventListener("click", (event) => {
+      const panelEl = document.getElementById("stats-restaurant-panel");
+      const toggleBtn = document.getElementById("stats-restaurant-toggle");
+      if (!panelEl || !toggleBtn) {
+        return;
+      }
+      if (panelEl.hasAttribute("hidden")) {
+        return;
+      }
+      if (panelEl.contains(event.target) || toggleBtn.contains(event.target)) {
+        return;
+      }
+      closeStatsRestaurantPanel(panelEl, toggleBtn);
+    });
+  }
+
+  function ensureStatsRangeDefaults() {
+    const stats = state.statistics;
+    if (!stats.startDate || !stats.endDate) {
+      const today = new Date();
+      const start = new Date(today.getTime());
+      start.setDate(today.getDate() - 6);
+      stats.startDate = formatInputDate(start);
+      stats.endDate = formatInputDate(today);
+      stats.activeRangePreset = 7;
+    }
+    syncStatsRangeInputs();
+    highlightStatsPreset();
+  }
+
+  function syncStatsRangeInputs() {
+    const startInput = document.getElementById("stats-start-date");
+    const endInput = document.getElementById("stats-end-date");
+    if (startInput && state.statistics.startDate) {
+      startInput.value = state.statistics.startDate;
+    }
+    if (endInput && state.statistics.endDate) {
+      endInput.value = state.statistics.endDate;
+    }
+  }
+
+  function highlightStatsPreset() {
+    const preset = state.statistics.activeRangePreset;
+    const rangeButtons = document.querySelectorAll("[data-stats-range]");
+    rangeButtons.forEach((button) => {
+      const value = parseInt(button.dataset.statsRange || "", 10);
+      if (preset && value === preset) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
+    });
+  }
+
+  function setStatsRangeFromPreset(days) {
+    const today = new Date();
+    const start = new Date(today.getTime());
+    start.setDate(today.getDate() - (days - 1));
+    state.statistics.startDate = formatInputDate(start);
+    state.statistics.endDate = formatInputDate(today);
+    state.statistics.activeRangePreset = days;
+    const messageEl = document.getElementById("stats-range-message");
+    if (messageEl) {
+      messageEl.textContent = "";
+    }
+    syncStatsRangeInputs();
+    highlightStatsPreset();
+    fetchStatisticsData();
+  }
+
+  function handleStatsRangeApply() {
+    const startInput = document.getElementById("stats-start-date");
+    const endInput = document.getElementById("stats-end-date");
+    const messageEl = document.getElementById("stats-range-message");
+    if (!startInput || !endInput) {
+      return;
+    }
+    const startValue = startInput.value;
+    const endValue = endInput.value;
+    const error = validateRange(startValue, endValue);
+    if (messageEl) {
+      messageEl.textContent = error ? error.message : "";
+    }
+    if (error) {
+      return;
+    }
+    state.statistics.startDate = startValue;
+    state.statistics.endDate = endValue;
+    state.statistics.activeRangePreset = null;
+    highlightStatsPreset();
+    fetchStatisticsData();
+  }
+
+  function handleStatsPanelAction(action) {
+    if (!action) {
+      return;
+    }
+    const available = state.statistics.availableRestaurants || [];
+    if (action === "select-all") {
+      state.statistics.selectedRestaurants = available.map((entry) => entry.id);
+      renderStatsRestaurantOptions(available);
+      updateStatsSelectionSummary();
+      fetchStatisticsData();
+      return;
+    }
+    if (action === "clear-all") {
+      state.statistics.selectedRestaurants = [];
+      renderStatsRestaurantOptions(available);
+      updateStatsSelectionSummary();
+    }
+  }
+
+  function toggleStatsRestaurantSelection(restaurantId) {
+    if (!restaurantId) {
+      return;
+    }
+    const current = state.statistics.selectedRestaurants || [];
+    const index = current.indexOf(restaurantId);
+    if (index === -1) {
+      current.push(restaurantId);
+    } else {
+      current.splice(index, 1);
+    }
+    state.statistics.selectedRestaurants = current;
+    const available = state.statistics.availableRestaurants || [];
+    renderStatsRestaurantOptions(available);
+    updateStatsSelectionSummary();
+    if (state.statistics.selectedRestaurants.length > 0) {
+      fetchStatisticsData();
+    }
+  }
+
+  function renderStatsRestaurantOptions(restaurants) {
+    const list = document.getElementById("stats-restaurant-options");
+    if (!list) {
+      return;
+    }
+    list.innerHTML = "";
+    if (!restaurants || !restaurants.length) {
+      const empty = document.createElement("li");
+      empty.className = "muted";
+      empty.textContent = "Aucun restaurant disponible.";
+      list.appendChild(empty);
+      return;
+    }
+    const selection = state.statistics.selectedRestaurants || [];
+    restaurants.forEach((restaurant) => {
+      const li = document.createElement("li");
+      li.dataset.value = restaurant.id;
+      li.setAttribute("role", "option");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = selection.includes(restaurant.id);
+      checkbox.tabIndex = -1;
+      const label = document.createElement("span");
+      label.textContent = restaurant.name || "Restaurant";
+      li.append(checkbox, label);
+      li.setAttribute("aria-selected", checkbox.checked ? "true" : "false");
+      list.appendChild(li);
+    });
+  }
+
+  function updateStatsSelectionSummary() {
+    const summary = document.getElementById("stats-selected-summary");
+    const hint = document.getElementById("stats-selection-hint");
+    const headerLabel = document.getElementById("statistics-selection-label");
+    const available = state.statistics.availableRestaurants || [];
+    const selected = state.statistics.selectedRestaurants || [];
+    const allSelected = selected.length > 0 && selected.length === available.length;
+    let label = "Tous les restaurants";
+    if (!selected.length) {
+      label = "Sélectionnez des restaurants";
+    } else if (!allSelected) {
+      label = selected.length === 1 ? "1 restaurant" : `${selected.length} restaurants`;
+    }
+    if (summary) {
+      summary.textContent = label;
+    }
+    if (hint) {
+      if (!selected.length) {
+        hint.textContent = "Sélectionnez au moins un établissement";
+      } else if (allSelected) {
+        hint.textContent = "Affichage global";
+      } else {
+        hint.textContent = `${selected.length} établissement(s) comparé(s)`;
+      }
+    }
+    if (headerLabel) {
+      if (!selected.length) {
+        headerLabel.textContent = "Aucun établissement sélectionné";
+      } else if (selected.length === 1) {
+        const names = buildStatsSelectionNames(selected);
+        headerLabel.textContent = names[0];
+      } else {
+        headerLabel.textContent = label;
+      }
+    }
+  }
+
+  function buildStatsSelectionNames(ids) {
+    const available = state.statistics.availableRestaurants || [];
+    const mapping = available.reduce((acc, entry) => {
+      acc[entry.id] = entry.name;
+      return acc;
+    }, {});
+    return ids.map((id) => mapping[id] || "Restaurant");
+  }
+
+  function filterStatsRestaurantOptions(query) {
+    const list = document.getElementById("stats-restaurant-options");
+    if (!list) {
+      return;
+    }
+    const normalized = (query || "").trim().toLowerCase();
+    const entries = list.querySelectorAll("li[data-value]");
+    entries.forEach((entry) => {
+      const label = entry.textContent || "";
+      const matches = !normalized || label.toLowerCase().includes(normalized);
+      entry.hidden = !matches;
+    });
+  }
+
+  function openStatsRestaurantPanel(panel, toggle) {
+    panel.removeAttribute("hidden");
+    toggle.setAttribute("aria-expanded", "true");
+  }
+
+  function closeStatsRestaurantPanel(panel, toggle) {
+    panel.setAttribute("hidden", "true");
+    toggle.setAttribute("aria-expanded", "false");
+  }
+
+  function syncStatsRestaurantsFromSnapshot(restaurants) {
+    const list = Array.isArray(restaurants) ? restaurants : [];
+    const normalized = list
+      .map((restaurant) => ({
+        id: restaurant && restaurant.id ? String(restaurant.id) : null,
+        name: restaurant.display_name || restaurant.name || "Restaurant",
+      }))
+      .filter((entry) => Boolean(entry.id));
+    state.statistics.availableRestaurants = normalized;
+    const currentSelection = state.statistics.selectedRestaurants || [];
+    const validatedSelection = currentSelection.filter((id) => normalized.some((entry) => entry.id === id));
+    if (!state.statistics.hasInitialized && !validatedSelection.length) {
+      state.statistics.selectedRestaurants = normalized.map((entry) => entry.id);
+    } else {
+      state.statistics.selectedRestaurants = validatedSelection;
+      if (!state.statistics.selectedRestaurants.length && normalized.length) {
+        state.statistics.selectedRestaurants = normalized.map((entry) => entry.id);
+      }
+    }
+    renderStatsRestaurantOptions(normalized);
+    updateStatsSelectionSummary();
+  }
+
   function validateRange(startValue, endValue) {
     if (!startValue || !endValue) {
       return { 
@@ -646,6 +978,7 @@
       const snapshot = await response.json();
       state.snapshot = snapshot;
       state.restaurants = snapshot.restaurants || [];
+      syncStatsRestaurantsFromSnapshot(state.restaurants);
 
       updateUIWithUserData(snapshot.user);
       updateProfileFormFields(snapshot.profile);
@@ -653,8 +986,11 @@
       syncChatbotStateWithRestaurants();
       updateOverview(snapshot.kpis);
       renderRestaurants();
-      renderStatistics(snapshot.statistics);
+      if (!state.statistics.hasInitialized) {
+        renderStatistics(snapshot.statistics);
+      }
       renderBilling(snapshot.billing);
+      fetchStatisticsData({ silent: Boolean(state.statistics.hasInitialized) });
     } catch (error) {
       console.error("Snapshot refresh failed", error);
       showToast(error.message || "Impossible de charger vos données.");
@@ -667,10 +1003,104 @@
     }
   }
 
+  async function fetchStatisticsData(options = {}) {
+    const { silent = false } = options;
+    if (state.statistics.isFetching) {
+      return;
+    }
+    const hasRestaurants = Array.isArray(state.statistics.availableRestaurants)
+      ? state.statistics.availableRestaurants.length > 0
+      : false;
+    const hasSelection = Array.isArray(state.statistics.selectedRestaurants)
+      ? state.statistics.selectedRestaurants.length > 0
+      : false;
+    if (!state.statistics.startDate || !state.statistics.endDate) {
+      return;
+    }
+    if (hasRestaurants && !hasSelection) {
+      return;
+    }
+    const params = new URLSearchParams();
+    const requestedRange = {
+      start: state.statistics.startDate,
+      end: state.statistics.endDate,
+    };
+    params.set("start_date", state.statistics.startDate);
+    params.set("end_date", state.statistics.endDate);
+    if (hasSelection && hasRestaurants && state.statistics.selectedRestaurants.length < state.statistics.availableRestaurants.length) {
+      state.statistics.selectedRestaurants.forEach((id) => {
+        params.append("restaurant_id", id);
+      });
+    }
+    const endpoint = `/api/dashboard/statistics?${params.toString()}`;
+    state.statistics.isFetching = true;
+    const rangeLabel = document.getElementById("statistics-range-label");
+    if (rangeLabel && !silent) {
+      rangeLabel.textContent = "Actualisation des statistiques…";
+    }
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detail = payload && payload.detail ? payload.detail : "Impossible de charger les statistiques.";
+        throw new Error(detail);
+      }
+      let shouldRefreshOptions = false;
+      if (Array.isArray(payload.available_restaurants)) {
+        const normalized = payload.available_restaurants
+          .map((entry) => ({
+            id: entry && entry.id ? String(entry.id) : null,
+            name: entry.name || "Restaurant",
+          }))
+          .filter((entry) => Boolean(entry.id));
+        state.statistics.availableRestaurants = normalized;
+        const filteredSelection = (state.statistics.selectedRestaurants || []).filter((id) =>
+          normalized.some((entry) => entry.id === id),
+        );
+        if (!filteredSelection.length && normalized.length) {
+          state.statistics.selectedRestaurants = normalized.map((entry) => entry.id);
+        } else {
+          state.statistics.selectedRestaurants = filteredSelection;
+        }
+        shouldRefreshOptions = true;
+      }
+      if (Array.isArray(payload.selected_restaurants) && payload.selected_restaurants.length) {
+        const sanitized = payload.selected_restaurants
+          .map((value) => String(value))
+          .filter((id) => state.statistics.availableRestaurants.some((entry) => entry.id === id));
+        if (sanitized.length) {
+          state.statistics.selectedRestaurants = sanitized;
+          shouldRefreshOptions = true;
+        }
+      }
+      if (shouldRefreshOptions) {
+        renderStatsRestaurantOptions(state.statistics.availableRestaurants);
+        updateStatsSelectionSummary();
+      }
+      state.statistics.hasInitialized = true;
+      renderStatistics(payload.statistics || payload);
+    } catch (error) {
+      console.error("Statistics fetch failed", error);
+      showToast(error.message || "Impossible de charger les statistiques.");
+      setTextContent("statistics-range-label", formatRangeText(requestedRange));
+    } finally {
+      state.statistics.isFetching = false;
+    }
+  }
+
 function updateUIWithUserData(userData) {
   try {
     const safeDetails = userData || {};
+    const firstName = safeDetails.first_name || safeDetails.firstName;
+    const lastName = safeDetails.last_name || safeDetails.lastName;
+    const combinedName = [firstName, lastName].filter(Boolean).join(" ").trim();
     const displayName =
+      combinedName ||
       safeDetails.fullName ||
       safeDetails.full_name ||
       safeDetails.username ||
@@ -907,6 +1337,17 @@ function redirectToLogin() {
       return;
     }
     form.addEventListener("submit", handleProfileSubmit);
+    form.addEventListener("reset", () => {
+      window.requestAnimationFrame(() => {
+        if (state.snapshot?.profile) {
+          updateProfileFormFields(state.snapshot.profile);
+        } else if (state.snapshot?.user) {
+          updateProfileFormFields(state.snapshot.user);
+        }
+        clearProfileErrors();
+        setProfileMessage("");
+      });
+    });
   }
 
   async function handleProfileSubmit(event) {
@@ -914,25 +1355,42 @@ function redirectToLogin() {
     const form = event.currentTarget;
     const submitBtn = form.querySelector("button[type='submit']");
     const messageEl = document.getElementById("profile-form-message");
-    if (messageEl) {
-      messageEl.textContent = "";
-    }
+    setProfileMessage("");
+    clearProfileErrors();
 
     const payload = {
       full_name: (document.getElementById("profile-full-name")?.value || "").trim(),
       company_name: (document.getElementById("profile-company")?.value || "").trim(),
       country: (document.getElementById("profile-country")?.value || "").trim(),
+      phone_number: (document.getElementById("profile-phone")?.value || "").trim(),
       timezone: document.getElementById("profile-timezone")?.value || "",
     };
+
+    const errors = {};
+    if (!payload.full_name) {
+      errors.full_name = "Indiquez votre nom complet.";
+    }
+    if (!payload.phone_number) {
+      errors.phone_number = "Le numéro de téléphone est requis.";
+    } else if (!isValidPhoneNumber(payload.phone_number)) {
+      errors.phone_number = "Entrez un numéro valide (10 à 15 chiffres).";
+    }
+    if (!payload.timezone) {
+      errors.timezone = "Choisissez un fuseau horaire.";
+    }
 
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([, value]) => value && typeof value === "string")
     );
 
+    if (Object.keys(errors).length) {
+      Object.entries(errors).forEach(([key, message]) => setProfileFieldError(key, message));
+      setProfileMessage("Merci de corriger les champs en surbrillance.", "error");
+      return;
+    }
+
     if (!Object.keys(cleanPayload).length) {
-      if (messageEl) {
-        messageEl.textContent = "Aucune information à mettre à jour.";
-      }
+      setProfileMessage("Aucune information à mettre à jour.");
       return;
     }
 
@@ -960,19 +1418,23 @@ function redirectToLogin() {
       if (state.snapshot) {
         state.snapshot.profile = payloadResponse;
         if (state.snapshot.user) {
-          state.snapshot.user.fullName = payloadResponse.full_name || state.snapshot.user.fullName;
+          const userDetails = state.snapshot.user;
+          userDetails.fullName = payloadResponse.full_name || userDetails.fullName;
+          userDetails.first_name = payloadResponse.first_name || userDetails.first_name;
+          userDetails.last_name = payloadResponse.last_name || userDetails.last_name;
+          userDetails.phone_number = payloadResponse.phone_number || userDetails.phone_number;
+          userDetails.timezone = payloadResponse.timezone || userDetails.timezone;
         }
       }
       updateProfileFormFields(payloadResponse);
       if (state.snapshot?.user) {
         updateUIWithUserData(state.snapshot.user);
       }
+      setProfileMessage("Profil mis à jour avec succès.", "success");
       showToast("Profil mis à jour.");
     } catch (error) {
       console.error("Profile update failed", error);
-      if (messageEl) {
-        messageEl.textContent = error.message || "Erreur lors de la mise à jour.";
-      }
+      setProfileMessage(error.message || "Erreur lors de la mise à jour.", "error");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -1103,10 +1565,6 @@ function redirectToLogin() {
       testerBtn.dataset.restaurantId = restaurant.id ? String(restaurant.id) : "";
       testerBtn.dataset.restaurantName = restaurant.display_name || restaurant.name || "";
       testerBtn.textContent = "Tester le chatbot";
-      testerBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        launchChatTester(restaurant.id, restaurant.display_name || restaurant.name);
-      });
 
       const shareBtn = document.createElement("button");
       shareBtn.type = "button";
@@ -1217,10 +1675,9 @@ function redirectToLogin() {
       testerBtn.type = "button";
       testerBtn.className = "secondary-btn";
       testerBtn.textContent = "Tester";
-      testerBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        launchChatTester(restaurant.id, restaurant.display_name || restaurant.name);
-      });
+      testerBtn.dataset.openChat = "true";
+      testerBtn.dataset.restaurantId = restaurant.id ? String(restaurant.id) : "";
+      testerBtn.dataset.restaurantName = restaurant.display_name || restaurant.name || "";
 
       actions.append(editBtn, testerBtn);
 
@@ -1835,6 +2292,145 @@ function redirectToLogin() {
     }
   }
 
+  function createChatHistoryEntry(role, content) {
+    return {
+      role: role === "assistant" ? "assistant" : "user",
+      content: content || "",
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  function formatChatTimestamp(value) {
+    if (!value) {
+      return "À l'instant";
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "À l'instant";
+    }
+    return parsed.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function buildOverviewChatMessage(entry, options = {}) {
+    const role = entry.role === "assistant" ? "assistant" : "user";
+    const bubble = document.createElement("div");
+    bubble.className = `chat-preview-message ${role}`;
+    if (options.isTyping) {
+      bubble.classList.add("typing");
+    }
+
+    const avatar = document.createElement("span");
+    avatar.className = "chat-preview-avatar";
+    avatar.textContent = role === "assistant" ? "RB" : "Vous";
+
+    const content = document.createElement("div");
+    content.className = "chat-preview-content";
+
+    const meta = document.createElement("div");
+    meta.className = "chat-preview-meta";
+
+    const author = document.createElement("span");
+    author.className = "chat-preview-author";
+    author.textContent = role === "assistant" ? "RestauBot" : "Vous";
+
+    const timestamp = document.createElement("time");
+    timestamp.className = "chat-preview-timestamp";
+    const timestampValue = options.timestamp || entry.created_at || null;
+    if (timestampValue) {
+      timestamp.dateTime = timestampValue;
+    }
+    timestamp.textContent = formatChatTimestamp(timestampValue);
+
+    meta.append(author, timestamp);
+
+    const text = document.createElement("div");
+    text.className = "chat-preview-text";
+    if (typeof options.renderText === "function") {
+      options.renderText(text);
+    } else {
+      text.textContent = entry.content || "";
+    }
+
+    content.append(meta, text);
+    bubble.append(avatar, content);
+    return bubble;
+  }
+
+  function showOverviewTypingIndicator() {
+    if (overviewTypingNode) {
+      return;
+    }
+    const container = document.getElementById("overview-chat-messages");
+    if (!container) {
+      return;
+    }
+    const empty = document.getElementById("overview-chat-empty");
+    const timestamp = new Date().toISOString();
+    overviewTypingNode = buildOverviewChatMessage(
+      { role: "assistant", content: OVERVIEW_TYPING_LABEL, created_at: timestamp },
+      {
+        isTyping: true,
+        timestamp,
+        renderText(target) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "chat-preview-typing";
+
+          const label = document.createElement("span");
+          label.className = "chat-preview-typing-label";
+          label.textContent = OVERVIEW_TYPING_LABEL;
+
+          const dots = document.createElement("span");
+          dots.className = "chat-preview-typing-dots";
+          for (let index = 0; index < 3; index += 1) {
+            const dot = document.createElement("span");
+            dot.className = "chat-preview-typing-dot";
+            dot.style.animationDelay = `${index * 0.15}s`;
+            dots.appendChild(dot);
+          }
+
+          wrapper.append(label, dots);
+          target.append(wrapper);
+        },
+      }
+    );
+    if (empty) {
+      empty.hidden = true;
+    }
+    container.hidden = false;
+    container.appendChild(overviewTypingNode);
+    requestAnimationFrame(() => {
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+  }
+
+  function hideOverviewTypingIndicator() {
+    if (!overviewTypingNode) {
+      return;
+    }
+    if (overviewTypingNode.parentElement) {
+      overviewTypingNode.parentElement.removeChild(overviewTypingNode);
+    }
+    overviewTypingNode = null;
+  }
+
+  function buildChatPayloadHistory(history, limit) {
+    if (!Array.isArray(history) || history.length === 0) {
+      return [];
+    }
+    const sliceLimit = limit ? -Math.abs(limit) : undefined;
+    return history.slice(sliceLimit).map((entry) => ({
+      role: entry.role === "assistant" ? "assistant" : "user",
+      content: entry.content || "",
+    }));
+  }
+
   function renderOverviewChatMessages() {
     const container = document.getElementById("overview-chat-messages");
     const empty = document.getElementById("overview-chat-empty");
@@ -1842,6 +2438,7 @@ function redirectToLogin() {
       return;
     }
     container.innerHTML = "";
+    overviewTypingNode = null;
     const history = state.overview.history.slice(-OVERVIEW_HISTORY_LIMIT * 2);
     if (!history.length) {
       empty.hidden = false;
@@ -1851,30 +2448,16 @@ function redirectToLogin() {
     empty.hidden = true;
     container.hidden = false;
     history.forEach((entry) => {
-      const role = entry.role === "assistant" ? "assistant" : "user";
-      const bubble = document.createElement("div");
-      bubble.className = `chat-preview-message ${role}`;
-
-      const avatar = document.createElement("span");
-      avatar.className = "chat-preview-avatar";
-      avatar.textContent = role === "assistant" ? "RB" : "Vous";
-
-      const content = document.createElement("div");
-      content.className = "chat-preview-content";
-
-      const author = document.createElement("span");
-      author.className = "chat-preview-author";
-      author.textContent = role === "assistant" ? "RestauBot" : "Vous";
-
-      const text = document.createElement("div");
-      text.className = "chat-preview-text";
-      text.textContent = entry.content || "";
-
-      content.append(author, text);
-      bubble.append(avatar, content);
+      const bubble = buildOverviewChatMessage(entry);
       container.appendChild(bubble);
     });
-    container.scrollTop = container.scrollHeight;
+    requestAnimationFrame(() => {
+      if (typeof container.scrollTo === "function") {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    });
   }
 
   function updateOverviewChatState() {
@@ -1932,8 +2515,8 @@ function redirectToLogin() {
       return;
     }
 
-    const payloadHistory = state.overview.history.slice(-OVERVIEW_HISTORY_LIMIT);
-    state.overview.history.push({ role: "user", content: message });
+    const payloadHistory = buildChatPayloadHistory(state.overview.history, OVERVIEW_HISTORY_LIMIT);
+    state.overview.history.push(createChatHistoryEntry("user", message));
     trimOverviewHistory();
     renderOverviewChatMessages();
     if (input) {
@@ -1942,6 +2525,7 @@ function redirectToLogin() {
 
     state.overview.isSending = true;
     updateOverviewChatState();
+    showOverviewTypingIndicator();
     if (statusEl) {
       statusEl.textContent = "Envoi en cours…";
     }
@@ -1969,7 +2553,7 @@ function redirectToLogin() {
 
       const reply = body.reply || "";
       if (reply) {
-        state.overview.history.push({ role: "assistant", content: reply });
+        state.overview.history.push(createChatHistoryEntry("assistant", reply));
         trimOverviewHistory();
         renderOverviewChatMessages();
       }
@@ -1982,6 +2566,7 @@ function redirectToLogin() {
         statusEl.textContent = error.message || "Impossible d'obtenir une réponse.";
       }
     } finally {
+      hideOverviewTypingIndicator();
       state.overview.isSending = false;
       updateOverviewChatState();
     }
@@ -2328,11 +2913,18 @@ function redirectToLogin() {
       setTextContent("stats-total-messages", "—");
       setTextContent("stats-average-per-day", "—");
       setTextContent("stats-average-messages", "—");
+      setTextContent("stats-active-restaurants", "—");
       setTextContent("stats-resolution-rate", "—");
-      setTextContent("statistics-range-label", "Aucune donnée");
+      const fallbackRange = {
+        start: state.statistics.startDate,
+        end: state.statistics.endDate,
+      };
+      setTextContent("statistics-range-label", formatRangeText(fallbackRange));
       renderTopQuestions([]);
       renderDietBreakdown([]);
       updateBusiestSections(null);
+      renderStatisticsActivityChart([]);
+      renderStatsRestaurantBreakdown([]);
       return;
     }
     setTextContent("stats-total-conversations", formatNumber(statistics.total_conversations));
@@ -2347,9 +2939,196 @@ function redirectToLogin() {
     const resolution = typeof statistics.resolution_rate === "number" ? `${statistics.resolution_rate}%` : "—";
     setTextContent("stats-resolution-rate", resolution);
     setTextContent("statistics-range-label", formatRangeText(statistics.date_range));
+    const breakdownEntries = Array.isArray(statistics.restaurant_breakdown)
+      ? statistics.restaurant_breakdown.filter((entry) => (entry.count || 0) > 0)
+      : [];
+    const activeCount = breakdownEntries.length
+      || state.statistics.selectedRestaurants.length
+      || state.statistics.availableRestaurants.length;
+    setTextContent("stats-active-restaurants", formatNumber(activeCount || 0));
     renderTopQuestions(statistics.top_questions);
     renderDietBreakdown(statistics.diet_breakdown);
     updateBusiestSections(statistics.busiest);
+    renderStatisticsActivityChart(statistics.timeline);
+    renderStatsRestaurantBreakdown(statistics.restaurant_breakdown);
+  }
+
+  function renderStatisticsActivityChart(timeline) {
+    const canvas = document.getElementById("stats-activity-chart");
+    const emptyState = document.getElementById("stats-activity-empty");
+    if (!canvas || !emptyState) {
+      return;
+    }
+    const normalizedTimeline = normalizeStatisticsTimeline(timeline);
+    const hasData = normalizedTimeline.length > 0;
+    if (!hasData) {
+      if (statsActivityChart) {
+        statsActivityChart.destroy();
+        statsActivityChart = null;
+      }
+      emptyState.hidden = false;
+      canvas.hidden = true;
+      return;
+    }
+    emptyState.hidden = true;
+    canvas.hidden = false;
+    ensureChartJsLibrary()
+      .then((ChartLib) => {
+        const ctx = typeof canvas.getContext === "function" ? canvas.getContext("2d") : null;
+        if (!ctx) {
+          return;
+        }
+        const labels = normalizedTimeline.map((point) => point.label || point.date || "");
+        const conversations = normalizedTimeline.map((point) =>
+          typeof point.conversations === "number"
+            ? point.conversations
+            : typeof point.count === "number"
+              ? point.count
+              : 0,
+        );
+        const messages = normalizedTimeline.map((point) =>
+          typeof point.messages === "number"
+            ? point.messages
+            : typeof point.total_messages === "number"
+              ? point.total_messages
+              : typeof point.count === "number"
+                ? point.count
+                : 0,
+        );
+        const data = {
+          labels,
+          datasets: [
+            {
+              label: "Conversations",
+              data: conversations,
+              borderColor: "#3a75ff",
+              backgroundColor: "rgba(58, 117, 255, 0.18)",
+              tension: 0.4,
+              fill: true,
+              borderWidth: 2,
+              pointRadius: 0,
+            },
+            {
+              label: "Messages",
+              data: messages,
+              borderColor: "#93a5ff",
+              backgroundColor: "rgba(147, 165, 255, 0.18)",
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.4,
+            },
+          ],
+        };
+        const options = {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 6,
+              },
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(148, 163, 184, 0.3)" },
+              ticks: {
+                precision: 0,
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom",
+            },
+            tooltip: {
+              intersect: false,
+              mode: "index",
+            },
+          },
+        };
+        if (statsActivityChart && statsActivityChart.canvas !== canvas) {
+          statsActivityChart.destroy();
+          statsActivityChart = null;
+        }
+        if (statsActivityChart) {
+          statsActivityChart.data = data;
+          statsActivityChart.options = options;
+          statsActivityChart.update();
+        } else {
+          statsActivityChart = new ChartLib(ctx, {
+            type: "line",
+            data,
+            options,
+          });
+        }
+      })
+      .catch((error) => {
+        console.error("Statistics chart rendering failed", error);
+      });
+  }
+
+  function normalizeStatisticsTimeline(timeline) {
+    if (Array.isArray(timeline) && timeline.length) {
+      return timeline;
+    }
+    const overviewTimeline = state.snapshot?.kpis?.timeline;
+    if (Array.isArray(overviewTimeline) && overviewTimeline.length) {
+      return overviewTimeline.map((point) => ({
+        label: point.label || point.date || "",
+        date: point.date || point.label || "",
+        conversations: typeof point.count === "number" ? point.count : 0,
+        messages: typeof point.total_messages === "number" ? point.total_messages : point.count || 0,
+      }));
+    }
+    return [];
+  }
+
+  function renderStatsRestaurantBreakdown(breakdown) {
+    const list = document.getElementById("stats-restaurant-breakdown");
+    if (!list) {
+      return;
+    }
+    list.innerHTML = "";
+    const entries = Array.isArray(breakdown) ? breakdown.filter((entry) => (entry.count || 0) > 0) : [];
+    if (!entries.length) {
+      const empty = document.createElement("li");
+      empty.className = "muted";
+      empty.textContent = state.statistics.selectedRestaurants.length
+        ? "Aucune conversation sur cette période."
+        : "Sélectionnez au moins un restaurant.";
+      list.appendChild(empty);
+      return;
+    }
+    const totalCount = entries.reduce((acc, entry) => acc + (entry.count || 0), 0) || 1;
+    entries.forEach((entry) => {
+      const row = document.createElement("li");
+      const meta = document.createElement("div");
+      meta.className = "stats-breakdown-row";
+      const name = document.createElement("span");
+      name.textContent = entry.name || "Restaurant";
+      const value = document.createElement("strong");
+      value.textContent = `${formatNumber(entry.count || 0)} conv.`;
+      meta.append(name, value);
+
+      const bar = document.createElement("div");
+      bar.className = "stats-breakdown-bar";
+      const fill = document.createElement("span");
+      const share = typeof entry.share === "number"
+        ? entry.share
+        : Math.round(((entry.count || 0) / totalCount) * 1000) / 10;
+      fill.style.width = `${Math.max(0, share)}%`;
+      bar.appendChild(fill);
+
+      const shareLabel = document.createElement("span");
+      shareLabel.className = "stats-breakdown-share";
+      shareLabel.textContent = `${share.toFixed(1)}%`;
+
+      row.append(meta, bar, shareLabel);
+      list.appendChild(row);
+    });
   }
 
   function renderTopQuestions(topQuestions) {
@@ -2516,6 +3295,10 @@ function redirectToLogin() {
     if (countryInput) {
       countryInput.value = data.country || "";
     }
+    const phoneInput = document.getElementById("profile-phone");
+    if (phoneInput) {
+      phoneInput.value = data.phone_number || "";
+    }
     const timezoneSelect = document.getElementById("profile-timezone");
     if (timezoneSelect) {
       const timezoneValue = data.timezone || "Europe/Paris";
@@ -2533,6 +3316,60 @@ function redirectToLogin() {
         timezoneSelect.selectedIndex = -1;
       }
     }
+  }
+
+  function setProfileFieldError(field, message) {
+    const target = document.querySelector(`[data-profile-error="${field}"]`);
+    if (target) {
+      target.textContent = message || "";
+    }
+    const input = document.getElementById(`profile-${field.replace("_", "-")}`);
+    if (input) {
+      input.classList.toggle("has-error", Boolean(message));
+    }
+  }
+
+  function clearProfileErrors() {
+    document.querySelectorAll("[data-profile-error]").forEach((el) => {
+      el.textContent = "";
+    });
+    [
+      "profile-full-name",
+      "profile-phone",
+      "profile-timezone",
+    ].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) {
+        input.classList.remove("has-error");
+      }
+    });
+  }
+
+  function setProfileMessage(message, variant) {
+    const target = document.getElementById("profile-form-message");
+    if (!target) {
+      return;
+    }
+    target.textContent = message || "";
+    target.className = "profile-feedback";
+    if (variant) {
+      target.classList.add(variant);
+    }
+  }
+
+  function isValidPhoneNumber(value) {
+    const trimmed = (value || "").trim();
+    const digits = trimmed.replace(/[^0-9]/g, "");
+    if (digits.length < 10 || digits.length > 15) {
+      return false;
+    }
+    if (trimmed.startsWith("+33") || trimmed.startsWith("0033")) {
+      return digits.length === 11;
+    }
+    if (digits.startsWith("0")) {
+      return digits.length === 10;
+    }
+    return true;
   }
 
   function formatNumber(value) {
@@ -2861,15 +3698,62 @@ function redirectToLogin() {
   }
 
   function launchChatTester(restaurantId, restaurantName) {
+    if (state.isLaunchingChat) {
+      return;
+    }
+    state.isLaunchingChat = true;
+
     const target = resolveRestaurantRecord(restaurantId);
     if (!target) {
       showToast("Ajoutez un restaurant pour tester le chatbot.");
+      state.isLaunchingChat = false;
       return;
     }
 
     const resolvedName = getRestaurantDisplayName(target, restaurantName);
     const url = buildChatbotPageUrl(target, resolvedName);
-    window.open(url.toString(), "_blank", "noopener");
+    cacheChatLaunchContext(target, resolvedName);
+    if (state.chatTesterWindow && !state.chatTesterWindow.closed) {
+      try {
+        state.chatTesterWindow.location.href = url.toString();
+        state.chatTesterWindow.focus();
+        return;
+      } catch (_error) {
+        state.chatTesterWindow = null;
+      }
+    }
+
+    const newWindow = window.open(url.toString(), CHAT_TESTER_WINDOW_NAME, CHAT_TESTER_WINDOW_FEATURES);
+    if (newWindow) {
+      state.chatTesterWindow = newWindow;
+      newWindow.focus();
+    } else {
+      showToast("Impossible d'ouvrir le chatbot dans un nouvel onglet. Autorisez les fenêtres pop-up puis réessayez.");
+      state.isLaunchingChat = false;
+      return;
+    }
+
+    window.setTimeout(() => {
+      state.isLaunchingChat = false;
+    }, 200);
+  }
+
+  function cacheChatLaunchContext(restaurant, displayName) {
+    if (!restaurant || !restaurant.id || !window.localStorage) {
+      return;
+    }
+    try {
+      const payload = {
+        id: restaurant.id,
+        display_name: displayName || restaurant.display_name || restaurant.name || '',
+        name: restaurant.name || '',
+        menu_document: restaurant.menu_document || null,
+        cached_at: Date.now(),
+      };
+      window.localStorage.setItem(`restaubot-chat-${restaurant.id}`, JSON.stringify(payload));
+    } catch (error) {
+      console.warn('Unable to cache chat launch context', error);
+    }
   }
 
   function resolveRestaurantRecord(restaurantId) {

@@ -1,4 +1,20 @@
-(function () {
+// Définition globale des domaines d'email jetables
+const DISPOSABLE_EMAIL_DOMAINS = (function getDisposableDomains() {
+  if (window.__SIGNUP_DISPOSABLE_SET instanceof Set) {
+    return window.__SIGNUP_DISPOSABLE_SET;
+  }
+    const domains = new Set([
+      "yopmail.com",
+      "yopmail.fr",
+      "mailinator.com",
+      "tempmail.com",
+      "guerrillamail.com",
+      "guerrillamail.net",
+      "33mail.com",
+    ]);
+    window.__SIGNUP_DISPOSABLE_SET = domains;
+    return domains;
+  })();
   const MENU_TEMPLATE = `{
   "categories": [
     {
@@ -122,6 +138,27 @@
     if (state.menuGenerateBtn) {
       state.menuGenerateBtn.addEventListener("click", handleMenuUpload);
     }
+  }
+
+  function passwordPolicyMessage(value) {
+    const normalized = value || "";
+    if (normalized.length < 8) {
+      return "Au moins 8 caractères sont requis.";
+    }
+    if (!/[a-z]/.test(normalized) || !/[A-Z]/.test(normalized)) {
+      return "Ajoutez des majuscules et minuscules.";
+    }
+    if (!/\d/.test(normalized)) {
+      return "Ajoutez au moins un chiffre.";
+    }
+    if (!/[^A-Za-z0-9]/.test(normalized)) {
+      return "Ajoutez un symbole pour sécuriser le mot de passe.";
+    }
+    return "";
+  }
+
+  function isPasswordCompliant(value) {
+    return !passwordPolicyMessage(value);
   }
 
   async function handleMenuUpload(event) {
@@ -253,11 +290,24 @@
       }
 
       if (!message && name === "email" && value) {
-        message = /.+@.+\..+/.test(value) ? "" : "Adresse email invalide.";
+        if (!/.+@.+\..+/.test(value)) {
+          message = "Adresse email invalide.";
+        } else if (isDisposableEmail(value)) {
+          message = "Les adresses temporaires ne sont pas acceptées.";
+        }
       }
 
-      if (!message && name === "password" && value.length < 8) {
-        message = "Au moins 8 caractères sont nécessaires.";
+      if (!message && name === "password") {
+        const passwordMessage = passwordPolicyMessage(value);
+        if (passwordMessage) {
+          message = passwordMessage;
+        }
+      }
+
+      if (!message && name === "phone_number" && value) {
+        if (!isValidPhoneNumber(value)) {
+          message = "Renseignez un numéro valide (10 à 15 chiffres).";
+        }
       }
 
       if (!message && name === "password_confirm") {
@@ -316,7 +366,8 @@
     const score = scorePassword(value);
     bar.dataset.strength = String(score);
     bar.style.setProperty("--strength", score);
-    label.textContent = passwordStrengthLabel(score);
+    const policyMessage = passwordPolicyMessage(value);
+    label.textContent = policyMessage || passwordStrengthLabel(score);
   }
 
   function scorePassword(value) {
@@ -324,7 +375,7 @@
       return 0;
     }
     let score = 0;
-    if (value.length >= 8) score += 1;
+    if (value.length >= 12) score += 1;
     if (/[A-Z]/.test(value) && /[a-z]/.test(value)) score += 1;
     if (/\d/.test(value)) score += 1;
     if (/[^A-Za-z0-9]/.test(value)) score += 1;
@@ -334,14 +385,15 @@
   function passwordStrengthLabel(score) {
     switch (score) {
       case 0:
+        return "Choisissez un mot de passe d'au moins 12 caractères.";
       case 1:
-        return "Mot de passe trop faible.";
+        return "Ajoutez des majuscules et minuscules.";
       case 2:
-        return "Correct, ajoutez des caractères spéciaux pour renforcer.";
+        return "Ajoutez un chiffre et un symbole.";
       case 3:
-        return "Bon mot de passe.";
+        return "Renforcez encore pour atteindre l'exigence maximale.";
       case 4:
-        return "Excellent mot de passe !";
+        return "Mot de passe conforme aux exigences de sécurité.";
       default:
         return "";
     }
@@ -405,6 +457,8 @@
       "full_name",
       "email",
       "password",
+      "phone_number",
+      "timezone",
       "restaurant_name",
       "restaurant_slug",
       "preferred_language",
@@ -432,6 +486,8 @@
       company_name: values.company_name || null,
       email: values.email,
       password: values.password,
+      phone_number: values.phone_number,
+      timezone: values.timezone,
       restaurant_name: values.restaurant_name,
       restaurant_slug: values.restaurant_slug,
       menu_document: menuDocument,
@@ -450,11 +506,10 @@
       return;
     }
     try {
-      const supabase = await window.getSupabaseClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        throw error;
+      if (typeof window.secureSupabaseLogin !== "function") {
+        throw new Error("Module d'authentification indisponible.");
       }
+      await window.secureSupabaseLogin(email, password);
       window.location.href = "/dashboard";
     } catch (error) {
       console.warn("Automatic login failed", error);
@@ -566,4 +621,28 @@
       return "";
     }
   }
-})();
+
+  function isDisposableEmail(email) {
+    if (!email) return false;
+    const [, domain = ""] = email.toLowerCase().split("@");
+    return DISPOSABLE_EMAIL_DOMAINS.has(domain);
+  }
+
+  function normalizePhoneDigits(value) {
+    return (value || "").replace(/[^0-9]/g, "");
+  }
+
+  function isValidPhoneNumber(value) {
+    const trimmed = (value || "").trim();
+    const digits = normalizePhoneDigits(trimmed);
+    if (digits.length < 10 || digits.length > 15) {
+      return false;
+    }
+    if (trimmed.startsWith("+33") || trimmed.startsWith("0033")) {
+      return digits.length === 11;
+    }
+    if (digits.startsWith("0")) {
+      return digits.length === 10;
+    }
+    return true;
+  }

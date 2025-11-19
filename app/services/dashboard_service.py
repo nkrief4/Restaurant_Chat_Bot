@@ -6,6 +6,7 @@ import asyncio
 import base64
 import json
 import logging
+import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from math import ceil
@@ -52,6 +53,8 @@ PLAN_PRESETS: Dict[str, Dict[str, Any]] = {
 }
 
 DEFAULT_TIMEZONE = "Europe/Paris"
+PHONE_MIN_DIGITS = 10
+PHONE_MAX_DIGITS = 15
 
 
 async def build_dashboard_snapshot(
@@ -93,6 +96,45 @@ async def build_dashboard_snapshot(
         "statistics": statistics,
         "billing": billing,
         "profile": _build_profile_payload(profile, claims),
+    }
+
+
+async def build_statistics_view(
+    access_token: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    restaurant_ids: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """Return statistics filtered by restaurants and period."""
+
+    claims = _decode_claims(access_token)
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur Supabase invalide.")
+
+    range_start, range_end = _resolve_date_range(start_date, end_date)
+    tenant = await _fetch_tenant(access_token, user_id)
+    tenant_id = tenant.get("id") if tenant else None
+    restaurants = await _fetch_restaurants(access_token, tenant_id)
+    requested_ids = {str(rest_id) for rest_id in (restaurant_ids or []) if rest_id}
+    if requested_ids:
+        filtered = [restaurant for restaurant in restaurants if str(restaurant.get("id")) in requested_ids]
+    else:
+        filtered = restaurants
+    chat_rows = await _fetch_chat_history(access_token, [r["id"] for r in filtered], range_start, range_end)
+    chat_sessions = _group_chat_sessions(chat_rows)
+
+    statistics = _build_statistics(filtered, chat_rows, chat_sessions, range_start, range_end)
+    return {
+        "statistics": statistics,
+        "selected_restaurants": [str(r["id"]) for r in filtered],
+        "available_restaurants": [
+            {
+                "id": str(restaurant.get("id")),
+                "name": restaurant.get("display_name") or restaurant.get("name") or "Restaurant",
+            }
+            for restaurant in restaurants
+        ],
     }
 
 
@@ -158,8 +200,37 @@ async def update_profile(access_token: str, payload: Dict[str, Any]) -> Dict[str
 
     claims = _decode_claims(access_token)
     user_id = claims.get("sub")
-    allowed_fields = {"full_name", "company_name", "country", "timezone"}
-    update_body = {k: (v or "").strip() for k, v in payload.items() if k in allowed_fields}
+    allowed_fields = {"company_name", "country", "timezone", "phone_number"}
+    update_body: Dict[str, Any] = {}
+    for key in allowed_fields:
+        if key not in payload:
+            continue
+        value = payload.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            trimmed = value.strip()
+            if trimmed:
+                if key == "phone_number":
+                    if not _is_valid_phone_value(trimmed):
+                        raise HTTPException(status_code=422, detail="Numéro de téléphone invalide.")
+                    update_body[key] = _normalize_phone_value(trimmed)
+                else:
+                    update_body[key] = trimmed
+        else:
+            update_body[key] = value
+
+    full_name_value = (payload.get("full_name") or "").strip()
+    if full_name_value:
+        first_name, last_name = _split_name(full_name_value)
+        update_body.update(
+            {
+                "first_name": first_name,
+                "last_name": last_name,
+                "full_name_normalized": full_name_value,
+            }
+        )
+
     if not update_body:
         raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour.")
 
@@ -169,7 +240,6 @@ async def update_profile(access_token: str, payload: Dict[str, Any]) -> Dict[str
                 client.table("profiles")
                 .update(update_body)
                 .eq("id", user_id)
-                .limit(1)
                 .execute()
             )
             if response.data:
@@ -216,17 +286,15 @@ async def _ensure_profile(access_token: str, user_id: str, claims: Dict[str, Any
     existing = await _fetch_profile(access_token, user_id)
     if existing:
         return existing
-    username = (claims.get("email") or claims.get("user_email") or "utilisateur").split("@")[0]
-    insert_payload = {
-        "id": user_id,
-        "username": username,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
+    insert_payload = _build_profile_seed_payload(user_id, claims)
 
     def _request() -> Dict[str, Any]:
         with create_postgrest_client(access_token, prefer="return=representation") as client:
-            response = client.table("profiles").insert(insert_payload).execute()
+            response = (
+                client.table("profiles")
+                .upsert(insert_payload, on_conflict="id")
+                .execute()
+            )
             if response.data:
                 return response.data[0]
             return insert_payload
@@ -245,7 +313,7 @@ def _resolve_date_range(
     end_date: Optional[str],
 ) -> Tuple[datetime, datetime]:
     today = datetime.now(timezone.utc).date()
-    default_start = today - timedelta(days=29)
+    default_start = today - timedelta(days=6)
     default_end = today
     start_value = _parse_date_input(start_date) or default_start
     end_value = _parse_date_input(end_date) or default_end
@@ -406,26 +474,132 @@ def _normalize_menu_document(value: Any) -> Optional[Dict[str, Any]]:
 
 
 def _build_user_payload(claims: Dict[str, Any], profile: Dict[str, Any]) -> Dict[str, Any]:
-    full_name = profile.get("full_name") or claims.get("name")
+    identity = _resolve_identity_details(profile, claims)
     company_name = profile.get("company_name")
     plan = profile.get("plan") or profile.get("subscription_plan") or "Plan Pro"
     return {
         "id": claims.get("sub"),
         "email": claims.get("email") or claims.get("user_email"),
-        "fullName": full_name,
+        "fullName": identity.get("full_name"),
+        "first_name": identity.get("first_name"),
+        "last_name": identity.get("last_name"),
+        "phone_number": identity.get("phone_number"),
+        "preferred_language": identity.get("preferred_language"),
+        "timezone": identity.get("timezone"),
         "company": company_name,
         "plan": plan,
     }
 
 
 def _build_profile_payload(profile: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Any]:
+    identity = _resolve_identity_details(profile, claims)
     return {
-        "full_name": profile.get("full_name") or claims.get("name") or "",
+        "full_name": identity.get("full_name") or "",
+        "first_name": identity.get("first_name") or "",
+        "last_name": identity.get("last_name") or "",
         "email": claims.get("email") or claims.get("user_email") or "",
         "company_name": profile.get("company_name") or "",
         "country": profile.get("country") or "",
-        "timezone": profile.get("timezone") or DEFAULT_TIMEZONE,
+        "timezone": identity.get("timezone") or DEFAULT_TIMEZONE,
+        "preferred_language": identity.get("preferred_language") or "fr",
+        "phone_number": identity.get("phone_number") or "",
         "plan": profile.get("plan") or profile.get("subscription_plan") or "Plan Pro",
+    }
+
+
+def _compose_full_name(first_name: Optional[str], last_name: Optional[str]) -> Optional[str]:
+    parts = [part for part in (first_name, last_name) if part]
+    if not parts:
+        return None
+    return " ".join(parts)
+
+
+def _split_name(full_name: str) -> Tuple[Optional[str], Optional[str]]:
+    tokens = [segment for segment in full_name.split() if segment]
+    if not tokens:
+        return None, None
+    if len(tokens) == 1:
+        return tokens[0], None
+    return tokens[0], " ".join(tokens[1:])
+
+
+def _normalize_phone_value(raw: str) -> str:
+    trimmed = (raw or "").strip()
+    if trimmed.startswith("+"):
+        return "+" + re.sub(r"[^0-9]", "", trimmed)
+    if trimmed.startswith("00"):
+        return "+" + re.sub(r"[^0-9]", "", trimmed[2:])
+    return re.sub(r"[^0-9]", "", trimmed)
+
+
+def _is_valid_phone_value(value: str) -> bool:
+    digits = re.sub(r"[^0-9]", "", value or "")
+    if len(digits) < PHONE_MIN_DIGITS or len(digits) > PHONE_MAX_DIGITS:
+        return False
+    stripped = (value or "").strip()
+    if stripped.startswith("+33") or stripped.startswith("0033"):
+        return len(digits) == 11
+    if digits.startswith("0"):
+        return len(digits) == 10
+    return True
+
+
+def _resolve_identity_details(profile: Dict[str, Any], claims: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    metadata = claims.get("user_metadata") or {}
+
+    def _pick(key: str) -> Optional[str]:
+        value = profile.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        return value if value not in ("", None) else None
+
+    first_name = _pick("first_name")
+    last_name = _pick("last_name")
+    normalized_name = _pick("full_name_normalized")
+    metadata_full = metadata.get("full_name") if isinstance(metadata.get("full_name"), str) else None
+    full_name = (
+        normalized_name
+        or metadata_full
+        or claims.get("name")
+        or _compose_full_name(first_name, last_name)
+    )
+    phone_number = _pick("phone_number")
+    if phone_number:
+        phone_number = _normalize_phone_value(phone_number)
+    preferred_language = _pick("preferred_language") or "fr"
+    timezone_value = _pick("timezone") or DEFAULT_TIMEZONE
+
+    return {
+        "first_name": first_name,
+        "last_name": last_name,
+        "full_name": full_name,
+        "phone_number": phone_number,
+        "preferred_language": preferred_language,
+        "timezone": timezone_value,
+    }
+
+
+def _build_profile_seed_payload(user_id: str, claims: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = claims.get("user_metadata") or {}
+    email = claims.get("email") or claims.get("user_email") or "utilisateur@restaubot"
+    username = email.split("@")[0]
+    now_iso = datetime.now(timezone.utc).isoformat()
+    phone_value = metadata.get("phone_number")
+    normalized_phone = _normalize_phone_value(phone_value) if phone_value else None
+    return {
+        "id": user_id,
+        "username": username,
+        "first_name": metadata.get("first_name"),
+        "last_name": metadata.get("last_name"),
+        "full_name_normalized": metadata.get("full_name_normalized"),
+        "phone_number": normalized_phone,
+        "preferred_language": metadata.get("preferred_language"),
+        "timezone": metadata.get("timezone"),
+        "created_at": now_iso,
+        "updated_at": now_iso,
     }
 
 
@@ -558,6 +732,8 @@ def _build_statistics(
     top_questions = _summarize_questions(chat_rows)
     diet_breakdown = _diet_breakdown(restaurants)
     busiest_list = busiest if busiest is not None else _build_busiest(chat_sessions, restaurants)
+    timeline = _build_conversation_timeline(chat_sessions, chat_rows, start_date, end_date)
+    restaurant_breakdown = _build_restaurant_breakdown(chat_sessions, restaurants)
 
     return {
         "total_conversations": total,
@@ -568,11 +744,85 @@ def _build_statistics(
         "top_questions": top_questions,
         "diet_breakdown": diet_breakdown,
         "busiest": busiest_list,
+        "timeline": timeline,
+        "restaurant_breakdown": restaurant_breakdown,
         "date_range": {
             "start": start_date.date().isoformat(),
             "end": end_date.date().isoformat(),
         },
     }
+
+
+def _build_conversation_timeline(
+    chat_sessions: Dict[str, Dict[str, Any]],
+    chat_rows: List[Dict[str, Any]],
+    start_date: datetime,
+    end_date: datetime,
+) -> List[Dict[str, Any]]:
+    session_counter: Counter[datetime.date] = Counter()
+    for session in chat_sessions.values():
+        created = session.get("created_at")
+        if isinstance(created, str):
+            created = _parse_timestamp(created)
+        if isinstance(created, datetime):
+            session_counter[created.date()] += 1
+
+    message_counter: Counter[datetime.date] = Counter()
+    for row in chat_rows:
+        created = _parse_timestamp(row.get("created_at"))
+        if isinstance(created, datetime):
+            message_counter[created.date()] += 1
+
+    start_day = start_date.date()
+    end_day = end_date.date()
+    if start_day > end_day:
+        start_day, end_day = end_day, start_day
+
+    timeline: List[Dict[str, Any]] = []
+    cursor = start_day
+    while cursor <= end_day:
+        label = cursor.strftime("%d %b")
+        timeline.append(
+            {
+                "date": cursor.isoformat(),
+                "label": label,
+                "conversations": session_counter.get(cursor, 0),
+                "messages": message_counter.get(cursor, 0),
+            }
+        )
+        cursor += timedelta(days=1)
+    return timeline
+
+
+def _build_restaurant_breakdown(
+    chat_sessions: Dict[str, Dict[str, Any]],
+    restaurants: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    if not restaurants:
+        return []
+    mapping = {
+        str(restaurant.get("id")): restaurant.get("display_name") or restaurant.get("name") or "Restaurant"
+        for restaurant in restaurants
+    }
+    counts: Counter[str] = Counter()
+    for session in chat_sessions.values():
+        restaurant_id = session.get("restaurant_id")
+        if restaurant_id:
+            counts[str(restaurant_id)] += 1
+    if not counts:
+        return []
+    total = sum(counts.values()) or 1
+    breakdown = []
+    for restaurant_id, count in counts.most_common():
+        breakdown.append(
+            {
+                "restaurant_id": restaurant_id,
+                "name": mapping.get(restaurant_id, "Restaurant"),
+                "count": count,
+                "share": round((count / total) * 100, 1),
+            }
+        )
+    return breakdown
 
 
 def _build_billing_summary(profile: Dict[str, Any], restaurants: List[Dict[str, Any]], kpis: Dict[str, Any]) -> Dict[str, Any]:

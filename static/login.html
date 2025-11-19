@@ -35,11 +35,11 @@
         <form id="login-form" class="auth-form" novalidate>
           <div class="form-field">
             <label for="email">Email professionnel</label>
-            <input type="email" name="email" id="email" placeholder="vous@restaurant.com" required />
+            <input type="email" name="email" id="email" placeholder="vous@restaurant.com" required autocomplete="username" />
           </div>
           <div class="form-field">
             <label for="password">Mot de passe</label>
-            <input type="password" name="password" id="password" placeholder="••••••••" minlength="6" required />
+            <input type="password" name="password" id="password" placeholder="••••••••" minlength="8" required autocomplete="current-password" />
           </div>
           <button type="submit" class="primary-btn">Se connecter</button>
           <p class="muted">Pas encore de compte ? <a href="/signup">Créez votre espace RestauBot</a>.</p>
@@ -55,6 +55,8 @@
       document.addEventListener("DOMContentLoaded", () => {
         const form = document.getElementById("login-form");
         const errorBox = document.getElementById("login-error");
+        const submitBtn = form.querySelector("button[type=\"submit\"]");
+        let isSubmitting = false;
 
         async function redirectIfAuthenticated() {
           try {
@@ -70,28 +72,43 @@
 
         redirectIfAuthenticated();
 
+        function setSubmitting(state) {
+          if (!submitBtn) {
+            return;
+          }
+          isSubmitting = state;
+          submitBtn.disabled = state;
+          submitBtn.textContent = state ? "Connexion…" : "Se connecter";
+        }
+
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
+          if (isSubmitting) {
+            return;
+          }
           errorBox.textContent = "";
 
           const formData = new FormData(form);
-          const email = formData.get("email");
-          const password = formData.get("password");
+          const email = String(formData.get("email") || "").trim();
+          const password = String(formData.get("password") || "").trim();
 
+          if (!email || !password) {
+            errorBox.textContent = "Email et mot de passe requis.";
+            return;
+          }
+
+          setSubmitting(true);
           try {
-            const supabase = await window.getSupabaseClient();
-            const { error } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-            if (error) {
-              errorBox.textContent = error.message || "Unable to login.";
-              return;
+            if (typeof window.secureSupabaseLogin !== "function") {
+              throw new Error("Module d'authentification indisponible.");
             }
+            await window.secureSupabaseLogin(email, password);
             window.location.href = "/dashboard";
           } catch (err) {
             console.error(err);
-            errorBox.textContent = "Unexpected error. Please try again.";
+            const message = err?.message || "Connexion impossible pour le moment.";
+            errorBox.textContent = message;
+            setSubmitting(false);
           }
         });
       });

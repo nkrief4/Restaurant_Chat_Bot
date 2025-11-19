@@ -260,6 +260,10 @@ body {
   align-items: center;
 }
 
+.typing-indicator[hidden] {
+  display: none !important;
+}
+
 .typing-indicator span {
   width: 6px;
   height: 6px;

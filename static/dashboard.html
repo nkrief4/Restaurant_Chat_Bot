@@ -41,6 +41,10 @@
         <button type="button" class="nav-link" data-section="statistics">Statistiques</button>
         <button type="button" class="nav-link" data-section="billing">Facturation & abonnement</button>
         <button type="button" class="nav-link" data-section="profile">Profil</button>
+        <button type="button" class="nav-link nav-link-logout" id="logout-btn">
+          <span class="logout-icon" aria-hidden="true"></span>
+          <span>Se déconnecter</span>
+        </button>
       </nav>
       <div class="sidebar-footer">
         <p class="muted">Support premium</p>
@@ -67,7 +71,6 @@
             <span class="user-name" id="user-pill-name">—</span>
             <span class="user-plan" id="user-plan-label">—</span>
           </div>
-          <button type="button" class="ghost-btn" id="logout-btn">Se déconnecter</button>
         </div>
       </header>
 
@@ -459,12 +462,63 @@
       </section>
 
       <section id="statistics" class="section" aria-label="Statistiques détaillées">
-        <div class="section-header">
+        <div class="section-header stats-section-header">
           <div>
             <h2>Statistiques détaillées</h2>
-            <p id="statistics-range-label">Filtre synchronisé avec la vue d'ensemble.</p>
+            <p id="statistics-range-label">Analyse des 7 derniers jours</p>
+          </div>
+          <p class="muted" id="statistics-selection-label">Tous vos établissements</p>
+        </div>
+
+        <div class="stats-filter-panel" aria-label="Filtres d'analyse">
+          <div class="stats-filter-block">
+            <p class="filter-label">Période analysée</p>
+            <div class="stats-range-pills" role="group" aria-label="Choisir la période">
+              <button type="button" class="range-pill active" data-stats-range="7">7 jours</button>
+              <button type="button" class="range-pill" data-stats-range="30">30 jours</button>
+              <button type="button" class="range-pill" data-stats-range="90">3 mois</button>
+              <button type="button" class="range-pill" data-stats-range="180">6 mois</button>
+            </div>
+            <div class="stats-custom-range">
+              <label>
+                <span>Du</span>
+                <input type="date" id="stats-start-date" />
+              </label>
+              <label>
+                <span>Au</span>
+                <input type="date" id="stats-end-date" />
+              </label>
+              <button type="button" class="ghost-btn" id="stats-apply-range">Appliquer</button>
+              <p class="form-error" id="stats-range-message" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <div class="stats-filter-block">
+            <p class="filter-label">Restaurants analysés</p>
+            <div class="multi-select" id="stats-restaurant-picker">
+              <button type="button" class="multi-select-trigger" id="stats-restaurant-toggle" aria-haspopup="true"
+                aria-expanded="false">
+                <span id="stats-selected-summary">Tous les restaurants</span>
+                <span class="multi-select-caret" aria-hidden="true"></span>
+              </button>
+              <div class="multi-select-panel" id="stats-restaurant-panel" hidden>
+                <div class="multi-select-search">
+                  <input type="search" id="stats-restaurant-search" placeholder="Rechercher un établissement" />
+                </div>
+                <div class="multi-select-actions">
+                  <button type="button" data-action="select-all">Tout sélectionner</button>
+                  <button type="button" data-action="clear-all">Effacer</button>
+                </div>
+                <ul class="multi-select-options" id="stats-restaurant-options" role="listbox"
+                  aria-multiselectable="true">
+                  <li class="muted">Aucun restaurant disponible.</li>
+                </ul>
+              </div>
+            </div>
+            <p class="form-hint" id="stats-selection-hint">Affichage global</p>
           </div>
         </div>
+
         <div class="kpi-grid stats-kpis">
           <article class="kpi-card">
             <p class="kpi-label">Conversations</p>
@@ -486,23 +540,58 @@
             <h3 id="stats-average-messages">—</h3>
             <p class="kpi-detail">Intensité moyenne des échanges</p>
           </article>
+          <article class="kpi-card">
+            <p class="kpi-label">Restaurants actifs</p>
+            <h3 id="stats-active-restaurants">—</h3>
+            <p class="kpi-detail">Établissements avec des conversations</p>
+          </article>
         </div>
-        <div class="card-grid stats-detail-grid">
+
+        <div class="stats-visual-grid">
+          <article class="card stats-chart-card">
+            <div class="card-header">
+              <div>
+                <h3>Volume de conversations</h3>
+                <p class="muted">Conversations et messages quotidiens.</p>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="stats-activity-chart" aria-label="Évolution des conversations" role="img" height="280"></canvas>
+              <p class="chart-empty" id="stats-activity-empty" hidden>Aucune interaction sur cette
+                période.</p>
+            </div>
+          </article>
+
+          <article class="card stats-breakdown-card">
+            <div class="card-header">
+              <div>
+                <h3>Répartition par restaurant</h3>
+                <p class="muted">Poids des conversations sur la période.</p>
+              </div>
+            </div>
+            <ul class="stats-breakdown-list" id="stats-restaurant-breakdown">
+              <li class="muted">Sélectionnez au moins un restaurant pour voir le détail.</li>
+            </ul>
+          </article>
+
           <article class="card">
             <div class="card-header">
               <h3>Questions les plus posées</h3>
+              <p class="muted">Tendances détectées automatiquement.</p>
             </div>
             <ul class="top-questions" id="stats-top-questions">
               <li>Collecte des tendances en cours…</li>
             </ul>
           </article>
+
           <article class="card chart-card">
             <div class="card-header">
-              <h3>Régimes alimentaires demandés</h3>
+              <h3>Régimes alimentaires</h3>
               <span class="badge">Top 5</span>
             </div>
             <div class="diet-chart" id="stats-diet-breakdown" aria-hidden="true"></div>
           </article>
+
           <article class="card">
             <div class="card-header">
               <h3>Restaurants les plus sollicités</h3>
@@ -511,6 +600,7 @@
               <li>En attente de données.</li>
             </ul>
           </article>
+
           <article class="card resolution-card">
             <div class="card-header">
               <h3>Taux de résolution</h3>
@@ -565,37 +655,52 @@
         <div class="section-header">
           <div>
             <h2>Profil du compte</h2>
-            <p>Mettez à jour vos informations pour personnaliser votre expérience RestauBot.</p>
+            <p>Identité, coordonnées et fuseau horaire sont utilisés pour les emails, horaires et métriques.</p>
           </div>
         </div>
-        <form class="form-grid" id="profile-form" novalidate>
-          <label>
-            <span>Nom & prénom</span>
-            <input type="text" id="profile-full-name" placeholder="Jean Dupont" autocomplete="name" />
-          </label>
-          <label>
-            <span>Email</span>
-            <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email" />
-          </label>
-          <label>
-            <span>Nom de l'entreprise</span>
-            <input type="text" id="profile-company" placeholder="Groupe Saveurs" autocomplete="organization" />
-          </label>
-          <label>
-            <span>Pays</span>
-            <input type="text" id="profile-country" placeholder="France" autocomplete="country" />
-          </label>
-          <label>
-            <span>Fuseau horaire</span>
-            <select id="profile-timezone">
-              <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
-              <option value="Europe/Brussels">Europe/Bruxelles (UTC+1)</option>
-              <option value="Europe/Zurich">Europe/Zurich (UTC+1)</option>
-            </select>
-          </label>
+        <form class="profile-form" id="profile-form" novalidate>
+          <div class="form-grid">
+            <label>
+              <span>Nom & prénom</span>
+              <input type="text" id="profile-full-name" placeholder="Jean Dupont" autocomplete="name" />
+              <p class="field-error" data-profile-error="full_name"></p>
+            </label>
+            <label>
+              <span>Email (lecture seule)</span>
+              <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email" readonly />
+            </label>
+            <label>
+              <span>Nom de l'entreprise</span>
+              <input type="text" id="profile-company" placeholder="Groupe Saveurs" autocomplete="organization" />
+            </label>
+            <label>
+              <span>Pays</span>
+              <input type="text" id="profile-country" placeholder="France" autocomplete="country" />
+            </label>
+            <label>
+              <span>Téléphone</span>
+              <input type="tel" id="profile-phone" placeholder="+33 1 23 45 67 89" autocomplete="tel" />
+              <p class="field-error" data-profile-error="phone_number"></p>
+            </label>
+            <label>
+              <span>Fuseau horaire</span>
+              <select id="profile-timezone" required>
+                <option value="">Sélectionnez votre zone</option>
+                <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+                <option value="Europe/Brussels">Europe/Bruxelles (UTC+1)</option>
+                <option value="Europe/Zurich">Europe/Zurich (UTC+1)</option>
+                <option value="Europe/London">Europe/Londres (UTC+0)</option>
+                <option value="America/Montreal">Amérique/Montréal (UTC-5)</option>
+              </select>
+              <p class="field-error" data-profile-error="timezone"></p>
+            </label>
+          </div>
           <div class="form-footer">
-            <button class="primary-btn" type="submit">Enregistrer les modifications</button>
-            <p class="form-hint" id="profile-form-message"></p>
+            <div class="profile-feedback" id="profile-form-message" role="status" aria-live="polite"></div>
+            <div class="profile-actions">
+              <button class="ghost-btn" type="reset">Réinitialiser</button>
+              <button class="primary-btn" type="submit">Enregistrer les modifications</button>
+            </div>
           </div>
         </form>
       </section>
