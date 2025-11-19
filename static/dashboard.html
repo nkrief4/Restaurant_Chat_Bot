@@ -16,6 +16,13 @@
 </head>
 
 <body>
+  <div class="dashboard-loading-overlay" id="dashboard-loading-overlay" role="status" aria-live="polite"
+    aria-busy="true">
+    <div class="loading-indicator">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <p>Chargement des données du dashboard…</p>
+    </div>
+  </div>
   <div class="dashboard">
     <aside class="sidebar" id="dashboard-sidebar" aria-label="Navigation principale">
       <div class="logo">
@@ -51,14 +58,14 @@
         </button>
         <div class="topbar-content">
           <p class="eyebrow">RestauBot</p>
-          <h1 id="welcome-title">Bonjour, Jean Dupont</h1>
+          <h1 id="welcome-title">Bonjour</h1>
           <p class="subtitle" id="welcome-subtitle">Gérez vos restaurants, vos conversations IA et votre abonnement en
             toute simplicité.</p>
         </div>
         <div class="topbar-actions">
           <div class="user-pill">
-            <span class="user-name" id="user-pill-name">Jean Dupont</span>
-            <span class="user-plan" id="user-plan-label">Plan Pro</span>
+            <span class="user-name" id="user-pill-name">—</span>
+            <span class="user-plan" id="user-plan-label">—</span>
           </div>
           <button type="button" class="ghost-btn" id="logout-btn">Se déconnecter</button>
         </div>
@@ -85,6 +92,7 @@
                 </label>
               </div>
             </form>
+            <p class="form-error" id="date-filter-message" role="status" aria-live="polite"></p>
             <div class="overview-meta">
               <div class="meta-pill">
                 <span class="meta-label">Conversations / jour</span>
@@ -130,7 +138,12 @@
                   <p class="muted">Évolution quotidienne sur la période sélectionnée.</p>
                 </div>
               </div>
-              <div id="overview-conversation-chart" class="chart-placeholder" aria-live="polite"></div>
+              <div class="chart-placeholder" aria-live="polite">
+                <canvas id="overview-conversation-chart" role="img"
+                  aria-label="Évolution quotidienne des conversations" height="280"></canvas>
+                <p class="chart-empty" id="overview-conversation-empty" hidden>Aucune donnée disponible sur cette période.
+                </p>
+              </div>
             </article>
 
             <div class="overview-columns">
@@ -190,7 +203,7 @@
                 <p class="muted">Résumé du plan en cours pour ce compte.</p>
               </div>
               <div class="plan-details">
-                <p class="plan-name" id="overview-plan-name">Plan Pro</p>
+                <p class="plan-name" id="overview-plan-name">—</p>
                 <p class="muted" id="overview-plan-detail">—</p>
               </div>
             </article>
@@ -590,15 +603,30 @@
   </div>
 
   <div class="modal" id="chatbot-modal" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="modal-content">
+    <div class="modal-content qr-modal" role="document">
       <button class="modal-close" data-modal-close aria-label="Fermer le modal">&times;</button>
-      <h3>Chatbot — <span id="modal-restaurant-name">Nom du restaurant</span></h3>
-      <div class="chat-mock">
-        <div class="chat-bubble bot">Bonjour, je suis votre assistant RestauBot. Que puis-je faire pour vous ?</div>
-        <div class="chat-bubble user">Bonjour, avez-vous des options vegan ?</div>
-        <div class="chat-bubble bot">Oui, nous proposons un risotto de saison et un burger vegan. Souhaitez-vous en
-          savoir plus ?</div>
-        <div class="chat-input">Zone de saisie fictive</div>
+      <div>
+        <p class="eyebrow">Partage client</p>
+        <h3>QR code — <span id="modal-restaurant-name">Nom du restaurant</span></h3>
+        <p class="muted">Scannez ce QR code pour accéder au chatbot de l'établissement.</p>
+      </div>
+      <div class="qr-modal-body">
+        <div class="qr-visual" aria-live="polite">
+          <div class="qr-frame">
+            <img id="qr-code-image" alt="QR code du chatbot" loading="lazy" hidden />
+            <div id="qr-code-placeholder" class="qr-placeholder">QR en préparation…</div>
+          </div>
+          <p class="muted small">Le QR code se met à jour automatiquement selon le restaurant sélectionné.</p>
+        </div>
+        <div class="qr-share">
+          <label for="qr-share-link">Lien direct à partager</label>
+          <div class="qr-share-row">
+            <input id="qr-share-link" type="text" readonly value="" />
+            <button type="button" class="ghost-btn" data-action="copy-qr-link">Copier</button>
+          </div>
+          <p class="form-hint" id="qr-copy-status">&nbsp;</p>
+          <button type="button" class="secondary-btn" data-action="open-qr-link">Ouvrir la page du chatbot</button>
+        </div>
       </div>
     </div>
   </div>

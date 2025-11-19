@@ -13,65 +13,39 @@
     <script src="/static/js/supabaseClient.js" defer></script>
     <script src="/static/js/chat.js" defer></script>
   </head>
-  <body class="chat-simple">
-    <main class="tester-shell">
-      <section class="tester-card tester-hero">
-        <div class="hero-text">
-          <p class="assistant-label">ASSISTANT RESTAUBOT</p>
-          <h1 id="chat-restaurant-name">Sélectionnez un établissement</h1>
-          <p class="hero-subtitle">Testez vos réponses en direct avant de publier l'assistant.</p>
-        </div>
-        <div class="hero-controls">
-          <div class="hero-selector">
-            <label class="sr-only" for="restaurant-selector">Restaurant</label>
-            <select id="restaurant-selector" class="hero-select" aria-label="Choisir le restaurant">
-              <option value="">Chargement…</option>
-            </select>
-            <span id="user-email" class="hero-email">—</span>
-          </div>
-          <div class="hero-actions">
-            <button id="clear-chat" class="chat-btn ghost">Effacer</button>
-            <a href="/dashboard" class="chat-btn outline">Retour au dashboard</a>
-            <button id="logout-btn" class="chat-btn danger">Déconnexion</button>
+  <body class="chat-experience client-view">
+    <div id="chat-loading-overlay" class="chat-loading-overlay" role="status" aria-live="polite">
+      <div class="chat-loading-spinner" aria-hidden="true"></div>
+      <p>Chargement de l'expérience RestauBot…</p>
+    </div>
+
+    <header class="chat-hero client">
+      <div class="chat-hero-inner client">
+        <div class="client-branding">
+          <div class="client-brand-mark">RestauBot</div>
+          <div>
+            <h1 id="chat-restaurant-name">Restaurant en cours de chargement…</h1>
           </div>
         </div>
-      </section>
+      </div>
+    </header>
 
-      <section class="tester-card suggestion-card">
-        <div class="card-header">
-          <h2>Questions suggérées</h2>
-          <p>Inspirez-vous de nos scénarios pour challenger votre assistant.</p>
+    <main class="chat-stage" aria-label="Démo client RestauBot">
+      <section class="chat-panel" aria-label="Conversation avec le chatbot">
+        <div class="chat-panel-header">
+          <div>
+            <p class="status-label">Canal client</p>
+            <div id="chat-status" class="chat-status" role="status">Chargement du chatbot…</div>
+          </div>
+          <div class="session-chip" aria-hidden="true">Sécurisé SSL</div>
         </div>
-        <div class="chat-suggestions">
-          <button type="button" class="suggestion-chip" data-suggestion="Quels plats dois-je choisir si j'évite totalement la viande ?">
-            Repas sans viande
-          </button>
-          <button type="button" class="suggestion-chip" data-suggestion="Propose une entrée et un plat sans fromage ni lactose.">
-            Sans fromage / lactose
-          </button>
-          <button type="button" class="suggestion-chip" data-suggestion="Peux-tu bâtir un menu complet sans gluten pour ce soir ?">
-            Menu sans gluten
-          </button>
-          <button type="button" class="suggestion-chip" data-suggestion="Quels desserts recommandes-tu pour quelqu'un allergique aux noix ?">
-            Desserts sans noix
-          </button>
-        </div>
-      </section>
-
-      <section class="tester-card chat-panel" aria-label="Conversation avec le chatbot">
-        <div id="chat-status" class="chat-status" role="status">Chargement du chatbot…</div>
         <div class="chat-body">
           <div id="chat-messages" class="chat-messages" aria-live="polite" aria-label="Historique des messages"></div>
           <div id="chat-empty-state" class="chat-empty">
-            <p>Posez une question pour commencer ou sélectionnez une suggestion ci-dessus.</p>
+            <h3>Bienvenue 👋</h3>
+            <p>Posez votre question au serveur virtuel du restaurant puis explorez la carte à droite.</p>
           </div>
-          <div
-            id="typing-indicator"
-            class="typing-indicator"
-            role="status"
-            aria-live="polite"
-            hidden
-          >
+          <div id="typing-indicator" class="typing-indicator" role="status" aria-live="polite" hidden>
             <div class="typing-avatar" aria-hidden="true">
               <span>AI</span>
             </div>
@@ -85,19 +59,37 @@
         </div>
         <form id="chat-form" class="chat-input-area" autocomplete="off">
           <label for="chat-input" class="sr-only">Votre message</label>
-          <textarea
-            id="chat-input"
-            name="message"
-            placeholder="Décrivez votre besoin culinaire et appuyez sur Entrée"
-            rows="1"
-            autocomplete="off"
-            required
-          ></textarea>
-          <button type="submit" id="chat-send" class="chat-btn primary">Envoyer</button>
+          <textarea id="chat-input" name="message"
+            placeholder="Demandez une recommandation, une allergie ou un service personnalisé" rows="1"
+            autocomplete="off" required></textarea>
+          <div class="chat-input-actions">
+            <button type="submit" id="chat-send" class="chat-btn primary">Envoyer</button>
+          </div>
         </form>
       </section>
+
+      <aside class="menu-panel" aria-label="Carte numérique du restaurant">
+        <div class="menu-panel-header">
+          <div>
+            <p class="status-label">Carte synchronisée</p>
+            <h2>Carte du restaurant</h2>
+          </div>
+          <div class="menu-panel-meta">
+            <span id="menu-updated-at" class="menu-badge">Mise à jour en temps réel</span>
+          </div>
+        </div>
+        <div id="menu-scroll" class="menu-scroll" tabindex="0">
+          <div id="menu-empty-state" class="menu-empty">
+            <h3>Carte indisponible</h3>
+            <p>La carte n'est pas disponible pour le moment. Merci de demander à l'équipe en salle.</p>
+          </div>
+          <div id="menu-sections" class="menu-sections" hidden></div>
+        </div>
+      </aside>
     </main>
 
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <footer class="chat-client-footer">
+      <p>Propulsé par <a href="/" rel="home">RestauBot</a> — Assistance digitale pour restaurants.</p>
+    </footer>
   </body>
 </html>

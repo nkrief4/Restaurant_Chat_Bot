@@ -33,6 +33,25 @@
     },
   };
 
+  let overviewConversationChart = null;
+  let chartJsReadyPromise = null;
+
+  const CHAT_PAGE_PATH = "/dashboard/chat";
+
+  const shareModalState = {
+    element: null,
+    nameEl: null,
+    qrImage: null,
+    placeholder: null,
+    linkInput: null,
+    copyStatus: null,
+    copyBtn: null,
+    openLinkBtn: null,
+    currentUrl: "",
+    trigger: null,
+    statusTimeout: null,
+  };
+
   function forEachNode(list, handler) {
     if (!list || typeof handler !== "function") {
       return;
@@ -58,6 +77,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     navigateToSection = setupNavigation();
     setupActionHandlers();
+    setupQrModal();
     bindGlobalButtons();
     bindOverviewUI();
     bindChatbotUI();
@@ -278,6 +298,66 @@
     });
   }
 
+  function setupQrModal() {
+    const modal = document.getElementById("chatbot-modal");
+    if (!modal) {
+      return;
+    }
+    shareModalState.element = modal;
+    shareModalState.nameEl = document.getElementById("modal-restaurant-name");
+    shareModalState.qrImage = document.getElementById("qr-code-image");
+    shareModalState.placeholder = document.getElementById("qr-code-placeholder");
+    shareModalState.linkInput = document.getElementById("qr-share-link");
+    shareModalState.copyStatus = document.getElementById("qr-copy-status");
+    shareModalState.copyBtn = modal.querySelector("[data-action='copy-qr-link']");
+    shareModalState.openLinkBtn = modal.querySelector("[data-action='open-qr-link']");
+
+    const closeButtons = modal.querySelectorAll("[data-modal-close]");
+    closeButtons.forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        closeQrModal();
+      });
+    });
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeQrModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isQrModalOpen()) {
+        closeQrModal();
+      }
+    });
+
+    if (shareModalState.copyBtn) {
+      shareModalState.copyBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        copyQrLinkToClipboard();
+      });
+    }
+
+    if (shareModalState.openLinkBtn) {
+      shareModalState.openLinkBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        openQrLinkInNewTab();
+      });
+    }
+
+    if (shareModalState.qrImage) {
+      shareModalState.qrImage.addEventListener("load", () => {
+        shareModalState.qrImage.hidden = false;
+        hideQrPlaceholder();
+      });
+      shareModalState.qrImage.addEventListener("error", () => {
+        shareModalState.qrImage.hidden = true;
+        showQrPlaceholder("Impossible de générer le QR code.");
+      });
+    }
+  }
+
   function bindGlobalButtons() {
     const logoutBtn = document.getElementById("logout-btn");
     if (!logoutBtn) {
@@ -367,7 +447,7 @@
     if (!state.filters.startDate || !state.filters.endDate) {
       const today = new Date();
       const fallbackStart = new Date(today.getTime());
-      fallbackStart.setDate(today.getDate() - 29);
+      fallbackStart.setDate(today.getDate() - 6);
       state.filters.startDate = formatInputDate(fallbackStart);
       state.filters.endDate = formatInputDate(today);
     }
@@ -379,9 +459,15 @@
       const startValue = startInput.value;
       const endValue = endInput.value;
       const error = validateRange(startValue, endValue);
+      
       if (messageEl) {
-        messageEl.textContent = error || "";
+        if (error) {
+          messageEl.innerHTML = `<div class="date-error-message">${error.message}</div>`;
+        } else {
+          messageEl.innerHTML = '';
+        }
       }
+      
       if (error) {
         return;
       }
@@ -430,20 +516,32 @@
 
   function validateRange(startValue, endValue) {
     if (!startValue || !endValue) {
-      return "Veuillez sélectionner deux dates.";
+      return { 
+        message: "Veuillez sélectionner deux dates.",
+        type: "error"
+      };
     }
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return "Dates invalides.";
+      return { 
+        message: "Dates invalides.",
+        type: "error"
+      };
     }
     if (startDate > endDate) {
-      return "La date de début doit précéder la date de fin.";
+      return { 
+        message: "La date de début doit précéder la date de fin.",
+        type: "error"
+      };
     }
     const diff = endDate.getTime() - startDate.getTime();
     const maxDuration = 365 * 24 * 60 * 60 * 1000;
     if (diff > maxDuration) {
-      return "La période ne peut pas dépasser 12 mois.";
+      return { 
+        message: "La période ne peut pas dépasser 12 mois.",
+        type: "error"
+      };
     }
     return null;
   }
@@ -466,10 +564,54 @@
     return data.session.user;
   }
 
+  function setDashboardLoading(isLoading, options = {}) {
+    const overlay = document.getElementById("dashboard-loading-overlay");
+    const { useOverlay = true } = options;
+    const shouldShowOverlay = Boolean(isLoading && useOverlay);
+
+    if (overlay) {
+      const hideTimeoutId = overlay.dataset.hideTimeoutId
+        ? Number(overlay.dataset.hideTimeoutId)
+        : null;
+      if (hideTimeoutId) {
+        window.clearTimeout(hideTimeoutId);
+        delete overlay.dataset.hideTimeoutId;
+      }
+
+      if (shouldShowOverlay) {
+        overlay.removeAttribute("hidden");
+        overlay.classList.remove("is-hidden");
+        overlay.setAttribute("aria-hidden", "false");
+        overlay.setAttribute("aria-busy", "true");
+      } else {
+        overlay.classList.add("is-hidden");
+        overlay.setAttribute("aria-hidden", "true");
+        overlay.setAttribute("aria-busy", "false");
+        const timeoutId = window.setTimeout(() => {
+          overlay.setAttribute("hidden", "true");
+          delete overlay.dataset.hideTimeoutId;
+        }, 280);
+        overlay.dataset.hideTimeoutId = String(timeoutId);
+      }
+    }
+
+    if (document && document.body) {
+      if (shouldShowOverlay) {
+        document.body.classList.add("dashboard-loading");
+      } else {
+        document.body.classList.remove("dashboard-loading");
+      }
+    }
+  }
+
   async function refreshDashboardData(options = {}) {
     const { silent = false } = options;
     if (state.isFetchingSnapshot) {
       return;
+    }
+    const shouldShowOverlay = !silent;
+    if (shouldShowOverlay) {
+      setDashboardLoading(true, { useOverlay: true });
     }
     const tbody = document.getElementById("restaurants-table-body");
     if (tbody && !silent) {
@@ -519,6 +661,9 @@
       throw error;
     } finally {
       state.isFetchingSnapshot = false;
+      if (shouldShowOverlay) {
+        setDashboardLoading(false, { useOverlay: true });
+      }
     }
   }
 
@@ -963,7 +1108,16 @@ function redirectToLogin() {
         launchChatTester(restaurant.id, restaurant.display_name || restaurant.name);
       });
 
-      actions.append(editBtn, testerBtn);
+      const shareBtn = document.createElement("button");
+      shareBtn.type = "button";
+      shareBtn.className = "ghost-btn";
+      shareBtn.textContent = "QR clients";
+      shareBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        openQrModal(restaurant, event.currentTarget);
+      });
+
+      actions.append(editBtn, testerBtn, shareBtn);
 
       card.append(header, identifier, meta, actions);
       fragment.appendChild(card);
@@ -1487,9 +1641,12 @@ function redirectToLogin() {
     if (!indicator) {
       return;
     }
-    const visible = Boolean(shouldShow && state.chatbot.restaurantId && state.chatbot.hasInteracted);
-    indicator.hidden = !visible;
-    indicator.setAttribute("aria-hidden", (!visible).toString());
+    // L'indicateur ne doit apparaître que lorsqu'un message utilisateur est en cours d'envoi.
+    const canDisplay = Boolean(shouldShow && state.chatbot.hasInteracted);
+    indicator.hidden = !canDisplay;
+    indicator.setAttribute("aria-hidden", (!canDisplay).toString());
+    indicator.style.display = canDisplay ? "inline-flex" : "none";
+    indicator.classList.toggle("is-visible", canDisplay);
   }
 
   function updateChatbotEmptyState() {
@@ -1964,31 +2121,205 @@ function redirectToLogin() {
     updateBusiestSections(busiestEntries);
   }
 
-  function renderConversationChart(timeline) {
-    const container = document.getElementById("overview-conversation-chart");
-    if (!container) {
+  async function ensureChartJsLibrary() {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    if (typeof window.Chart !== "undefined") {
+      return window.Chart;
+    }
+    if (chartJsReadyPromise) {
+      return chartJsReadyPromise;
+    }
+
+    chartJsReadyPromise = new Promise((resolve, reject) => {
+      const existingScript = document.querySelector("script[data-chartjs]") || document.querySelector("script[src*='chart.umd']");
+
+      const attachListeners = (script) => {
+        if (!script) {
+          reject(new Error("CHARTJS_SCRIPT_MISSING"));
+          return;
+        }
+        script.addEventListener(
+          "load",
+          () => {
+            if (typeof window.Chart !== "undefined") {
+              resolve(window.Chart);
+            } else {
+              reject(new Error("CHARTJS_UNAVAILABLE"));
+            }
+          },
+          { once: true },
+        );
+        script.addEventListener(
+          "error",
+          () => {
+            reject(new Error("CHARTJS_LOAD_FAILED"));
+          },
+          { once: true },
+        );
+      };
+
+      if (existingScript) {
+        attachListeners(existingScript);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+      script.defer = true;
+      script.dataset.chartjs = "true";
+      document.head.appendChild(script);
+      attachListeners(script);
+    })
+      .then((lib) => {
+        return lib;
+      })
+      .catch((error) => {
+        chartJsReadyPromise = null;
+        throw error;
+      });
+
+    return chartJsReadyPromise;
+  }
+
+  function setConversationEmptyState(isVisible, message) {
+    const emptyState = document.getElementById("overview-conversation-empty");
+    if (!emptyState) {
+      return;
+    }
+    if (isVisible) {
+      emptyState.hidden = false;
+      emptyState.style.display = "flex";
+      emptyState.setAttribute("aria-hidden", "false");
+      if (message) {
+        emptyState.textContent = message;
+      }
+    } else {
+      emptyState.hidden = true;
+      emptyState.style.display = "none";
+      emptyState.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  async function renderConversationChart(timeline) {
+    const canvas = document.getElementById("overview-conversation-chart");
+    if (!canvas) {
       return;
     }
 
-    const entries = Array.isArray(timeline) && timeline.length ? timeline : [];
-    const fallback = entries.length ? entries : Array.from({ length: 10 }, () => ({ label: "", count: 0 }));
-    const maxValue = fallback.reduce((acc, entry) => {
-      const value = typeof entry.count === "number" ? entry.count : entry.conversations || 0;
-      return Math.max(acc, value);
-    }, 0)
-      || 1;
+    let ChartLib = null;
+    try {
+      ChartLib = await ensureChartJsLibrary();
+    } catch (error) {
+      console.error("Chart.js failed to load", error);
+      setConversationEmptyState(true, "Graphique indisponible pour le moment.");
+      return;
+    }
 
-    container.innerHTML = "";
-    fallback.forEach((entry) => {
-      const bar = document.createElement("span");
-      const rawValue = typeof entry.count === "number" ? entry.count : entry.conversations || 0;
-      const value = Number.isFinite(rawValue) ? rawValue : 0;
-      const height = Math.max(6, Math.round((value / maxValue) * 100));
-      bar.style.height = `${height}%`;
-      const label = entry.label || entry.date || "";
-      bar.title = label ? `${label} · ${value}` : `${value}`;
-      container.appendChild(bar);
+    if (!ChartLib) {
+      setConversationEmptyState(true, "Graphique indisponible.");
+      return;
+    }
+
+    const entries = Array.isArray(timeline) ? timeline.filter(Boolean) : [];
+    const hasData = entries.length > 0;
+    setConversationEmptyState(!hasData, "Aucune donnée disponible sur cette période.");
+
+    const labels = (hasData ? entries : Array.from({ length: 7 }, () => ({}))).map((entry, index) => {
+      const rawLabel = entry.label || entry.date;
+      if (rawLabel) {
+        return rawLabel;
+      }
+      return `Jour ${index + 1}`;
     });
+    const values = (hasData ? entries : Array.from({ length: labels.length }, () => ({ count: 0 }))).map((entry) => {
+      if (!entry) {
+        return 0;
+      }
+      const value = typeof entry.count === "number" ? entry.count : entry.conversations || 0;
+      return Number.isFinite(value) ? value : 0;
+    });
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    const chartData = {
+      labels,
+      datasets: [
+        {
+          label: "Conversations",
+          data: values,
+          backgroundColor: "rgba(58, 117, 255, 0.65)",
+          hoverBackgroundColor: "rgba(58, 117, 255, 0.9)",
+          borderRadius: 12,
+          borderSkipped: false,
+          barThickness: values.length > 30 ? 12 : undefined,
+        },
+      ],
+    };
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 500,
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            maxRotation: 0,
+            minRotation: 0,
+            autoSkip: true,
+            color: "#6b7280",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0,
+            color: "#6b7280",
+          },
+          grid: {
+            color: "rgba(15, 23, 42, 0.08)",
+            drawBorder: false,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          callbacks: {
+            label(context) {
+              const value = context.raw;
+              return `${value} conversation${value > 1 ? "s" : ""}`;
+            },
+          },
+        },
+      },
+    };
+
+    if (overviewConversationChart) {
+      overviewConversationChart.data.labels = chartData.labels;
+      overviewConversationChart.data.datasets[0].data = chartData.datasets[0].data;
+      overviewConversationChart.update();
+      setConversationEmptyState(false);
+      return;
+    }
+
+    overviewConversationChart = new ChartLib(context, {
+      type: "bar",
+      data: chartData,
+      options: chartOptions,
+    });
+    setConversationEmptyState(false);
   }
 
   function renderStatistics(statistics) {
@@ -2530,36 +2861,182 @@ function redirectToLogin() {
   }
 
   function launchChatTester(restaurantId, restaurantName) {
-    const available = Array.isArray(state.restaurants) ? state.restaurants : [];
-    if (!restaurantId && !available.length) {
+    const target = resolveRestaurantRecord(restaurantId);
+    if (!target) {
       showToast("Ajoutez un restaurant pour tester le chatbot.");
       return;
     }
 
-    const normalizedId = restaurantId ? String(restaurantId) : "";
-    let target = normalizedId
-      ? available.find((entry) => String(entry.id) === normalizedId)
-      : null;
-    if (!target && normalizedId) {
-      target = available.find((entry) => entry.id);
+    const resolvedName = getRestaurantDisplayName(target, restaurantName);
+    const url = buildChatbotPageUrl(target, resolvedName);
+    window.open(url.toString(), "_blank", "noopener");
+  }
+
+  function resolveRestaurantRecord(restaurantId) {
+    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+    if (!restaurants.length) {
+      return null;
     }
-    if (!target && available.length) {
-      target = available[0];
+    if (restaurantId) {
+      const normalizedId = String(restaurantId);
+      const match = restaurants.find((entry) => entry && String(entry.id) === normalizedId);
+      if (match) {
+        return match;
+      }
     }
-    if (!target) {
-      showToast("Impossible de trouver un restaurant à tester.");
+    return restaurants.find((entry) => entry && entry.id) || restaurants[0] || null;
+  }
+
+  function getRestaurantDisplayName(restaurant, fallbackName) {
+    if (!restaurant && !fallbackName) {
+      return "Restaurant";
+    }
+    return (restaurant?.display_name || restaurant?.name || fallbackName || "Restaurant").trim();
+  }
+
+  function buildChatbotPageUrl(restaurant, fallbackName) {
+    const url = new URL(CHAT_PAGE_PATH, window.location.origin);
+    if (restaurant?.id) {
+      url.searchParams.set("restaurant_id", restaurant.id);
+    }
+    const name = getRestaurantDisplayName(restaurant, fallbackName);
+    if (name) {
+      url.searchParams.set("restaurant_name", name);
+    }
+    return url;
+  }
+
+  function openQrModal(restaurant, triggerButton) {
+    if (!shareModalState.element) {
+      showToast("Impossible d'ouvrir le QR code pour le moment.");
       return;
     }
+    const resolvedName = getRestaurantDisplayName(restaurant);
+    const shareUrl = buildChatbotPageUrl(restaurant, resolvedName).toString();
 
-    const resolvedName = restaurantName || target.display_name || target.name || "Restaurant";
-    const url = new URL("/chat", window.location.origin);
-    if (target.id) {
-      url.searchParams.set("restaurant_id", target.id);
+    shareModalState.trigger = triggerButton || null;
+    shareModalState.currentUrl = shareUrl;
+
+    if (shareModalState.nameEl) {
+      shareModalState.nameEl.textContent = resolvedName;
     }
-    if (resolvedName) {
-      url.searchParams.set("restaurant_name", resolvedName);
+    if (shareModalState.linkInput) {
+      shareModalState.linkInput.value = shareUrl;
+      shareModalState.linkInput.setAttribute("title", shareUrl);
     }
-    window.open(url.toString(), "_blank", "noopener");
+    updateQrCopyStatus("");
+    updateQrVisualWithUrl(shareUrl);
+
+    shareModalState.element.classList.add("open");
+    shareModalState.element.setAttribute("aria-hidden", "false");
+  }
+
+  function closeQrModal() {
+    if (!shareModalState.element) {
+      return;
+    }
+    shareModalState.element.classList.remove("open");
+    shareModalState.element.setAttribute("aria-hidden", "true");
+    shareModalState.currentUrl = "";
+    updateQrCopyStatus("");
+    const trigger = shareModalState.trigger;
+    shareModalState.trigger = null;
+    if (trigger && typeof trigger.focus === "function") {
+      window.requestAnimationFrame(() => trigger.focus());
+    }
+  }
+
+  function isQrModalOpen() {
+    return Boolean(
+      shareModalState.element &&
+        (shareModalState.element.classList.contains("open") || shareModalState.element.getAttribute("aria-hidden") === "false")
+    );
+  }
+
+  function updateQrVisualWithUrl(url) {
+    if (!shareModalState.qrImage) {
+      return;
+    }
+    if (!url) {
+      shareModalState.qrImage.hidden = true;
+      showQrPlaceholder("Lien du chatbot indisponible.");
+      return;
+    }
+    showQrPlaceholder("QR en préparation…");
+    shareModalState.qrImage.hidden = true;
+    const encoded = encodeURIComponent(url);
+    shareModalState.qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encoded}`;
+  }
+
+  function showQrPlaceholder(text) {
+    if (!shareModalState.placeholder) {
+      return;
+    }
+    shareModalState.placeholder.hidden = false;
+    shareModalState.placeholder.textContent = text || "QR en préparation…";
+  }
+
+  function hideQrPlaceholder() {
+    if (shareModalState.placeholder) {
+      shareModalState.placeholder.hidden = true;
+    }
+  }
+
+  async function copyQrLinkToClipboard() {
+    if (!shareModalState.currentUrl) {
+      updateQrCopyStatus("Lien indisponible pour le moment.");
+      return;
+    }
+    const linkToCopy = shareModalState.currentUrl;
+    try {
+      const canUseClipboardAPI = Boolean(
+        navigator.clipboard && (typeof window.isSecureContext === "undefined" || window.isSecureContext)
+      );
+      if (canUseClipboardAPI) {
+        await navigator.clipboard.writeText(linkToCopy);
+      } else if (shareModalState.linkInput) {
+        shareModalState.linkInput.focus();
+        shareModalState.linkInput.select();
+        const succeeded = document.execCommand("copy");
+        if (!succeeded) {
+          throw new Error("COPY_UNAVAILABLE");
+        }
+      } else {
+        throw new Error("COPY_UNAVAILABLE");
+      }
+      updateQrCopyStatus("Lien copié dans le presse-papiers.");
+    } catch (error) {
+      console.warn("Unable to copy QR link", error);
+      updateQrCopyStatus("Sélectionnez et copiez le lien manuellement.");
+    }
+  }
+
+  function updateQrCopyStatus(message) {
+    if (!shareModalState.copyStatus) {
+      return;
+    }
+    if (shareModalState.statusTimeout) {
+      window.clearTimeout(shareModalState.statusTimeout);
+      shareModalState.statusTimeout = null;
+    }
+    const content = message ? message : "\u00A0";
+    shareModalState.copyStatus.textContent = content;
+    if (message) {
+      shareModalState.statusTimeout = window.setTimeout(() => {
+        if (shareModalState.copyStatus) {
+          shareModalState.copyStatus.textContent = "\u00A0";
+        }
+        shareModalState.statusTimeout = null;
+      }, 3200);
+    }
+  }
+
+  function openQrLinkInNewTab() {
+    if (!shareModalState.currentUrl) {
+      updateQrCopyStatus("Lien indisponible.");
+      return;
+    }
+    window.open(shareModalState.currentUrl, "_blank", "noopener");
   }
 
   function showToast(message) {
@@ -2576,6 +3053,7 @@ function redirectToLogin() {
 
   function handleInitializationError(error) {
     console.error("Dashboard failed to initialize", error);
+    setDashboardLoading(false, { useOverlay: true });
     if (error && error.code === "AUTH_REQUIRED") {
       window.location.href = "/login";
       return;
