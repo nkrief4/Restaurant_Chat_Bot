@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RestauBot | Détail de commande</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/purchasing.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="/static/js/supabaseClient.js" defer></script>
+  <script type="module" src="/static/js/order_details.js"></script>
+</head>
+
+<body class="order-details-body">
+  <main class="order-details" id="order-details">
+    <header>
+      <p class="eyebrow">RestauBot</p>
+      <h1>Détails de la commande</h1>
+      <p id="order-meta">Chargement…</p>
+    </header>
+    <section class="order-info">
+      <p><strong>Fournisseur :</strong> <span id="order-supplier">—</span></p>
+      <p><strong>Statut :</strong> <span id="order-status">—</span></p>
+      <p><strong>Livraison attendue :</strong> <span id="order-expected-date">—</span></p>
+    </section>
+    <section class="order-lines-section">
+      <h2>Articles commandés</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Ingrédient</th>
+            <th>Quantité</th>
+            <th>Unité</th>
+          </tr>
+        </thead>
+        <tbody id="order-lines-body">
+          <tr>
+            <td colspan="3">Chargement des lignes…</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="email-section">
+      <h2>Email fournisseur</h2>
+      <textarea id="order-email" readonly rows="8"></textarea>
+      <button type="button" id="copy-email" class="primary-btn">Copier le message</button>
+      <p id="copy-status" class="form-message" role="status"></p>
+    </section>
+  </main>
+</body>
+
+</html>

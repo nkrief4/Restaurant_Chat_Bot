@@ -138,6 +138,21 @@ async def build_statistics_view(
     }
 
 
+async def list_dashboard_restaurants(access_token: str) -> List[Dict[str, Any]]:
+    """Return the list of restaurants associated with the caller tenant."""
+
+    claims = _decode_claims(access_token)
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur Supabase invalide.")
+
+    tenant = await _fetch_tenant(access_token, user_id)
+    tenant_id = tenant.get("id") if tenant else None
+    if not tenant_id:
+        return []
+    return await _fetch_restaurants(access_token, tenant_id)
+
+
 async def create_restaurant(access_token: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Create a restaurant linked to the caller tenant."""
 
@@ -998,4 +1013,5 @@ __all__ = [
     "create_restaurant",
     "update_profile",
     "update_restaurant",
+    "list_dashboard_restaurants",
 ]

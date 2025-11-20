@@ -42,6 +42,9 @@
     },
     chatTesterWindow: null,
     isLaunchingChat: false,
+    restaurantForms: {
+      activeTab: "create",
+    },
   };
 
   let overviewConversationChart = null;
@@ -49,6 +52,15 @@
   let chartJsReadyPromise = null;
   let overviewTypingNode = null;
   const OVERVIEW_TYPING_LABEL = "RestauBot est en train d'écrire…";
+
+  const restaurantTabsRuntime = {
+    container: null,
+    buttons: [],
+    panels: [],
+    indicator: null,
+    panelsWrapper: null,
+    resizeObserver: null,
+  };
 
   const CHAT_PAGE_PATH = "/dashboard/chat";
   const CHAT_TESTER_WINDOW_NAME = "restaubot-chat-tester";
@@ -66,6 +78,14 @@
     currentUrl: "",
     trigger: null,
     statusTimeout: null,
+  };
+
+  const purchasingEmbedRuntime = {
+    iframe: null,
+    loader: null,
+    shell: null,
+    resizeObserver: null,
+    resizeInterval: null,
   };
 
   function forEachNode(list, handler) {
@@ -98,6 +118,8 @@
     bindOverviewUI();
     bindChatbotUI();
     bindStatisticsUI();
+    bindPurchasingSectionUI();
+    setupRestaurantTabs();
     setupDateFilters();
     initializeDashboard().catch(handleInitializationError);
   });
@@ -221,6 +243,11 @@
 
     function activateSection(sectionId) {
       let targetId = sectionId;
+      let pendingTab = null;
+      if (targetId === "create" || targetId === "edit") {
+        pendingTab = targetId === "edit" ? "edit" : "create";
+        targetId = "manage-restaurants";
+      }
       if (!document.getElementById(targetId)) {
         targetId = "overview";
       }
@@ -245,6 +272,10 @@
       closeSidebar();
       if (dashboardContainer) {
         dashboardContainer.dataset.activeSection = targetId;
+      }
+
+      if (pendingTab && targetId === "manage-restaurants") {
+        setRestaurantManagementTab(pendingTab, { focus: false });
       }
 
       return targetId;
@@ -282,8 +313,12 @@
       link.addEventListener("click", (event) => {
         event.preventDefault();
         const sectionId = link.dataset ? link.dataset.openSection : null;
+        const targetTab = link.dataset ? link.dataset.openTab : null;
         if (sectionId) {
-          showSection(sectionId);
+          const activeId = showSection(sectionId);
+          if (activeId === "manage-restaurants" && targetTab) {
+            setRestaurantManagementTab(targetTab, { focus: true });
+          }
           closeSidebar();
         }
       });
@@ -294,6 +329,120 @@
 
     syncFromHash();
     return (sectionId) => showSection(sectionId);
+  }
+
+  function setupRestaurantTabs() {
+    const container = document.querySelector("[data-restaurant-tabs]");
+    if (!container) {
+      return;
+    }
+    restaurantTabsRuntime.container = container;
+    restaurantTabsRuntime.buttons = Array.from(container.querySelectorAll("[data-restaurant-tab]")) || [];
+    restaurantTabsRuntime.panels = Array.from(container.querySelectorAll("[data-tab-panel]")) || [];
+    restaurantTabsRuntime.indicator = container.querySelector("[data-tab-indicator]");
+    restaurantTabsRuntime.panelsWrapper = container.querySelector(".restaurant-panels");
+
+    restaurantTabsRuntime.buttons.forEach((button, index) => {
+      button.addEventListener("click", () => {
+        const target = button.dataset ? button.dataset.restaurantTab : null;
+        setRestaurantManagementTab(target || "create", { focus: true });
+      });
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
+          return;
+        }
+        event.preventDefault();
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const total = restaurantTabsRuntime.buttons.length;
+        if (!total) {
+          return;
+        }
+        const nextIndex = (index + direction + total) % total;
+        const nextButton = restaurantTabsRuntime.buttons[nextIndex];
+        if (nextButton) {
+          const target = nextButton.dataset ? nextButton.dataset.restaurantTab : null;
+          setRestaurantManagementTab(target || "create", { focus: true });
+        }
+      });
+    });
+
+    if (typeof ResizeObserver !== "undefined" && restaurantTabsRuntime.container) {
+      restaurantTabsRuntime.resizeObserver = new ResizeObserver(() => {
+        const activeButton = restaurantTabsRuntime.buttons.find((button) => {
+          return (button.dataset ? button.dataset.restaurantTab : null) === state.restaurantForms.activeTab;
+        });
+        if (activeButton) {
+          moveRestaurantTabIndicator(activeButton, { immediate: true });
+        }
+      });
+      restaurantTabsRuntime.resizeObserver.observe(restaurantTabsRuntime.container);
+    } else {
+      window.addEventListener("resize", () => {
+        const activeButton = restaurantTabsRuntime.buttons.find((button) => {
+          return (button.dataset ? button.dataset.restaurantTab : null) === state.restaurantForms.activeTab;
+        });
+        if (activeButton) {
+          moveRestaurantTabIndicator(activeButton, { immediate: true });
+        }
+      });
+    }
+
+    setRestaurantManagementTab(state.restaurantForms.activeTab || "create", { immediate: true });
+  }
+
+  function setRestaurantManagementTab(tabName, options = {}) {
+    const requested = tabName === "edit" ? "edit" : "create";
+    state.restaurantForms.activeTab = requested;
+    if (!restaurantTabsRuntime.panelsWrapper) {
+      return requested;
+    }
+    restaurantTabsRuntime.panelsWrapper.dataset.activeTab = requested;
+    restaurantTabsRuntime.panels.forEach((panel) => {
+      const isActive = panel.dataset ? panel.dataset.tabPanel === requested : false;
+      panel.setAttribute("aria-hidden", isActive ? "false" : "true");
+    });
+    restaurantTabsRuntime.buttons.forEach((button) => {
+      const value = button.dataset ? button.dataset.restaurantTab : null;
+      const isActive = value === requested;
+      button.classList.toggle("is-active", Boolean(isActive));
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+      button.setAttribute("tabindex", isActive ? "0" : "-1");
+      if (isActive) {
+        if (options.focus) {
+          button.focus();
+        }
+        moveRestaurantTabIndicator(button, options);
+      }
+    });
+    return requested;
+  }
+
+  function moveRestaurantTabIndicator(targetButton, options = {}) {
+    if (!targetButton || !restaurantTabsRuntime.indicator) {
+      return;
+    }
+    const { immediate = false } = options;
+    const indicator = restaurantTabsRuntime.indicator;
+    const tabList = targetButton.parentElement;
+    const styles = tabList ? window.getComputedStyle(tabList) : null;
+    const paddingLeft = styles ? parseFloat(styles.paddingLeft) || 0 : 0;
+    const offset = targetButton.offsetLeft - paddingLeft;
+    if (immediate) {
+      indicator.style.transition = "none";
+    }
+    indicator.style.width = `${targetButton.offsetWidth}px`;
+    indicator.style.transform = `translateX(${offset}px)`;
+    if (immediate) {
+      indicator.getBoundingClientRect();
+      indicator.style.transition = "";
+    }
+  }
+
+  function goToRestaurantManagement(tabName = "create", options = {}) {
+    if (typeof navigateToSection === "function") {
+      navigateToSection("manage-restaurants");
+    }
+    setRestaurantManagementTab(tabName, { focus: options.focus !== false });
   }
 
   function setupActionHandlers() {
@@ -310,7 +459,7 @@
       if (configureBtn) {
         event.preventDefault();
         startEditRestaurant(configureBtn.dataset.restaurantId);
-        navigateToSection("edit");
+        goToRestaurantManagement("edit");
       }
     });
   }
@@ -450,6 +599,126 @@
     updateChatbotEmptyState();
     refreshChatbotFormAvailability();
     setChatbotFeedback("Sélectionnez un restaurant pour lancer la discussion.");
+  }
+
+  function bindPurchasingSectionUI() {
+    const select = document.getElementById("purchasing-section-restaurant-select");
+    if (!select) {
+      setupPurchasingEmbed();
+      return;
+    }
+    select.addEventListener("change", (event) => {
+      const value = event.target.value || null;
+      selectOverviewRestaurant(value || null, { manual: true });
+      syncPurchasingSectionSelectValue();
+      updatePurchasingIframeSrc(value || null);
+    });
+    syncPurchasingSectionSelectValue();
+    setupPurchasingEmbed();
+  }
+
+  function setupPurchasingEmbed() {
+    const iframe = document.getElementById("purchasing-iframe");
+    if (!iframe) {
+      return;
+    }
+    purchasingEmbedRuntime.iframe = iframe;
+    purchasingEmbedRuntime.loader = document.getElementById("purchasing-iframe-loader");
+    purchasingEmbedRuntime.shell = document.getElementById("purchasing-iframe-shell");
+    setPurchasingIframeLoading(true);
+    iframe.addEventListener("load", () => {
+      markPurchasingIframeReady();
+    });
+    if (iframe.contentDocument && iframe.contentDocument.readyState === "complete") {
+      markPurchasingIframeReady();
+    }
+  }
+
+  function markPurchasingIframeReady() {
+    setPurchasingIframeLoading(false);
+    const iframe = purchasingEmbedRuntime.iframe || document.getElementById("purchasing-iframe");
+    if (iframe) {
+      iframe.classList.add("is-loaded");
+    }
+    syncPurchasingIframeHeight();
+    attachPurchasingIframeResizeObserver();
+  }
+
+  function setPurchasingIframeLoading(isLoading) {
+    const loader = purchasingEmbedRuntime.loader || document.getElementById("purchasing-iframe-loader");
+    const shell = purchasingEmbedRuntime.shell || document.getElementById("purchasing-iframe-shell");
+    if (loader) {
+      loader.classList.toggle("is-hidden", !isLoading);
+      loader.setAttribute("aria-hidden", isLoading ? "false" : "true");
+    }
+    if (shell) {
+      shell.classList.toggle("is-loading", Boolean(isLoading));
+    }
+  }
+
+  function syncPurchasingIframeHeight() {
+    const iframe = purchasingEmbedRuntime.iframe || document.getElementById("purchasing-iframe");
+    if (!iframe) {
+      return;
+    }
+    try {
+      const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+      if (!doc) {
+        return;
+      }
+      const bodyHeight = doc.body ? doc.body.scrollHeight : 0;
+      const docHeight = doc.documentElement ? doc.documentElement.scrollHeight : 0;
+      const targetHeight = Math.max(760, bodyHeight, docHeight);
+      iframe.style.height = `${targetHeight}px`;
+    } catch (error) {
+      console.warn("Unable to sync purchasing iframe height", error);
+    }
+  }
+
+  function attachPurchasingIframeResizeObserver() {
+    const iframe = purchasingEmbedRuntime.iframe || document.getElementById("purchasing-iframe");
+    if (!iframe) {
+      return;
+    }
+    let contentWindow;
+    let doc;
+    try {
+      contentWindow = iframe.contentWindow;
+      doc = iframe.contentDocument;
+    } catch (error) {
+      console.warn("Unable to observe purchasing iframe", error);
+      return;
+    }
+    if (!contentWindow || !doc) {
+      return;
+    }
+    teardownPurchasingIframeObservers();
+    const target = doc.body || doc.documentElement;
+    const ResizeObserverCtor = contentWindow.ResizeObserver;
+    if (target && typeof ResizeObserverCtor === "function") {
+      const observer = new ResizeObserverCtor(() => {
+        window.requestAnimationFrame(() => {
+          syncPurchasingIframeHeight();
+        });
+      });
+      observer.observe(target);
+      purchasingEmbedRuntime.resizeObserver = observer;
+    } else if (target) {
+      purchasingEmbedRuntime.resizeInterval = window.setInterval(() => {
+        syncPurchasingIframeHeight();
+      }, 1200);
+    }
+  }
+
+  function teardownPurchasingIframeObservers() {
+    if (purchasingEmbedRuntime.resizeObserver && typeof purchasingEmbedRuntime.resizeObserver.disconnect === "function") {
+      purchasingEmbedRuntime.resizeObserver.disconnect();
+    }
+    purchasingEmbedRuntime.resizeObserver = null;
+    if (purchasingEmbedRuntime.resizeInterval) {
+      window.clearInterval(purchasingEmbedRuntime.resizeInterval);
+    }
+    purchasingEmbedRuntime.resizeInterval = null;
   }
 
   function setupDateFilters() {
@@ -896,6 +1165,23 @@
     return data.session.user;
   }
 
+  function persistActiveRestaurantId(restaurantId) {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return;
+    }
+    try {
+      if (restaurantId) {
+        window.localStorage.setItem("restaurantId", String(restaurantId));
+      } else {
+        window.localStorage.removeItem("restaurantId");
+      }
+    } catch (error) {
+      console.warn("Impossible de mémoriser le restaurant actif", error);
+    }
+    updatePurchasingIframeSrc(restaurantId);
+    syncPurchasingSectionSelectValue();
+  }
+
   function setDashboardLoading(isLoading, options = {}) {
     const overlay = document.getElementById("dashboard-loading-overlay");
     const { useOverlay = true } = options;
@@ -979,6 +1265,7 @@
       state.snapshot = snapshot;
       state.restaurants = snapshot.restaurants || [];
       syncStatsRestaurantsFromSnapshot(state.restaurants);
+      populatePurchasingSectionSelect();
 
       updateUIWithUserData(snapshot.user);
       updateProfileFormFields(snapshot.profile);
@@ -1554,7 +1841,7 @@ function redirectToLogin() {
         event.preventDefault();
         if (restaurant.id) {
           startEditRestaurant(restaurant.id);
-          navigateToSection("edit");
+          goToRestaurantManagement("edit");
         }
       });
 
@@ -1591,6 +1878,7 @@ function redirectToLogin() {
 
     if (!restaurants.length) {
       state.overview.hasManualSelection = false;
+      persistActiveRestaurantId(null);
       selectOverviewRestaurant(null, { manual: false });
       updateOverviewChatState();
       renderOverviewChatMessages();
@@ -1667,7 +1955,7 @@ function redirectToLogin() {
         event.preventDefault();
         if (restaurant.id) {
           startEditRestaurant(restaurant.id);
-          navigateToSection("edit");
+          goToRestaurantManagement("edit");
         }
       });
 
@@ -1790,6 +2078,41 @@ function redirectToLogin() {
     select.disabled = !restaurants.length;
   }
 
+  function populatePurchasingSectionSelect() {
+    const select = document.getElementById("purchasing-section-restaurant-select");
+    if (!select) {
+      return;
+    }
+    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+    const placeholder = '<option value="">Sélectionnez un restaurant</option>';
+    if (!restaurants.length) {
+      select.innerHTML = placeholder;
+      select.disabled = true;
+      return;
+    }
+    const options = restaurants
+      .map((restaurant) => {
+        const label = restaurant.display_name || restaurant.name || "Restaurant";
+        return `<option value="${restaurant.id}">${label}</option>`;
+      })
+      .join("\n");
+    select.innerHTML = `${placeholder}${options}`;
+    select.disabled = false;
+    syncPurchasingSectionSelectValue();
+  }
+
+  function syncPurchasingSectionSelectValue() {
+    const select = document.getElementById("purchasing-section-restaurant-select");
+    if (!select) {
+      return;
+    }
+    const activeId = state.overview.restaurantId ? String(state.overview.restaurantId) : "";
+    if (select.value !== activeId) {
+      select.value = activeId;
+    }
+    select.disabled = !Array.isArray(state.restaurants) || !state.restaurants.length;
+  }
+
   function selectOverviewRestaurant(restaurantId, options = {}) {
     const { manual = false } = options;
     const select = document.getElementById("overview-restaurant-select");
@@ -1801,6 +2124,7 @@ function redirectToLogin() {
       const reset = Boolean(state.overview.restaurantId);
       state.overview.restaurantId = null;
       state.overview.restaurantName = "";
+      persistActiveRestaurantId(null);
       if (manual) {
         state.overview.hasManualSelection = true;
       } else {
@@ -1828,6 +2152,7 @@ function redirectToLogin() {
       }
       state.overview.restaurantId = null;
       state.overview.restaurantName = "";
+      persistActiveRestaurantId(null);
       state.overview.history = [];
       clearOverviewChatStatus();
       renderOverviewChatMessages();
@@ -1838,6 +2163,7 @@ function redirectToLogin() {
 
     const changed = state.overview.restaurantId !== record.id;
     state.overview.restaurantId = record.id;
+    persistActiveRestaurantId(record.id);
     state.overview.restaurantName = record.display_name || record.name || "";
     if (manual) {
       state.overview.hasManualSelection = true;
@@ -1946,6 +2272,27 @@ function redirectToLogin() {
 
     refreshChatbotFormAvailability();
     updateChatbotEmptyState();
+  }
+
+  function updatePurchasingIframeSrc(restaurantId) {
+    const iframe = document.getElementById("purchasing-iframe");
+    if (!iframe) {
+      return;
+    }
+    const base = "/purchasing";
+    const params = new URLSearchParams();
+    params.set("embedded", "1");
+    if (restaurantId) {
+      params.set("restaurant_id", restaurantId);
+    }
+    const nextSrc = `${base}?${params.toString()}`;
+    const currentSrc = iframe.getAttribute("src");
+    if (currentSrc === nextSrc) {
+      return;
+    }
+    setPurchasingIframeLoading(true);
+    teardownPurchasingIframeObservers();
+    iframe.setAttribute("src", nextSrc);
   }
 
   function syncChatbotStateWithRestaurants() {

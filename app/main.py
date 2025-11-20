@@ -20,6 +20,7 @@ from pydantic import BaseModel, EmailStr, Field, StringConstraints
 from openai import APIError
 
 from app.config.supabase_client import SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
+from app.api.routes.purchasing import router as purchasing_router
 from app.services.chat_service import get_chat_response
 from app.security.guards import enforce_same_origin, rate_limit_request
 from app.services.auth_service import (
@@ -31,6 +32,7 @@ from app.services.dashboard_service import (
     build_dashboard_snapshot,
     build_statistics_view,
     create_restaurant as dashboard_create_restaurant,
+    list_dashboard_restaurants,
     update_profile as dashboard_update_profile,
     update_restaurant as dashboard_update_restaurant,
 )
@@ -60,8 +62,11 @@ LOGIN_FILE = STATIC_DIR / "login.html"
 SIGNUP_FILE = STATIC_DIR / "signup.html"
 DASHBOARD_FILE = STATIC_DIR / "dashboard.html"
 CHAT_FILE = STATIC_DIR / "chat.html"
+PURCHASING_FILE = STATIC_DIR / "purchasing.html"
+ORDER_DETAILS_FILE = STATIC_DIR / "order_details.html"
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.include_router(purchasing_router)
 
 
 class ChatMessagePayload(BaseModel):
@@ -144,6 +149,16 @@ def read_signup() -> FileResponse:
 @app.get("/dashboard", response_class=FileResponse)
 def read_dashboard() -> FileResponse:
     return FileResponse(DASHBOARD_FILE)
+
+
+@app.get("/purchasing", response_class=FileResponse)
+def read_purchasing() -> FileResponse:
+    return FileResponse(PURCHASING_FILE)
+
+
+@app.get("/purchasing/orders/{order_id}", response_class=FileResponse)
+def read_order_details(order_id: str) -> FileResponse:
+    return FileResponse(ORDER_DETAILS_FILE)
 
 
 @app.get("/health")
@@ -337,6 +352,15 @@ async def dashboard_statistics_endpoint(
         end_date=end_date,
         restaurant_ids=restaurant_id,
     )
+
+
+@app.get("/api/dashboard/restaurants")
+async def dashboard_restaurants_endpoint(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+) -> Dict[str, Any]:
+    token = extract_bearer_token(authorization)
+    records = await list_dashboard_restaurants(token)
+    return {"restaurants": records}
 
 
 @app.post("/api/dashboard/restaurants")

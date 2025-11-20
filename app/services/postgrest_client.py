@@ -28,14 +28,20 @@ def extract_bearer_token(header_value: Optional[str]) -> str:
     return token
 
 
-def create_postgrest_client(access_token: str, *, prefer: Optional[str] = None) -> SyncPostgrestClient:
+def create_postgrest_client(
+    access_token: str,
+    *,
+    prefer: Optional[str] = None,
+    api_key: Optional[str] = None,
+) -> SyncPostgrestClient:
     """Instantiate a PostgREST client authenticated with the provided token."""
 
-    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+    resolved_api_key = api_key or SUPABASE_ANON_KEY
+    if not SUPABASE_URL or not resolved_api_key:
         raise HTTPException(status_code=500, detail="Supabase n'est pas configuré.")
 
     headers: Dict[str, str] = {
-        "apikey": SUPABASE_ANON_KEY,
+        "apikey": resolved_api_key,
         "Accept": "application/json",
     }
     if prefer:

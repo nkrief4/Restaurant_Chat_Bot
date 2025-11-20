@@ -35,10 +35,10 @@
       <nav class="nav" aria-label="Navigation principale">
         <button type="button" class="nav-link active" data-section="overview">Vue d'ensemble</button>
         <button type="button" class="nav-link" data-section="restaurants">Restaurants</button>
-        <button type="button" class="nav-link" data-section="create">Créer un restaurant</button>
-        <button type="button" class="nav-link" data-section="edit">Modifier un restaurant</button>
+        <button type="button" class="nav-link" data-section="manage-restaurants">Gérer vos restaurants</button>
         <button type="button" class="nav-link" data-section="chatbot">Chatbot</button>
         <button type="button" class="nav-link" data-section="statistics">Statistiques</button>
+        <button type="button" class="nav-link" data-section="purchasing">Achats & Stock</button>
         <button type="button" class="nav-link" data-section="billing">Facturation & abonnement</button>
         <button type="button" class="nav-link" data-section="profile">Profil</button>
         <button type="button" class="nav-link nav-link-logout" id="logout-btn">
@@ -213,7 +213,7 @@
 
             <div class="overview-cta">
               <p>Besoin d'ajouter un nouvel établissement&nbsp;?</p>
-              <button type="button" class="primary-btn" data-open-section="create">Créer un restaurant</button>
+              <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer un restaurant</button>
             </div>
           </aside>
         </div>
@@ -226,7 +226,7 @@
             <p>Visualisez vos établissements et testez leur chatbot.</p>
           </div>
         </div>
-        <button type="button" class="secondary-btn" data-open-section="create">Créer un nouveau restaurant</button>
+        <button type="button" class="secondary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer un nouveau restaurant</button>
 
         <div class="restaurants-grid" id="restaurants-card-list" aria-live="polite">
           <article class="restaurant-card loading-card">
@@ -248,167 +248,188 @@
             <h3>Prêt à ajouter un nouvel établissement&nbsp;?</h3>
             <p class="muted">Connectez votre carte en quelques minutes pour entraîner RestauBot.</p>
           </div>
-          <button type="button" class="primary-btn" data-open-section="create">Créer un restaurant</button>
+          <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer un restaurant</button>
         </div>
       </section>
 
-      <section id="create" class="section" aria-label="Créer un restaurant">
+      <section id="manage-restaurants" class="section" aria-label="Créer ou modifier un restaurant">
         <div class="section-header">
           <div>
-            <h2>Créer un nouveau restaurant</h2>
-            <p>Complétez les informations pour connecter votre carte à RestauBot.</p>
+            <h2>Gérer vos restaurants</h2>
+            <p>Créez un nouvel établissement ou mettez à jour une fiche existante depuis le même écran.</p>
           </div>
         </div>
-        <form class="form-grid restaurant-form" id="restaurant-create-form" data-form-type="create" novalidate>
-          <p class="form-mode" data-role="form-mode">Création d'un nouvel établissement.</p>
-          <label>
-            <span>Nom du restaurant</span>
-            <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
-          </label>
-          <label>
-            <span>Slug public</span>
-            <input type="text" name="slug" placeholder="lejardin-secret" required />
-          </label>
-          <label>
-            <span>Langue principale</span>
-            <select disabled>
-              <option>Français</option>
-            </select>
-          </label>
-          <label>
-            <span>Site web (optionnel)</span>
-            <input type="url" placeholder="https://monsite.com" disabled />
-          </label>
-          <label class="full-width">
-            <span>Menu structuré (JSON)</span>
-            <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
-          </label>
-          <div class="upload-card full-width">
-            <div class="upload-card-header">
-              <div>
-                <h3>Analyser un fichier menu</h3>
-                <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
-              </div>
-              <span class="upload-card-chip">PDF, PNG ou JPG</span>
-            </div>
-            <label class="upload-dropzone" data-role="menu-dropzone">
-              <input type="file" data-role="menu-file" accept="application/pdf,image/*"
-                aria-label="Sélectionner un menu à analyser" />
-              <div class="dropzone-illustration" aria-hidden="true"></div>
-              <div class="dropzone-copy">
-                <strong>Glissez-déposez votre menu</strong>
-                <span>ou cliquez pour parcourir vos fichiers</span>
-                <small>10 Mo maximum · Formats PDF / image</small>
-              </div>
-            </label>
-            <div class="upload-preview" data-role="upload-preview">
-              <div class="preview-info" data-role="preview-info"
-                data-default-text="Aucun fichier importé pour le moment.">
-                Aucun fichier importé pour le moment.
-              </div>
-              <img data-role="preview-image" alt="Aperçu du menu" hidden />
-            </div>
-            <div class="upload-controls">
-              <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
-                <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
-                <span class="ai-glow" aria-hidden="true"></span>
-                <span class="ai-scanlines" aria-hidden="true"></span>
-              </button>
-            </div>
-            <p class="form-hint" data-role="menu-upload-status"></p>
-          </div>
-          <div class="form-footer">
-            <button type="submit" class="primary-btn" data-role="submit-btn">Enregistrer le restaurant</button>
-            <button type="button" class="ghost-btn" data-action="reset-form">Réinitialiser le formulaire</button>
-            <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être testé dans la
-              section Chatbot.</p>
-            <p class="form-hint" data-role="form-message"></p>
-          </div>
-        </form>
-      </section>
 
-      <section id="edit" class="section" aria-label="Modifier un restaurant">
-        <div class="section-header">
-          <div>
-            <h2>Modifier un restaurant existant</h2>
-            <p>Sélectionnez un établissement dans la section Restaurants pour charger ses informations.</p>
+        <div class="restaurant-management" data-restaurant-tabs>
+          <div class="restaurant-tabs" role="tablist" aria-label="Choisir le mode de gestion">
+            <button type="button" class="restaurant-tab is-active" role="tab" aria-selected="true" tabindex="0"
+              id="restaurant-tab-create" aria-controls="restaurant-panel-create" data-restaurant-tab="create">
+              Création
+            </button>
+            <button type="button" class="restaurant-tab" role="tab" aria-selected="false" tabindex="-1"
+              id="restaurant-tab-edit" aria-controls="restaurant-panel-edit" data-restaurant-tab="edit">
+              Modification
+            </button>
+            <span class="restaurant-tab-indicator" data-tab-indicator aria-hidden="true"></span>
+          </div>
+
+          <div class="restaurant-panels" data-active-tab="create">
+            <div class="restaurant-panel-track">
+              <div class="restaurant-panel" id="restaurant-panel-create" role="tabpanel"
+                aria-labelledby="restaurant-tab-create" data-tab-panel="create">
+                <form class="form-grid restaurant-form" id="restaurant-create-form" data-form-type="create"
+                  novalidate>
+                <p class="form-mode" data-role="form-mode">Création d'un nouvel établissement.</p>
+                <label>
+                  <span>Nom du restaurant</span>
+                  <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
+                </label>
+                <label>
+                  <span>Slug public</span>
+                  <input type="text" name="slug" placeholder="lejardin-secret" required />
+                </label>
+                <label>
+                  <span>Langue principale</span>
+                  <select disabled>
+                    <option>Français</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Site web (optionnel)</span>
+                  <input type="url" placeholder="https://monsite.com" disabled />
+                </label>
+                <label class="full-width">
+                  <span>Menu structuré (JSON)</span>
+                  <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
+                </label>
+                <div class="upload-card full-width">
+                  <div class="upload-card-header">
+                    <div>
+                      <h3>Analyser un fichier menu</h3>
+                      <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
+                    </div>
+                  </div>
+                  <label class="upload-dropzone" data-role="menu-dropzone">
+                    <input type="file" data-role="menu-file" accept="application/pdf,image/*"
+                      aria-label="Sélectionner un menu à analyser" />
+                    <div class="dropzone-illustration" aria-hidden="true"></div>
+                    <div class="dropzone-copy">
+                      <strong>Glissez-déposez votre menu</strong>
+                      <span>ou cliquez pour parcourir vos fichiers</span>
+                      <small>10 Mo maximum · Formats PDF / image</small>
+                    </div>
+                  </label>
+                  <div class="upload-preview" data-role="upload-preview">
+                    <div class="preview-info" data-role="preview-info"
+                      data-default-text="Aucun fichier importé pour le moment.">
+                      Aucun fichier importé pour le moment.
+                    </div>
+                    <img src="/static/icones/image.svg" data-role="preview-image" alt="Aperçu du menu" hidden width="18" height="18" />
+                  </div>
+                  <div class="upload-controls">
+                    <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                      <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                      <span class="ai-glow" aria-hidden="true"></span>
+                      <span class="ai-scanlines" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                  <p class="form-hint" data-role="menu-upload-status"></p>
+                </div>
+                <div class="form-footer">
+                  <button type="submit" class="primary-btn" data-role="submit-btn">Enregistrer le restaurant</button>
+                  <button type="button" class="ghost-btn" data-action="reset-form">Réinitialiser le formulaire</button>
+                  <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être testé dans la
+                    section Chatbot.</p>
+                  <p class="form-hint" data-role="form-message"></p>
+                </div>
+              </form>
+            </div>
+
+              <div class="restaurant-panel" id="restaurant-panel-edit" role="tabpanel"
+                aria-labelledby="restaurant-tab-edit" aria-hidden="true" data-tab-panel="edit">
+                <div class="panel-intro">
+                  <p class="form-mode" data-role="form-mode">Aucun restaurant sélectionné pour édition.</p>
+                  <div class="panel-selector">
+                    <label>
+                      <span>Sélectionner un restaurant</span>
+                      <select id="edit-restaurant-select" data-role="restaurant-selector">
+                        <option value="">Sélectionnez un restaurant</option>
+                      </select>
+                    </label>
+                    <p class="form-hint">Utilisez les cartes dans l'aperçu ou la liste ci-dessus pour pré-remplir ce
+                      formulaire.</p>
+                  </div>
+                </div>
+
+                <form class="form-grid restaurant-form is-idle" id="restaurant-edit-form" data-form-type="edit"
+                  novalidate>
+                <label>
+                  <span>Nom du restaurant</span>
+                  <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
+                </label>
+                <label>
+                  <span>Slug public</span>
+                  <input type="text" name="slug" placeholder="lejardin-secret" required />
+                </label>
+                <label>
+                  <span>Langue principale</span>
+                  <select disabled>
+                    <option>Français</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Site web (optionnel)</span>
+                  <input type="url" placeholder="https://monsite.com" disabled />
+                </label>
+                <label class="full-width">
+                  <span>Menu structuré (JSON)</span>
+                  <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
+                </label>
+                <div class="upload-card full-width">
+                  <div class="upload-card-header">
+                    <div>
+                      <h3>Analyser un fichier menu</h3>
+                      <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
+                    </div>
+                  </div>
+                  <label class="upload-dropzone" data-role="menu-dropzone">
+                    <input type="file" data-role="menu-file" accept="application/pdf,image/*"
+                      aria-label="Sélectionner un menu à analyser" />
+                    <div class="dropzone-illustration" aria-hidden="true"></div>
+                    <div class="dropzone-copy">
+                      <strong>Glissez-déposez votre menu</strong>
+                      <span>ou cliquez pour parcourir vos fichiers</span>
+                      <small>10 Mo maximum · Formats PDF / image</small>
+                    </div>
+                  </label>
+                  <div class="upload-preview" data-role="upload-preview">
+                    <div class="preview-info" data-role="preview-info"
+                      data-default-text="Aucun fichier importé pour le moment.">
+                      Aucun fichier importé pour le moment.
+                    </div>
+                    <img data-role="preview-image" alt="Aperçu du menu" hidden />
+                  </div>
+                  <div class="upload-controls">
+                    <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                      <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                      <span class="ai-glow" aria-hidden="true"></span>
+                      <span class="ai-scanlines" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                  <p class="form-hint" data-role="menu-upload-status"></p>
+                </div>
+                <div class="form-footer">
+                  <button type="submit" class="primary-btn" data-role="submit-btn">Mettre à jour le restaurant</button>
+                  <button type="button" class="ghost-btn" data-action="reset-form">Terminer l'édition</button>
+                  <p class="muted">Utilisez les cartes de la section Restaurants pour choisir l'établissement à
+                    modifier.</p>
+                  <p class="form-hint" data-role="form-message"></p>
+                </div>
+              </form>
+            </div>
+            </div>
           </div>
         </div>
-        <p class="form-mode" data-role="form-mode">Aucun restaurant sélectionné pour édition.</p>
-
-        <div class="full-width">
-          <p>Sélectionner un restaurant</p>
-          <select id="edit-restaurant-select" data-role="restaurant-selector">
-            <option value="">Sélectionnez un restaurant</option>
-          </select>
-        </div>
-        <br>
-        
-
-        <form class="form-grid restaurant-form is-idle" id="restaurant-edit-form" data-form-type="edit" novalidate>
-          <label>
-            <span>Nom du restaurant</span>
-            <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
-          </label>
-          <label>
-            <span>Slug public</span>
-            <input type="text" name="slug" placeholder="lejardin-secret" required />
-          </label>
-          <label>
-            <span>Langue principale</span>
-            <select disabled>
-              <option>Français</option>
-            </select>
-          </label>
-          <label>
-            <span>Site web (optionnel)</span>
-            <input type="url" placeholder="https://monsite.com" disabled />
-          </label>
-          <label class="full-width">
-            <span>Menu structuré (JSON)</span>
-            <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
-          </label>
-          <div class="upload-card full-width">
-            <div class="upload-card-header">
-              <div>
-                <h3>Analyser un fichier menu</h3>
-                <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
-              </div>
-              <span class="upload-card-chip">PDF, PNG ou JPG</span>
-            </div>
-            <label class="upload-dropzone" data-role="menu-dropzone">
-              <input type="file" data-role="menu-file" accept="application/pdf,image/*"
-                aria-label="Sélectionner un menu à analyser" />
-              <div class="dropzone-illustration" aria-hidden="true"></div>
-              <div class="dropzone-copy">
-                <strong>Glissez-déposez votre menu</strong>
-                <span>ou cliquez pour parcourir vos fichiers</span>
-                <small>10 Mo maximum · Formats PDF / image</small>
-              </div>
-            </label>
-            <div class="upload-preview" data-role="upload-preview">
-              <div class="preview-info" data-role="preview-info"
-                data-default-text="Aucun fichier importé pour le moment.">
-                Aucun fichier importé pour le moment.
-              </div>
-              <img data-role="preview-image" alt="Aperçu du menu" hidden />
-            </div>
-            <div class="upload-controls">
-              <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
-                <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
-                <span class="ai-glow" aria-hidden="true"></span>
-                <span class="ai-scanlines" aria-hidden="true"></span>
-              </button>
-            </div>
-            <p class="form-hint" data-role="menu-upload-status"></p>
-          </div>
-          <div class="form-footer">
-            <button type="submit" class="primary-btn" data-role="submit-btn">Mettre à jour le restaurant</button>
-            <button type="button" class="ghost-btn" data-action="reset-form">Terminer l'édition</button>
-            <p class="muted">Utilisez les cartes de la section Restaurants pour choisir l'établissement à modifier.</p>
-            <p class="form-hint" data-role="form-message"></p>
-          </div>
-        </form>
       </section>
 
       <section id="chatbot" class="section chatbot-section" aria-label="Espace chatbot">
@@ -461,7 +482,7 @@
         </div>
       </section>
 
-      <section id="statistics" class="section" aria-label="Statistiques détaillées">
+    <section id="statistics" class="section" aria-label="Statistiques détaillées">
         <div class="section-header stats-section-header">
           <div>
             <h2>Statistiques détaillées</h2>
@@ -703,8 +724,120 @@
             </div>
           </div>
         </form>
-      </section>
-    </main>
+    </section>
+
+    <section id="purchasing" class="section" aria-label="Achats et stock">
+      <div class="purchasing-header">
+        <div>
+          <h2>Achats & Stock</h2>
+          <p class="muted">Pilotez vos commandes, vos alertes de stock et vos fournisseurs dans la même vue.</p>
+        </div>
+        <div class="purchasing-badge">Vue interactive</div>
+      </div>
+
+      <div class="purchasing-card-grid">
+        <article class="purchasing-card">
+          <div class="purchasing-card-head">
+            <div>
+              <p class="purchasing-label">Étape 1</p>
+              <h3>Restaurant actif</h3>
+            </div>
+            <button
+              type="button"
+              class="info-trigger"
+              data-tooltip="Synchronisez Achats & Stock avec l'établissement sélectionné dans le dashboard."
+              aria-label="Informations sur le restaurant actif"
+            >
+              i
+            </button>
+          </div>
+          <label class="purchasing-select" for="purchasing-section-restaurant-select">
+            <span>Choisissez un établissement</span>
+            <select id="purchasing-section-restaurant-select">
+              <option value="">Sélectionnez un restaurant</option>
+            </select>
+          </label>
+          <p class="purchasing-card-hint">Le module Achats se met automatiquement à jour selon votre choix.</p>
+        </article>
+
+        <article class="purchasing-card">
+          <div class="purchasing-card-head">
+            <div>
+              <p class="purchasing-label">Étape 2</p>
+              <h3>Comprendre l'état des stocks</h3>
+            </div>
+            <div class="purchasing-card-meta">
+              <span class="purchasing-status-pill is-sync">Temps réel</span>
+              <button
+                type="button"
+                class="info-trigger"
+                data-tooltip="Visualisez les alertes CRITICAL, LOW et OK pour prioriser vos achats."
+                aria-label="Informations sur l'état des stocks"
+              >
+                i
+              </button>
+            </div>
+          </div>
+          <p>Visualisez les recommandations d'achat, les niveaux critiques et les fournisseurs prioritaires sans quitter cette page.</p>
+          <ul class="purchasing-card-list">
+            <li>Alertes critiques mises en évidence</li>
+            <li>Indicateurs LOW & OK lisibles immédiatement</li>
+            <li>Glisser jusqu'au détail complet des ingrédients</li>
+          </ul>
+        </article>
+
+        <article class="purchasing-card">
+          <div class="purchasing-card-head">
+            <div>
+              <p class="purchasing-label">Étape 3</p>
+              <h3>Besoin de plus d'espace ?</h3>
+            </div>
+            <div class="purchasing-card-meta">
+              <span class="purchasing-status-pill">Confort</span>
+              <button
+                type="button"
+                class="info-trigger"
+                data-tooltip="Passez en plein écran pour vos inventaires ou commandes volumineuses."
+                aria-label="Informations sur la vue plein écran"
+              >
+                i
+              </button>
+            </div>
+          </div>
+          <p>Accédez à la version plein écran du module pour vos longues sessions de planification ou d'inventaire.</p>
+          <a class="primary-btn" href="/purchasing" target="_blank" rel="noopener">Ouvrir en plein écran</a>
+        </article>
+      </div>
+
+      <div class="purchasing-embed">
+        <div class="purchasing-embed-head">
+          <button
+            type="button"
+            class="info-trigger"
+            data-tooltip="Toutes les interactions Achats & Stock restent dans cette fenêtre, sans multiplier les onglets."
+            aria-label="Informations sur le module Achats"
+          >
+            i
+          </button>
+        </div>
+        <div class="purchasing-iframe-shell" id="purchasing-iframe-shell">
+          <div class="purchasing-iframe-loader" id="purchasing-iframe-loader" role="status" aria-live="polite">
+            <span class="loader-dot" aria-hidden="true"></span>
+            <p>Chargement du module Achats…</p>
+          </div>
+          <iframe
+            id="purchasing-iframe"
+            src="/purchasing?embedded=1"
+            title="Module Achats & Stock"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            class="purchasing-iframe"
+          ></iframe>
+        </div>
+      </div>
+      <p class="muted purchasing-hint">Astuce : manipulez vos recettes et vos fournisseurs ici, puis ouvrez la vue plein écran pour vos clôtures mensuelles.</p>
+    </section>
+  </main>
   </div>
 
   <div class="modal" id="chatbot-modal" aria-hidden="true" role="dialog" aria-modal="true">
