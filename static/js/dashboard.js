@@ -88,6 +88,18 @@
     resizeInterval: null,
   };
 
+  const purchasingViewRuntime = {
+    container: null,
+    toggle: null,
+    label: null,
+    menu: null,
+    items: null,
+    panels: null,
+    navLinks: null,
+    navDropdown: null,
+    activeView: "dashboard",
+  };
+
   function forEachNode(list, handler) {
     if (!list || typeof handler !== "function") {
       return;
@@ -108,7 +120,7 @@
     return state.supabase;
   }
 
-  let navigateToSection = () => {};
+  let navigateToSection = () => { };
 
   document.addEventListener("DOMContentLoaded", () => {
     navigateToSection = setupNavigation();
@@ -119,10 +131,60 @@
     bindChatbotUI();
     bindStatisticsUI();
     bindPurchasingSectionUI();
+    bindStockManagementUI();
     setupRestaurantTabs();
     setupDateFilters();
     initializeDashboard().catch(handleInitializationError);
   });
+
+  const purchasingApi = (() => {
+    const buildHeaders = (headers = {}, options = {}) => {
+      const finalHeaders = {
+        Accept: "application/json",
+        ...headers,
+      };
+      const includeRestaurantId = options.includeRestaurantId !== false;
+      // Use the selected restaurant ID from the stock selector if available, or state.overview.restaurantId
+      const stockSelect = document.getElementById("stock-restaurant-select");
+      const restaurantId = stockSelect ? stockSelect.value : state.overview.restaurantId;
+
+      if (includeRestaurantId && restaurantId) {
+        finalHeaders["X-Restaurant-Id"] = restaurantId;
+      }
+      if (state.token) {
+        finalHeaders.Authorization = `Bearer ${state.token}`;
+      }
+      return finalHeaders;
+    };
+
+    const request = async (url, options = {}) => {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        // Try to read JSON error, fallback to status text
+        try {
+          const detail = await response.json();
+          const message = detail?.detail || detail?.message || response.statusText;
+          throw new Error(message);
+        } catch (e) {
+          throw new Error(response.statusText || "Erreur réseau inattendue");
+        }
+      }
+      if (response.status === 204) {
+        return null;
+      }
+      return response.json();
+    };
+
+    return {
+      async fetchRecommendations(params) {
+        const query = new URLSearchParams(params).toString();
+        return request(`/api/purchasing/ingredients?${query}`, {
+          headers: buildHeaders(),
+        });
+      },
+      // Add other methods if needed later
+    };
+  })();
 
   async function initializeDashboard() {
     state.supabase = await ensureSupabaseClient();
@@ -145,12 +207,14 @@
   function setupNavigation() {
     const sections = document.querySelectorAll(".section");
     const navLinks = document.querySelectorAll(".nav-link");
+    const navSubLinks = document.querySelectorAll("[data-purchasing-nav-link]");
     const quickLinks = document.querySelectorAll("[data-open-section]");
     const dashboardContainer = document.querySelector(".dashboard");
     const sidebarElement = document.getElementById("dashboard-sidebar");
     const sidebarToggle = document.getElementById("sidebar-toggle");
     const sidebarBackdrop = document.getElementById("sidebar-backdrop");
     const bodyElement = document.body;
+    const navDropdowns = document.querySelectorAll("[data-nav-dropdown]");
 
     function setSidebarOpen(shouldOpen) {
       if (!dashboardContainer) {
@@ -184,6 +248,26 @@
       }
     }
 
+    function setNavDropdownState(dropdown, shouldOpen) {
+      if (!dropdown) {
+        return;
+      }
+      dropdown.classList.toggle("is-open", Boolean(shouldOpen));
+      const toggle = dropdown.querySelector("[data-nav-dropdown-toggle]");
+      if (toggle) {
+        toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+      }
+    }
+
+    function closeNavDropdowns(exceptDropdown) {
+      forEachNode(navDropdowns, (dropdown) => {
+        if (dropdown === exceptDropdown) {
+          return;
+        }
+        setNavDropdownState(dropdown, false);
+      });
+    }
+
     function toggleSidebar() {
       const isOpen = dashboardContainer ? dashboardContainer.classList.contains("sidebar-open") : false;
       setSidebarOpen(!isOpen);
@@ -191,6 +275,7 @@
 
     function closeSidebar() {
       setSidebarOpen(false);
+      closeNavDropdowns();
     }
 
     if (sidebarToggle) {
@@ -208,6 +293,41 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeSidebar();
+      }
+    });
+
+    forEachNode(navDropdowns, (dropdown) => {
+      const toggle = dropdown.querySelector("[data-nav-dropdown-toggle]");
+      if (!toggle) {
+        return;
+      }
+      toggle.addEventListener("click", (event) => {
+        const willOpen = !dropdown.classList.contains("is-open");
+        closeNavDropdowns(willOpen ? dropdown : null);
+        setNavDropdownState(dropdown, willOpen);
+        const touchQuery = window.matchMedia ? window.matchMedia("(max-width: 1023px)") : null;
+        const shouldSkipNavigation = touchQuery && touchQuery.matches && willOpen;
+        if (shouldSkipNavigation) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
+      dropdown.addEventListener("mouseenter", () => {
+        if (!dropdown.classList.contains("is-open") && toggle) {
+          toggle.setAttribute("aria-expanded", "true");
+        }
+      });
+      dropdown.addEventListener("mouseleave", () => {
+        if (!dropdown.classList.contains("is-open") && toggle) {
+          toggle.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      const dropdown = event.target.closest ? event.target.closest("[data-nav-dropdown]") : null;
+      if (!dropdown) {
+        closeNavDropdowns();
       }
     });
 
@@ -268,10 +388,16 @@
           link.classList.remove("active");
         }
       });
-      
+
       closeSidebar();
       if (dashboardContainer) {
         dashboardContainer.dataset.activeSection = targetId;
+      }
+
+      if (targetId === "purchasing") {
+        updatePurchasingNavLinks(purchasingViewRuntime.activeView);
+      } else {
+        updatePurchasingNavLinks(null, { forceClear: true });
       }
 
       if (pendingTab && targetId === "manage-restaurants") {
@@ -306,6 +432,21 @@
         if (sectionId) {
           showSection(sectionId);
         }
+      });
+    });
+
+    forEachNode(navSubLinks, (link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const sectionId = link.dataset ? link.dataset.section : null;
+        const targetView = link.dataset ? link.dataset.purchasingView : null;
+        if (sectionId) {
+          const activeId = showSection(sectionId);
+          if (activeId === "purchasing" && targetView) {
+            setPurchasingPanel(targetView);
+          }
+        }
+        closeNavDropdowns();
       });
     });
 
@@ -605,6 +746,7 @@
     const select = document.getElementById("purchasing-section-restaurant-select");
     if (!select) {
       setupPurchasingEmbed();
+      setupPurchasingViewSwitcher();
       return;
     }
     select.addEventListener("change", (event) => {
@@ -615,6 +757,161 @@
     });
     syncPurchasingSectionSelectValue();
     setupPurchasingEmbed();
+    setupPurchasingViewSwitcher();
+  }
+
+  function bindStockManagementUI() {
+    const restaurantSelect = document.getElementById("stock-restaurant-select");
+    const searchInput = document.getElementById("stock-search");
+    const statusFilter = document.getElementById("stock-filter-status");
+    const categoryFilter = document.getElementById("stock-filter-category");
+
+    // Note: Restaurant select population is handled in refreshDashboardData
+
+    if (restaurantSelect) {
+      restaurantSelect.addEventListener("change", (event) => {
+        const restaurantId = event.target.value;
+        loadStockData(restaurantId);
+      });
+    }
+
+    const filterHandler = () => {
+      // We can filter client-side since we have the data
+      filterStockTable();
+    };
+
+    if (searchInput) searchInput.addEventListener("input", filterHandler);
+    if (statusFilter) statusFilter.addEventListener("change", filterHandler);
+    if (categoryFilter) categoryFilter.addEventListener("change", filterHandler);
+
+    bindAddIngredientUI();
+  }
+
+  // Store stock data in state to allow client-side filtering without re-fetching
+  state.stockData = [];
+
+  async function loadStockData(restaurantId) {
+    const tableBody = document.getElementById("stock-table-body");
+    if (!tableBody) return;
+
+    if (!restaurantId) {
+      tableBody.innerHTML = '<tr><td colspan="6" class="muted text-center">Select a restaurant to view stock.</td></tr>';
+      state.stockData = [];
+      return;
+    }
+
+    tableBody.innerHTML = '<tr><td colspan="6" class="muted text-center">Loading stock data...</td></tr>';
+
+    try {
+      // Fetch recommendations which include stock levels and consumption
+      // We use default filters for now (current date range)
+      const today = new Date();
+      const past = new Date();
+      past.setDate(today.getDate() - 30); // Look back 30 days for consumption avg
+
+      const params = {
+        restaurant_id: restaurantId,
+        date_from: past.toISOString().split('T')[0],
+        date_to: today.toISOString().split('T')[0],
+        reorder_cycle_days: 7, // Default
+        default_lead_time_days: 2 // Default
+      };
+
+      const recommendations = await purchasingApi.fetchRecommendations(params);
+      state.stockData = recommendations || [];
+      renderStockTable(state.stockData);
+
+    } catch (error) {
+      console.error("Failed to load stock data:", error);
+      tableBody.innerHTML = `<tr><td colspan="6" class="muted text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
+      state.stockData = [];
+    }
+  }
+
+  function renderStockTable(data) {
+    const tableBody = document.getElementById("stock-table-body");
+    if (!tableBody) return;
+
+    if (!data || data.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="6" class="muted text-center">No ingredients found.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = data.map(item => {
+      // Calculate coverage
+      let coverageText = "—";
+      if (item.avg_daily_consumption > 0) {
+        const days = item.current_stock / item.avg_daily_consumption;
+        coverageText = `${Math.round(days)} days`;
+        if (days < 1) coverageText = "< 1 day";
+        if (days > 99) coverageText = "> 99 days";
+      } else if (item.current_stock > 0) {
+        coverageText = "No consumption";
+      }
+
+      // Determine status if not provided by API (though API should provide it)
+      const status = item.status ? item.status.toLowerCase() : "ok";
+
+      // Format numbers
+      const qty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(item.current_stock);
+      const safety = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(item.safety_stock);
+
+      return `
+      <tr data-category="${item.category || 'other'}" data-status="${status}">
+        <td>
+          <div class="stock-item-name">
+            <span class="stock-ingredient-name">${item.ingredient_name}</span>
+            <span class="text-xs text-gray-500 block">${item.unit}</span>
+          </div>
+        </td>
+        <td>${qty} <small class="text-gray-500">${item.unit}</small></td>
+        <td>${safety} <small class="text-gray-500">${item.unit}</small></td>
+        <td>${coverageText}</td>
+        <td><span class="stock-badge ${status}">${status.toUpperCase()}</span></td>
+        <td class="text-center"><span class="action-dots">•••</span></td>
+      </tr>
+    `}).join("");
+  }
+
+  function filterStockTable() {
+    const searchInput = document.getElementById("stock-search");
+    const statusFilter = document.getElementById("stock-filter-status");
+    const categoryFilter = document.getElementById("stock-filter-category");
+    const tableBody = document.getElementById("stock-table-body");
+
+    if (!tableBody) return;
+
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+    const statusTerm = statusFilter ? statusFilter.value : "";
+    const categoryTerm = categoryFilter ? categoryFilter.value : "";
+
+    const rows = tableBody.querySelectorAll("tr");
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      // Skip empty state row
+      if (row.cells.length === 1) return;
+
+      const name = row.querySelector(".stock-ingredient-name").textContent.toLowerCase();
+      const status = row.dataset.status;
+      // Note: API might not return category yet, so we might need to handle that
+      const category = row.dataset.category;
+
+      const matchesSearch = name.includes(searchTerm);
+      const matchesStatus = statusTerm === "" || status === statusTerm;
+      // Relax category filter if data doesn't have it
+      const matchesCategory = categoryTerm === "" || (category && category === categoryTerm);
+
+      if (matchesSearch && matchesStatus && matchesCategory) {
+        row.style.display = "";
+        visibleCount++;
+      } else {
+        row.style.display = "none";
+      }
+    });
+
+    // Show message if no results match filters
+    // (Optional enhancement)
   }
 
   function setupPurchasingEmbed() {
@@ -721,6 +1018,191 @@
     purchasingEmbedRuntime.resizeInterval = null;
   }
 
+  function setupPurchasingViewSwitcher() {
+    // Initialize panels and nav links globally, independent of the switcher
+    purchasingViewRuntime.panels = document.querySelectorAll("[data-purchasing-panel]");
+    purchasingViewRuntime.navLinks = document.querySelectorAll("[data-purchasing-nav-link]");
+    purchasingViewRuntime.navDropdown = document.querySelector("[data-nav-dropdown=\"purchasing\"]");
+
+    const switcher = document.getElementById("purchasing-view-switcher");
+
+    if (switcher) {
+      purchasingViewRuntime.container = switcher;
+      purchasingViewRuntime.toggle = switcher.querySelector("[data-purchasing-menu-toggle]");
+      purchasingViewRuntime.label = switcher.querySelector("[data-purchasing-menu-label]");
+      purchasingViewRuntime.menu = switcher.querySelector("[data-purchasing-menu]");
+      purchasingViewRuntime.items = switcher.querySelectorAll("[data-purchasing-menu-item]");
+
+      if (purchasingViewRuntime.toggle) {
+        purchasingViewRuntime.toggle.addEventListener("click", () => {
+          togglePurchasingMenu();
+        });
+      }
+
+      forEachNode(purchasingViewRuntime.items, (item) => {
+        item.addEventListener("click", () => {
+          const view = item.getAttribute("data-view") || "dashboard";
+          setPurchasingPanel(view);
+          closePurchasingMenu();
+        });
+      });
+    }
+
+    // Set default view based on switcher state or default to dashboard
+    const defaultView = switcher ? (switcher.getAttribute("data-active-view") || "dashboard") : "dashboard";
+    setPurchasingPanel(defaultView);
+
+    document.addEventListener("click", handlePurchasingMenuOutsideClick, true);
+    document.addEventListener("keydown", handlePurchasingMenuKeydown);
+  }
+
+  function setPurchasingPanel(viewId) {
+    // Ensure panels are loaded
+    if (!purchasingViewRuntime.panels || purchasingViewRuntime.panels.length === 0) {
+      purchasingViewRuntime.panels = document.querySelectorAll("[data-purchasing-panel]");
+    }
+
+    const targetView = viewId || "dashboard";
+    let hasMatch = false;
+
+    forEachNode(purchasingViewRuntime.panels, (panel) => {
+      const panelId = panel.getAttribute("data-purchasing-panel");
+      const isActive = panelId === targetView;
+      panel.classList.toggle("is-active", isActive);
+      panel.toggleAttribute("hidden", !isActive);
+      if (isActive) {
+        hasMatch = true;
+      }
+    });
+
+    // If no match found and we are not targeting dashboard, try to refresh panels and check again
+    if (!hasMatch && targetView !== "dashboard") {
+      // Refresh panels in case they were added dynamically or missed
+      purchasingViewRuntime.panels = document.querySelectorAll("[data-purchasing-panel]");
+      forEachNode(purchasingViewRuntime.panels, (panel) => {
+        const panelId = panel.getAttribute("data-purchasing-panel");
+        if (panelId === targetView) {
+          panel.classList.add("is-active");
+          panel.removeAttribute("hidden");
+          hasMatch = true;
+        } else {
+          // Don't hide others here as we might have already processed them, 
+          // but strictly speaking we should ensure only one is active.
+          // For safety, let's just re-run the loop if we found a new match? 
+          // Or just activate this one.
+          // Let's just set hasMatch to true if we found it now.
+        }
+      });
+    }
+
+    if (!hasMatch && targetView !== "dashboard") {
+      setPurchasingPanel("dashboard");
+      return;
+    }
+
+    purchasingViewRuntime.activeView = hasMatch ? targetView : "dashboard";
+    if (purchasingViewRuntime.container) {
+      purchasingViewRuntime.container.setAttribute("data-active-view", purchasingViewRuntime.activeView);
+    }
+    const activeItem = updatePurchasingMenuItems(purchasingViewRuntime.activeView);
+    updatePurchasingMenuLabel(activeItem);
+    updatePurchasingNavLinks(purchasingViewRuntime.activeView);
+  }
+
+  function updatePurchasingMenuItems(activeView) {
+    let activeItem = null;
+    forEachNode(purchasingViewRuntime.items, (item) => {
+      const itemView = item.getAttribute("data-view") || "";
+      const isActive = itemView === activeView;
+      item.classList.toggle("is-active", isActive);
+      item.setAttribute("aria-checked", isActive ? "true" : "false");
+      if (isActive) {
+        activeItem = item;
+      }
+    });
+    return activeItem;
+  }
+
+  function updatePurchasingMenuLabel(activeItem) {
+    if (!purchasingViewRuntime.label) {
+      return;
+    }
+    if (!activeItem) {
+      purchasingViewRuntime.label.textContent = "Achats & Stock";
+      return;
+    }
+    purchasingViewRuntime.label.textContent = activeItem.textContent.trim();
+  }
+
+  function updatePurchasingNavLinks(activeView, options) {
+    const navLinks = purchasingViewRuntime.navLinks && purchasingViewRuntime.navLinks.length > 0 ? purchasingViewRuntime.navLinks : document.querySelectorAll("[data-purchasing-nav-link]");
+    purchasingViewRuntime.navLinks = navLinks;
+    const navDropdown = purchasingViewRuntime.navDropdown || document.querySelector("[data-nav-dropdown=\"purchasing\"]");
+    purchasingViewRuntime.navDropdown = navDropdown;
+    const shouldClear = options && options.forceClear;
+    const shouldHighlight = !shouldClear && Boolean(activeView) && isPurchasingSectionActive();
+    let hasActiveLink = false;
+    forEachNode(navLinks, (navLink) => {
+      const linkView = navLink.getAttribute("data-purchasing-view") || "";
+      const isActive = shouldHighlight && linkView === activeView;
+      navLink.classList.toggle("is-active", isActive);
+      if (isActive) {
+        navLink.setAttribute("aria-current", "page");
+        hasActiveLink = true;
+      } else {
+        navLink.removeAttribute("aria-current");
+      }
+    });
+    if (navDropdown) {
+      navDropdown.classList.toggle("has-active-child", hasActiveLink);
+    }
+  }
+
+  function isPurchasingSectionActive() {
+    const purchasingSection = document.getElementById("purchasing");
+    return Boolean(purchasingSection && purchasingSection.classList.contains("active-section"));
+  }
+
+  function togglePurchasingMenu(forceValue) {
+    const container = purchasingViewRuntime.container;
+    const toggle = purchasingViewRuntime.toggle;
+    if (!container || !toggle) {
+      return;
+    }
+    const isOpen = container.classList.contains("is-open");
+    const shouldOpen = typeof forceValue === "boolean" ? forceValue : !isOpen;
+    container.classList.toggle("is-open", shouldOpen);
+    toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+  }
+
+  function closePurchasingMenu() {
+    togglePurchasingMenu(false);
+  }
+
+  function handlePurchasingMenuOutsideClick(event) {
+    const container = purchasingViewRuntime.container;
+    if (!container || !container.classList.contains("is-open")) {
+      return;
+    }
+    if (container.contains(event.target)) {
+      return;
+    }
+    closePurchasingMenu();
+  }
+
+  function handlePurchasingMenuKeydown(event) {
+    if (event.key !== "Escape") {
+      return;
+    }
+    const container = purchasingViewRuntime.container;
+    if (container && container.classList.contains("is-open")) {
+      closePurchasingMenu();
+      if (purchasingViewRuntime.toggle) {
+        purchasingViewRuntime.toggle.focus();
+      }
+    }
+  }
+
   function setupDateFilters() {
     const form = document.getElementById("date-range-form");
     const startInput = document.getElementById("filter-start-date");
@@ -745,7 +1227,7 @@
       const startValue = startInput.value;
       const endValue = endInput.value;
       const error = validateRange(startValue, endValue);
-      
+
       if (messageEl) {
         if (error) {
           messageEl.innerHTML = `<div class="date-error-message">${error.message}</div>`;
@@ -753,7 +1235,7 @@
           messageEl.innerHTML = '';
         }
       }
-      
+
       if (error) {
         return;
       }
@@ -1117,7 +1599,7 @@
 
   function validateRange(startValue, endValue) {
     if (!startValue || !endValue) {
-      return { 
+      return {
         message: "Veuillez sélectionner deux dates.",
         type: "error"
       };
@@ -1125,13 +1607,13 @@
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return { 
+      return {
         message: "Dates invalides.",
         type: "error"
       };
     }
     if (startDate > endDate) {
-      return { 
+      return {
         message: "La date de début doit précéder la date de fin.",
         type: "error"
       };
@@ -1139,7 +1621,7 @@
     const diff = endDate.getTime() - startDate.getTime();
     const maxDuration = 365 * 24 * 60 * 60 * 1000;
     if (diff > maxDuration) {
-      return { 
+      return {
         message: "La période ne peut pas dépasser 12 mois.",
         type: "error"
       };
@@ -1265,7 +1747,9 @@
       state.snapshot = snapshot;
       state.restaurants = snapshot.restaurants || [];
       syncStatsRestaurantsFromSnapshot(state.restaurants);
+      syncStatsRestaurantsFromSnapshot(state.restaurants);
       populatePurchasingSectionSelect();
+      populateStockRestaurantSelect();
 
       updateUIWithUserData(snapshot.user);
       updateProfileFormFields(snapshot.profile);
@@ -1380,58 +1864,58 @@
     }
   }
 
-function updateUIWithUserData(userData) {
-  try {
-    const safeDetails = userData || {};
-    const firstName = safeDetails.first_name || safeDetails.firstName;
-    const lastName = safeDetails.last_name || safeDetails.lastName;
-    const combinedName = [firstName, lastName].filter(Boolean).join(" ").trim();
-    const displayName =
-      combinedName ||
-      safeDetails.fullName ||
-      safeDetails.full_name ||
-      safeDetails.username ||
-      (safeDetails.email ? safeDetails.email.split("@")[0] : "");
+  function updateUIWithUserData(userData) {
+    try {
+      const safeDetails = userData || {};
+      const firstName = safeDetails.first_name || safeDetails.firstName;
+      const lastName = safeDetails.last_name || safeDetails.lastName;
+      const combinedName = [firstName, lastName].filter(Boolean).join(" ").trim();
+      const displayName =
+        combinedName ||
+        safeDetails.fullName ||
+        safeDetails.full_name ||
+        safeDetails.username ||
+        (safeDetails.email ? safeDetails.email.split("@")[0] : "");
 
-    const welcomeTitle = document.getElementById("welcome-title");
-    if (welcomeTitle) {
-      welcomeTitle.textContent = displayName ? `Bonjour, ${displayName}` : "Bonjour";
-    }
+      const welcomeTitle = document.getElementById("welcome-title");
+      if (welcomeTitle) {
+        welcomeTitle.textContent = displayName ? `Bonjour, ${displayName}` : "Bonjour";
+      }
 
-    const pillName = document.getElementById("user-pill-name");
-    if (pillName) {
-      pillName.textContent = displayName || "";
-    }
+      const pillName = document.getElementById("user-pill-name");
+      if (pillName) {
+        pillName.textContent = displayName || "";
+      }
 
-    const planLabel = document.getElementById("user-plan-label");
-    if (planLabel) {
-      planLabel.textContent = safeDetails.plan || "";
+      const planLabel = document.getElementById("user-plan-label");
+      if (planLabel) {
+        planLabel.textContent = safeDetails.plan || "";
+      }
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de l'interface:", error);
     }
-  } catch (error) {
-    console.error("Erreur lors de la mise à jour de l'interface:", error);
   }
-}
 
-function redirectToLogin() {
-  // Nettoyage avant redirection
-  if (window.location.pathname !== '/login') {
-    window.location.href = '/login';
+  function redirectToLogin() {
+    // Nettoyage avant redirection
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
-}
 
   function bindFormEvents() {
     const forms = document.querySelectorAll(".restaurant-form");
     if (!forms || !forms.length) {
       return;
     }
-    
+
     // Gestion de la sélection d'un restaurant dans le formulaire d'édition
     const restaurantSelector = document.getElementById("edit-restaurant-select");
     const editForm = document.getElementById("restaurant-edit-form");
-    
+
     function updateFormFieldsState(restaurantId) {
       if (!editForm) return;
-      
+
       if (restaurantId) {
         editForm.classList.add('restaurant-selected');
         editForm.classList.remove('is-idle');
@@ -1440,11 +1924,11 @@ function redirectToLogin() {
         editForm.classList.add('is-idle');
       }
     }
-    
+
     if (restaurantSelector) {
       // Mettre à jour l'état initial
       updateFormFieldsState(restaurantSelector.value);
-      
+
       restaurantSelector.addEventListener("change", async (event) => {
         const restaurantId = event.target.value;
         if (restaurantId) {
@@ -1456,14 +1940,14 @@ function redirectToLogin() {
             const slugInput = editForm?.querySelector("[name='slug']");
             const menuInput = editForm?.querySelector("[name='menu_document']");
             const modeLabel = editForm?.querySelector("[data-role='form-mode']");
-            
+
             if (nameInput) nameInput.value = restaurant.display_name || "";
             if (slugInput) slugInput.value = restaurant.slug || "";
             if (menuInput) menuInput.value = stringifyMenu(restaurant.menu_document || {});
             if (modeLabel) {
               modeLabel.textContent = `Édition — ${restaurant.display_name || "Restaurant"}`;
             }
-            
+
             // Mettre à jour l'état du formulaire
             updateFormFieldsState(restaurantId);
             state.editingId = restaurantId;
@@ -1729,23 +2213,182 @@ function redirectToLogin() {
     }
   }
 
+  // The instruction implies that bindAddIngredientUI() is called within bindStockManagementUI().
+  // Since bindStockManagementUI() is not provided, we'll assume the call happens
+  // at an appropriate place, e.g., at the end of bindStockManagementUI().
+  // For the purpose of this edit, we'll place the call here, assuming this is the end
+  // of the function where it should be called.
+  // This is a placeholder for the call within bindStockManagementUI.
+  // If bindStockManagementUI is defined elsewhere, this call should be moved into it.
+  // For now, we'll add it here to satisfy the instruction.
+  // bindAddIngredientUI(); // This call would be inside bindStockManagementUI
+
+  // The following function `populateStockRestaurantSelect` is from the original content.
+  // The diff provided a snippet that seemed to indicate `loadStockData` was here,
+  // but the original content has `populateStockRestaurantSelect`.
+  // We will keep `populateStockRestaurantSelect` as it was.
+  function bindAddIngredientUI() {
+    const addBtn = document.getElementById("add-ingredient-btn");
+    const modal = document.getElementById("add-ingredient-modal");
+    const form = document.getElementById("add-ingredient-form");
+    const closeButtons = modal?.querySelectorAll("[data-modal-close]");
+
+    if (!addBtn || !modal || !form) return;
+
+    let isSubmitting = false; // Prevent double submission
+
+    addBtn.addEventListener("click", () => {
+      modal.classList.add("is-active");
+      modal.removeAttribute("aria-hidden");
+      form.reset();
+      isSubmitting = false; // Reset on open
+    });
+
+    const closeModal = () => {
+      modal.classList.remove("is-active");
+      modal.setAttribute("aria-hidden", "true");
+      isSubmitting = false; // Reset on close
+    };
+
+    closeButtons.forEach(btn => btn.addEventListener("click", closeModal));
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Prevent double submission
+      if (isSubmitting) {
+        console.log("Form already submitting, ignoring duplicate request");
+        return;
+      }
+
+      const restaurantId = document.getElementById("stock-restaurant-select").value;
+
+      if (!restaurantId) {
+        showToast("Please select a restaurant first.");
+        return;
+      }
+
+      const formData = new FormData(form);
+      const name = formData.get("name")?.trim();
+      const unit = formData.get("unit");
+
+      if (!name || !unit) {
+        showToast("Please fill in all required fields.");
+        return;
+      }
+
+      const payload = {
+        name: name,
+        unit: unit,
+      };
+
+      const submitBtn = form.querySelector("button[type='submit']");
+      const originalText = submitBtn.textContent;
+
+      try {
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Adding...";
+
+        const response = await fetch("/api/purchasing/ingredients", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${state.token}`,
+            "X-Restaurant-Id": restaurantId
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          // Try to get error message from response
+          let errorMessage = "Failed to create ingredient";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorMessage;
+          } catch (e) {
+            // If JSON parsing fails, use status text
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+
+        // Success!
+        const newIngredient = await response.json();
+        console.log("Ingredient created successfully:", newIngredient);
+
+        closeModal();
+        form.reset();
+
+        // Refresh the stock table
+        if (typeof loadStockData === 'function') {
+          loadStockData(restaurantId);
+        }
+
+        showToast(`✓ ${name} added successfully!`);
+      } catch (error) {
+        console.error("Error creating ingredient:", error);
+        showToast(`Error: ${error.message}`);
+      } finally {
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+
+  }
+
+  function populateStockRestaurantSelect() {
+    const select = document.getElementById("stock-restaurant-select");
+    if (!select) {
+      return;
+    }
+    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+    const placeholder = '<option value="">Select a restaurant</option>';
+
+    if (!restaurants.length) {
+      select.innerHTML = placeholder;
+      select.disabled = true;
+      return;
+    }
+
+    const options = restaurants
+      .map((restaurant) => {
+        const label = restaurant.display_name || restaurant.name || "Restaurant";
+        return `<option value="${restaurant.id}">${label}</option>`;
+      })
+      .join("\n");
+
+    select.innerHTML = `${placeholder}${options}`;
+    select.disabled = false;
+
+    // If we have a selected restaurant in overview, try to select it here too
+    if (state.overview.restaurantId) {
+      select.value = state.overview.restaurantId;
+      // Trigger change event to load data if a restaurant is selected
+      if (select.value) {
+        select.dispatchEvent(new Event('change'));
+      }
+    }
+  }
+
   function renderRestaurants() {
     const container = document.getElementById("restaurants-card-list");
     const restaurantSelector = document.getElementById("edit-restaurant-select");
-    
+
     if (!container) {
       return;
     }
-    
+
     // Update the restaurant dropdown in the edit form
     if (restaurantSelector) {
       const currentValue = restaurantSelector.value;
-      
+
       // Clear existing options except the first one (placeholder)
       while (restaurantSelector.options.length > 1) {
         restaurantSelector.remove(1);
       }
-      
+
       // Add restaurant options
       const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
       restaurants.forEach(restaurant => {
@@ -1761,7 +2404,7 @@ function redirectToLogin() {
           restaurantSelector.add(option);
         }
       });
-      
+
       // If we're currently editing a restaurant, make sure it's selected
       if (state.editingId) {
         const optionToSelect = Array.from(restaurantSelector.options).find(
@@ -3046,9 +3689,9 @@ function redirectToLogin() {
       ? kpis.busiest
       : kpis.busiest_restaurants
         ? kpis.busiest_restaurants.map((entry) => ({
-            name: entry.display_name || entry.name,
-            count: entry.conversations || entry.count || 0,
-          }))
+          name: entry.display_name || entry.name,
+          count: entry.conversations || entry.count || 0,
+        }))
         : null;
     updateBusiestSections(busiestEntries);
   }
@@ -3762,14 +4405,14 @@ function redirectToLogin() {
     if (selector && selector.value !== normalizedId) {
       selector.value = normalizedId;
     }
-    
+
     const nameInput = form.querySelector("[name='display_name']");
     const slugInput = form.querySelector("[name='slug']");
     const menuInput = form.querySelector("[name='menu_document']");
     const submitBtn = form.querySelector("[data-role='submit-btn']");
     const modeLabel = form.querySelector("[data-role='form-mode']");
     const messageEl = form.querySelector("[data-role='form-message']");
-    
+
     if (nameInput) nameInput.value = record.display_name || "";
     if (slugInput) slugInput.value = record.slug || "";
     if (menuInput) menuInput.value = stringifyMenu(record.menu_document);
@@ -3803,8 +4446,8 @@ function redirectToLogin() {
     const submitBtn = form.querySelector("[data-role='submit-btn']");
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = form.dataset.formType === "edit" 
-        ? "Mettre à jour le restaurant" 
+      submitBtn.textContent = form.dataset.formType === "edit"
+        ? "Mettre à jour le restaurant"
         : "Enregistrer le restaurant";
     }
 
@@ -4180,7 +4823,7 @@ function redirectToLogin() {
   function isQrModalOpen() {
     return Boolean(
       shareModalState.element &&
-        (shareModalState.element.classList.contains("open") || shareModalState.element.getAttribute("aria-hidden") === "false")
+      (shareModalState.element.classList.contains("open") || shareModalState.element.getAttribute("aria-hidden") === "false")
     );
   }
 

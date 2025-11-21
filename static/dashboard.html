@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/dashboard.css" />
+  <link rel="stylesheet" href="/static/stock_management.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="/static/js/supabaseClient.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
@@ -38,7 +39,31 @@
         <button type="button" class="nav-link" data-section="manage-restaurants">Gérer vos restaurants</button>
         <button type="button" class="nav-link" data-section="chatbot">Chatbot</button>
         <button type="button" class="nav-link" data-section="statistics">Statistiques</button>
-        <button type="button" class="nav-link" data-section="purchasing">Achats & Stock</button>
+        <div class="nav-dropdown" data-nav-dropdown="purchasing">
+          <button type="button" class="nav-link nav-dropdown-toggle" data-section="purchasing" data-nav-dropdown-toggle
+            aria-haspopup="true" aria-expanded="false">
+            <span>Achats & Stock</span>
+            <span class="nav-dropdown-icon" aria-hidden="true"></span>
+          </button>
+          <div class="nav-dropdown-menu" role="menu" aria-label="Accès Achats & Stock">
+            <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="dashboard"
+              data-purchasing-nav-link role="menuitem">
+              Dashboard Achats & Stock
+            </button>
+            <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="stock"
+              data-purchasing-nav-link role="menuitem">
+              Stock management
+            </button>
+            <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="dishes"
+              data-purchasing-nav-link role="menuitem">
+              Plats & recettes
+            </button>
+            <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="sales"
+              data-purchasing-nav-link role="menuitem">
+              Ventes par plat
+            </button>
+          </div>
+        </div>
         <button type="button" class="nav-link" data-section="billing">Facturation & abonnement</button>
         <button type="button" class="nav-link" data-section="profile">Profil</button>
         <button type="button" class="nav-link nav-link-logout" id="logout-btn">
@@ -142,9 +167,10 @@
                 </div>
               </div>
               <div class="chart-placeholder" aria-live="polite">
-                <canvas id="overview-conversation-chart" role="img"
-                  aria-label="Évolution quotidienne des conversations" height="280"></canvas>
-                <p class="chart-empty" id="overview-conversation-empty" hidden>Aucune donnée disponible sur cette période.
+                <canvas id="overview-conversation-chart" role="img" aria-label="Évolution quotidienne des conversations"
+                  height="280"></canvas>
+                <p class="chart-empty" id="overview-conversation-empty" hidden>Aucune donnée disponible sur cette
+                  période.
                 </p>
               </div>
             </article>
@@ -213,7 +239,8 @@
 
             <div class="overview-cta">
               <p>Besoin d'ajouter un nouvel établissement&nbsp;?</p>
-              <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer un restaurant</button>
+              <button type="button" class="primary-btn" data-open-section="manage-restaurants"
+                data-open-tab="create">Créer un restaurant</button>
             </div>
           </aside>
         </div>
@@ -226,7 +253,8 @@
             <p>Visualisez vos établissements et testez leur chatbot.</p>
           </div>
         </div>
-        <button type="button" class="secondary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer un nouveau restaurant</button>
+        <button type="button" class="secondary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer
+          un nouveau restaurant</button>
 
         <div class="restaurants-grid" id="restaurants-card-list" aria-live="polite">
           <article class="restaurant-card loading-card">
@@ -248,7 +276,8 @@
             <h3>Prêt à ajouter un nouvel établissement&nbsp;?</h3>
             <p class="muted">Connectez votre carte en quelques minutes pour entraîner RestauBot.</p>
           </div>
-          <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer un restaurant</button>
+          <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">Créer
+            un restaurant</button>
         </div>
       </section>
 
@@ -277,73 +306,75 @@
             <div class="restaurant-panel-track">
               <div class="restaurant-panel" id="restaurant-panel-create" role="tabpanel"
                 aria-labelledby="restaurant-tab-create" data-tab-panel="create">
-                <form class="form-grid restaurant-form" id="restaurant-create-form" data-form-type="create"
-                  novalidate>
-                <p class="form-mode" data-role="form-mode">Création d'un nouvel établissement.</p>
-                <label>
-                  <span>Nom du restaurant</span>
-                  <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
-                </label>
-                <label>
-                  <span>Slug public</span>
-                  <input type="text" name="slug" placeholder="lejardin-secret" required />
-                </label>
-                <label>
-                  <span>Langue principale</span>
-                  <select disabled>
-                    <option>Français</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Site web (optionnel)</span>
-                  <input type="url" placeholder="https://monsite.com" disabled />
-                </label>
-                <label class="full-width">
-                  <span>Menu structuré (JSON)</span>
-                  <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
-                </label>
-                <div class="upload-card full-width">
-                  <div class="upload-card-header">
-                    <div>
-                      <h3>Analyser un fichier menu</h3>
-                      <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
-                    </div>
-                  </div>
-                  <label class="upload-dropzone" data-role="menu-dropzone">
-                    <input type="file" data-role="menu-file" accept="application/pdf,image/*"
-                      aria-label="Sélectionner un menu à analyser" />
-                    <div class="dropzone-illustration" aria-hidden="true"></div>
-                    <div class="dropzone-copy">
-                      <strong>Glissez-déposez votre menu</strong>
-                      <span>ou cliquez pour parcourir vos fichiers</span>
-                      <small>10 Mo maximum · Formats PDF / image</small>
-                    </div>
+                <form class="form-grid restaurant-form" id="restaurant-create-form" data-form-type="create" novalidate>
+                  <p class="form-mode" data-role="form-mode">Création d'un nouvel établissement.</p>
+                  <label>
+                    <span>Nom du restaurant</span>
+                    <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
                   </label>
-                  <div class="upload-preview" data-role="upload-preview">
-                    <div class="preview-info" data-role="preview-info"
-                      data-default-text="Aucun fichier importé pour le moment.">
-                      Aucun fichier importé pour le moment.
+                  <label>
+                    <span>Slug public</span>
+                    <input type="text" name="slug" placeholder="lejardin-secret" required />
+                  </label>
+                  <label>
+                    <span>Langue principale</span>
+                    <select disabled>
+                      <option>Français</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Site web (optionnel)</span>
+                    <input type="url" placeholder="https://monsite.com" disabled />
+                  </label>
+                  <label class="full-width">
+                    <span>Menu structuré (JSON)</span>
+                    <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
+                  </label>
+                  <div class="upload-card full-width">
+                    <div class="upload-card-header">
+                      <div>
+                        <h3>Analyser un fichier menu</h3>
+                        <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
+                      </div>
                     </div>
-                    <img src="/static/icones/image.svg" data-role="preview-image" alt="Aperçu du menu" hidden width="18" height="18" />
+                    <label class="upload-dropzone" data-role="menu-dropzone">
+                      <input type="file" data-role="menu-file" accept="application/pdf,image/*"
+                        aria-label="Sélectionner un menu à analyser" />
+                      <div class="dropzone-illustration" aria-hidden="true"></div>
+                      <div class="dropzone-copy">
+                        <strong>Glissez-déposez votre menu</strong>
+                        <span>ou cliquez pour parcourir vos fichiers</span>
+                        <small>10 Mo maximum · Formats PDF / image</small>
+                      </div>
+                    </label>
+                    <div class="upload-preview" data-role="upload-preview">
+                      <div class="preview-info" data-role="preview-info"
+                        data-default-text="Aucun fichier importé pour le moment.">
+                        Aucun fichier importé pour le moment.
+                      </div>
+                      <img src="/static/icones/image.svg" data-role="preview-image" alt="Aperçu du menu" hidden
+                        width="18" height="18" />
+                    </div>
+                    <div class="upload-controls">
+                      <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                        <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                        <span class="ai-glow" aria-hidden="true"></span>
+                        <span class="ai-scanlines" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                    <p class="form-hint" data-role="menu-upload-status"></p>
                   </div>
-                  <div class="upload-controls">
-                    <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
-                      <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
-                      <span class="ai-glow" aria-hidden="true"></span>
-                      <span class="ai-scanlines" aria-hidden="true"></span>
-                    </button>
+                  <div class="form-footer">
+                    <button type="submit" class="primary-btn" data-role="submit-btn">Enregistrer le restaurant</button>
+                    <button type="button" class="ghost-btn" data-action="reset-form">Réinitialiser le
+                      formulaire</button>
+                    <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être testé dans
+                      la
+                      section Chatbot.</p>
+                    <p class="form-hint" data-role="form-message"></p>
                   </div>
-                  <p class="form-hint" data-role="menu-upload-status"></p>
-                </div>
-                <div class="form-footer">
-                  <button type="submit" class="primary-btn" data-role="submit-btn">Enregistrer le restaurant</button>
-                  <button type="button" class="ghost-btn" data-action="reset-form">Réinitialiser le formulaire</button>
-                  <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être testé dans la
-                    section Chatbot.</p>
-                  <p class="form-hint" data-role="form-message"></p>
-                </div>
-              </form>
-            </div>
+                </form>
+              </div>
 
               <div class="restaurant-panel" id="restaurant-panel-edit" role="tabpanel"
                 aria-labelledby="restaurant-tab-edit" aria-hidden="true" data-tab-panel="edit">
@@ -363,70 +394,71 @@
 
                 <form class="form-grid restaurant-form is-idle" id="restaurant-edit-form" data-form-type="edit"
                   novalidate>
-                <label>
-                  <span>Nom du restaurant</span>
-                  <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
-                </label>
-                <label>
-                  <span>Slug public</span>
-                  <input type="text" name="slug" placeholder="lejardin-secret" required />
-                </label>
-                <label>
-                  <span>Langue principale</span>
-                  <select disabled>
-                    <option>Français</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Site web (optionnel)</span>
-                  <input type="url" placeholder="https://monsite.com" disabled />
-                </label>
-                <label class="full-width">
-                  <span>Menu structuré (JSON)</span>
-                  <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
-                </label>
-                <div class="upload-card full-width">
-                  <div class="upload-card-header">
-                    <div>
-                      <h3>Analyser un fichier menu</h3>
-                      <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
-                    </div>
-                  </div>
-                  <label class="upload-dropzone" data-role="menu-dropzone">
-                    <input type="file" data-role="menu-file" accept="application/pdf,image/*"
-                      aria-label="Sélectionner un menu à analyser" />
-                    <div class="dropzone-illustration" aria-hidden="true"></div>
-                    <div class="dropzone-copy">
-                      <strong>Glissez-déposez votre menu</strong>
-                      <span>ou cliquez pour parcourir vos fichiers</span>
-                      <small>10 Mo maximum · Formats PDF / image</small>
-                    </div>
+                  <label>
+                    <span>Nom du restaurant</span>
+                    <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
                   </label>
-                  <div class="upload-preview" data-role="upload-preview">
-                    <div class="preview-info" data-role="preview-info"
-                      data-default-text="Aucun fichier importé pour le moment.">
-                      Aucun fichier importé pour le moment.
+                  <label>
+                    <span>Slug public</span>
+                    <input type="text" name="slug" placeholder="lejardin-secret" required />
+                  </label>
+                  <label>
+                    <span>Langue principale</span>
+                    <select disabled>
+                      <option>Français</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Site web (optionnel)</span>
+                    <input type="url" placeholder="https://monsite.com" disabled />
+                  </label>
+                  <label class="full-width">
+                    <span>Menu structuré (JSON)</span>
+                    <textarea rows="6" name="menu_document" placeholder='{"categories": []}'></textarea>
+                  </label>
+                  <div class="upload-card full-width">
+                    <div class="upload-card-header">
+                      <div>
+                        <h3>Analyser un fichier menu</h3>
+                        <p class="muted">Importez un PDF ou une image, RestauBot le structurera automatiquement.</p>
+                      </div>
                     </div>
-                    <img data-role="preview-image" alt="Aperçu du menu" hidden />
+                    <label class="upload-dropzone" data-role="menu-dropzone">
+                      <input type="file" data-role="menu-file" accept="application/pdf,image/*"
+                        aria-label="Sélectionner un menu à analyser" />
+                      <div class="dropzone-illustration" aria-hidden="true"></div>
+                      <div class="dropzone-copy">
+                        <strong>Glissez-déposez votre menu</strong>
+                        <span>ou cliquez pour parcourir vos fichiers</span>
+                        <small>10 Mo maximum · Formats PDF / image</small>
+                      </div>
+                    </label>
+                    <div class="upload-preview" data-role="upload-preview">
+                      <div class="preview-info" data-role="preview-info"
+                        data-default-text="Aucun fichier importé pour le moment.">
+                        Aucun fichier importé pour le moment.
+                      </div>
+                      <img data-role="preview-image" alt="Aperçu du menu" hidden />
+                    </div>
+                    <div class="upload-controls">
+                      <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                        <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                        <span class="ai-glow" aria-hidden="true"></span>
+                        <span class="ai-scanlines" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                    <p class="form-hint" data-role="menu-upload-status"></p>
                   </div>
-                  <div class="upload-controls">
-                    <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
-                      <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
-                      <span class="ai-glow" aria-hidden="true"></span>
-                      <span class="ai-scanlines" aria-hidden="true"></span>
-                    </button>
+                  <div class="form-footer">
+                    <button type="submit" class="primary-btn" data-role="submit-btn">Mettre à jour le
+                      restaurant</button>
+                    <button type="button" class="ghost-btn" data-action="reset-form">Terminer l'édition</button>
+                    <p class="muted">Utilisez les cartes de la section Restaurants pour choisir l'établissement à
+                      modifier.</p>
+                    <p class="form-hint" data-role="form-message"></p>
                   </div>
-                  <p class="form-hint" data-role="menu-upload-status"></p>
-                </div>
-                <div class="form-footer">
-                  <button type="submit" class="primary-btn" data-role="submit-btn">Mettre à jour le restaurant</button>
-                  <button type="button" class="ghost-btn" data-action="reset-form">Terminer l'édition</button>
-                  <p class="muted">Utilisez les cartes de la section Restaurants pour choisir l'établissement à
-                    modifier.</p>
-                  <p class="form-hint" data-role="form-message"></p>
-                </div>
-              </form>
-            </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -482,7 +514,7 @@
         </div>
       </section>
 
-    <section id="statistics" class="section" aria-label="Statistiques détaillées">
+      <section id="statistics" class="section" aria-label="Statistiques détaillées">
         <div class="section-header stats-section-header">
           <div>
             <h2>Statistiques détaillées</h2>
@@ -577,7 +609,8 @@
               </div>
             </div>
             <div class="chart-placeholder">
-              <canvas id="stats-activity-chart" aria-label="Évolution des conversations" role="img" height="280"></canvas>
+              <canvas id="stats-activity-chart" aria-label="Évolution des conversations" role="img"
+                height="280"></canvas>
               <p class="chart-empty" id="stats-activity-empty" hidden>Aucune interaction sur cette
                 période.</p>
             </div>
@@ -688,7 +721,8 @@
             </label>
             <label>
               <span>Email (lecture seule)</span>
-              <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email" readonly />
+              <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email"
+                readonly />
             </label>
             <label>
               <span>Nom de l'entreprise</span>
@@ -724,119 +758,419 @@
             </div>
           </div>
         </form>
-    </section>
+      </section>
 
-    <section id="purchasing" class="section" aria-label="Achats et stock">
-      <div class="purchasing-header">
-        <div>
-          <h2>Achats & Stock</h2>
-          <p class="muted">Pilotez vos commandes, vos alertes de stock et vos fournisseurs dans la même vue.</p>
-        </div>
-        <div class="purchasing-badge">Vue interactive</div>
-      </div>
-
-      <div class="purchasing-card-grid">
-        <article class="purchasing-card">
-          <div class="purchasing-card-head">
-            <div>
-              <p class="purchasing-label">Étape 1</p>
-              <h3>Restaurant actif</h3>
-            </div>
-            <button
-              type="button"
-              class="info-trigger"
-              data-tooltip="Synchronisez Achats & Stock avec l'établissement sélectionné dans le dashboard."
-              aria-label="Informations sur le restaurant actif"
-            >
-              i
-            </button>
+      <section id="purchasing" class="section" aria-label="Achats et stock">
+        <div class="purchasing-header">
+          <div class="purchasing-header-actions">
+            <!-- View switcher removed as requested -->
           </div>
-          <label class="purchasing-select" for="purchasing-section-restaurant-select">
-            <span>Choisissez un établissement</span>
-            <select id="purchasing-section-restaurant-select">
-              <option value="">Sélectionnez un restaurant</option>
+        </div>
+
+        <div class="purchasing-panel is-active" data-purchasing-panel="dashboard">
+          <div class="purchasing-card-grid">
+            <article class="purchasing-card">
+              <div class="purchasing-card-head">
+                <div>
+                  <p class="purchasing-label">Étape 1</p>
+                  <h3>Restaurant actif</h3>
+                </div>
+                <button type="button" class="info-trigger"
+                  data-tooltip="Synchronisez Achats & Stock avec l'établissement sélectionné dans le dashboard."
+                  aria-label="Informations sur le restaurant actif">
+                  i
+                </button>
+              </div>
+              <label class="purchasing-select" for="purchasing-section-restaurant-select">
+                <span>Choisissez un établissement</span>
+                <select id="purchasing-section-restaurant-select">
+                  <option value="">Sélectionnez un restaurant</option>
+                </select>
+              </label>
+              <p class="purchasing-card-hint">Le module Achats se met automatiquement à jour selon votre choix.</p>
+            </article>
+
+            <article class="purchasing-card">
+              <div class="purchasing-card-head">
+                <div>
+                  <p class="purchasing-label">Étape 2</p>
+                  <h3>Comprendre l'état des stocks</h3>
+                </div>
+                <div class="purchasing-card-meta">
+                  <span class="purchasing-status-pill is-sync">Temps réel</span>
+                  <button type="button" class="info-trigger"
+                    data-tooltip="Visualisez les alertes CRITICAL, LOW et OK pour prioriser vos achats."
+                    aria-label="Informations sur l'état des stocks">
+                    i
+                  </button>
+                </div>
+              </div>
+              <p>Visualisez les recommandations d'achat, les niveaux critiques et les fournisseurs prioritaires sans
+                quitter cette page.</p>
+              <ul class="purchasing-card-list">
+                <li>Alertes critiques mises en évidence</li>
+                <li>Indicateurs LOW & OK lisibles immédiatement</li>
+                <li>Glisser jusqu'au détail complet des ingrédients</li>
+              </ul>
+            </article>
+
+            <article class="purchasing-card">
+              <div class="purchasing-card-head">
+                <div>
+                  <p class="purchasing-label">Étape 3</p>
+                  <h3>Besoin de plus d'espace ?</h3>
+                </div>
+                <div class="purchasing-card-meta">
+                  <span class="purchasing-status-pill">Confort</span>
+                  <button type="button" class="info-trigger"
+                    data-tooltip="Passez en plein écran pour vos inventaires ou commandes volumineuses."
+                    aria-label="Informations sur la vue plein écran">
+                    i
+                  </button>
+                </div>
+              </div>
+              <p>Accédez à la version plein écran du module pour vos longues sessions de planification ou d'inventaire.
+              </p>
+              <a class="primary-btn" href="/purchasing" target="_blank" rel="noopener">Ouvrir en plein écran</a>
+            </article>
+          </div>
+
+          <div class="purchasing-embed">
+            <div class="purchasing-embed-head">
+              <button type="button" class="info-trigger"
+                data-tooltip="Toutes les interactions Achats & Stock restent dans cette fenêtre, sans multiplier les onglets."
+                aria-label="Informations sur le module Achats">
+                i
+              </button>
+            </div>
+            <div class="purchasing-iframe-shell" id="purchasing-iframe-shell">
+              <div class="purchasing-iframe-loader" id="purchasing-iframe-loader" role="status" aria-live="polite">
+                <span class="loader-dot" aria-hidden="true"></span>
+                <p>Chargement du module Achats…</p>
+              </div>
+              <iframe id="purchasing-iframe" src="/purchasing?embedded=1" title="Module Achats & Stock" loading="lazy"
+                referrerpolicy="no-referrer" class="purchasing-iframe"></iframe>
+            </div>
+          </div>
+          <p class="muted purchasing-hint">Astuce : manipulez vos recettes et vos fournisseurs ici, puis ouvrez la vue
+            plein écran pour vos clôtures mensuelles.</p>
+        </div>
+
+        <div class="purchasing-panel" data-purchasing-panel="stock" hidden>
+          <div class="stock-management-header">
+            <div class="stock-header-left">
+              <h2>Stock Management</h2>
+              <p class="muted">Track and manage ingredient inventory in real-time.</p>
+            </div>
+            <div class="stock-header-actions">
+              <button type="button" class="ghost-btn" id="add-ingredient-btn">Add New Ingredient</button>
+              <button type="button" class="primary-btn">
+                <span class="sparkle-icon">✨</span>
+                Get Purchasing Recommendations
+              </button>
+            </div>
+          </div>
+
+          <div class="stock-restaurant-selector">
+            <label for="stock-restaurant-select">Select Restaurant</label>
+            <select id="stock-restaurant-select">
+              <option value="">Select a restaurant</option>
             </select>
-          </label>
-          <p class="purchasing-card-hint">Le module Achats se met automatiquement à jour selon votre choix.</p>
-        </article>
+          </div>
 
-        <article class="purchasing-card">
-          <div class="purchasing-card-head">
-            <div>
-              <p class="purchasing-label">Étape 2</p>
-              <h3>Comprendre l'état des stocks</h3>
+          <div class="stock-card">
+            <div class="stock-filters">
+              <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="stock-search" placeholder="Search by Ingredient Name..." />
+              </div>
+              <div class="filter-dropdowns">
+                <select id="stock-filter-status" class="filter-select">
+                  <option value="">Status</option>
+                  <option value="critical">Critical</option>
+                  <option value="low">Low</option>
+                  <option value="ok">OK</option>
+                </select>
+                <select id="stock-filter-category" class="filter-select">
+                  <option value="">Category</option>
+                  <option value="vegetables">Vegetables</option>
+                  <option value="meat">Meat</option>
+                  <option value="dairy">Dairy</option>
+                  <option value="dry">Dry Goods</option>
+                </select>
+              </div>
             </div>
-            <div class="purchasing-card-meta">
-              <span class="purchasing-status-pill is-sync">Temps réel</span>
-              <button
-                type="button"
-                class="info-trigger"
-                data-tooltip="Visualisez les alertes CRITICAL, LOW et OK pour prioriser vos achats."
-                aria-label="Informations sur l'état des stocks"
-              >
-                i
-              </button>
+
+            <div class="stock-table-container">
+              <table class="stock-table-new">
+                <thead>
+                  <tr>
+                    <th>INGREDIENT NAME</th>
+                    <th>CURRENT QUANTITY</th>
+                    <th>SAFETY STOCK THRESHOLD</th>
+                    <th>DAYS OF COVERAGE</th>
+                    <th>STATUS</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                  <!-- Rows will be populated by JS -->
+                  <tr>
+                    <td colspan="6" class="muted text-center">Select a restaurant to view stock.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <p>Visualisez les recommandations d'achat, les niveaux critiques et les fournisseurs prioritaires sans quitter cette page.</p>
-          <ul class="purchasing-card-list">
-            <li>Alertes critiques mises en évidence</li>
-            <li>Indicateurs LOW & OK lisibles immédiatement</li>
-            <li>Glisser jusqu'au détail complet des ingrédients</li>
-          </ul>
-        </article>
-
-        <article class="purchasing-card">
-          <div class="purchasing-card-head">
-            <div>
-              <p class="purchasing-label">Étape 3</p>
-              <h3>Besoin de plus d'espace ?</h3>
-            </div>
-            <div class="purchasing-card-meta">
-              <span class="purchasing-status-pill">Confort</span>
-              <button
-                type="button"
-                class="info-trigger"
-                data-tooltip="Passez en plein écran pour vos inventaires ou commandes volumineuses."
-                aria-label="Informations sur la vue plein écran"
-              >
-                i
-              </button>
-            </div>
-          </div>
-          <p>Accédez à la version plein écran du module pour vos longues sessions de planification ou d'inventaire.</p>
-          <a class="primary-btn" href="/purchasing" target="_blank" rel="noopener">Ouvrir en plein écran</a>
-        </article>
-      </div>
-
-      <div class="purchasing-embed">
-        <div class="purchasing-embed-head">
-          <button
-            type="button"
-            class="info-trigger"
-            data-tooltip="Toutes les interactions Achats & Stock restent dans cette fenêtre, sans multiplier les onglets."
-            aria-label="Informations sur le module Achats"
-          >
-            i
-          </button>
         </div>
-        <div class="purchasing-iframe-shell" id="purchasing-iframe-shell">
-          <div class="purchasing-iframe-loader" id="purchasing-iframe-loader" role="status" aria-live="polite">
-            <span class="loader-dot" aria-hidden="true"></span>
-            <p>Chargement du module Achats…</p>
-          </div>
-          <iframe
-            id="purchasing-iframe"
-            src="/purchasing?embedded=1"
-            title="Module Achats & Stock"
-            loading="lazy"
-            referrerpolicy="no-referrer"
-            class="purchasing-iframe"
-          ></iframe>
-        </div>
+        <tr>
+          <td>
+            <div class="stock-item">
+              <strong>Burrata des Pouilles</strong>
+              <span>Livraison atelier frais</span>
+            </div>
+          </td>
+          <td>
+            <p class="stock-quantity">4 unités</p>
+            <span class="muted">Stock sécurité 12</span>
+          </td>
+          <td>
+            <span class="stock-status is-critical">Critique</span>
+            <span class="muted">Commander avant 15h</span>
+          </td>
+          <td>
+            <div class="stock-trend">
+              <span class="trend-negative">-32 %</span>
+              <small>Délais fournisseur 48 h</small>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="stock-item">
+              <strong>Citron confit maison</strong>
+              <span>Préparé atelier pâtisserie</span>
+            </div>
+          </td>
+          <td>
+            <p class="stock-quantity">9 pièces</p>
+            <span class="muted">Lot en fermentation</span>
+          </td>
+          <td>
+            <span class="stock-status is-warning">À surveiller</span>
+            <span class="muted">Prêt dans 3 jours</span>
+          </td>
+          <td>
+            <div class="stock-trend">
+              <span class="trend-positive">+4 %</span>
+              <small>Consommation stable</small>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div class="stock-item">
+              <strong>Champignons shiitake</strong>
+              <span>Producteur : Forêt B.</span>
+            </div>
+          </td>
+          <td>
+            <p class="stock-quantity">7 kg</p>
+            <span class="muted">Livraison lundi</span>
+          </td>
+          <td>
+            <span class="stock-status is-low">Faible</span>
+            <span class="muted">Préparer un rappel</span>
+          </td>
+          <td>
+            <div class="stock-trend">
+              <span class="trend-neutral">0 %</span>
+              <small>Prévision inchangée</small>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+        </table>
+  </div>
+  </div>
+
+  <div class="purchasing-panel" data-purchasing-panel="dishes" hidden>
+    <header class="purchasing-panel-head">
+      <div>
+        <p class="eyebrow">Plats & recettes</p>
+        <h3>Visibilité sur les créations phares</h3>
       </div>
-      <p class="muted purchasing-hint">Astuce : manipulez vos recettes et vos fournisseurs ici, puis ouvrez la vue plein écran pour vos clôtures mensuelles.</p>
-    </section>
+      <p class="muted">Anticipez la mise à jour des fiches techniques avant chaque service.</p>
+    </header>
+    <div class="dish-grid">
+      <article class="dish-card">
+        <div class="dish-card-head">
+          <h3>Raviole de homard</h3>
+          <span class="dish-tag is-premium">Signature</span>
+        </div>
+        <p>Farce homard bleu, bisque corsée, écume de combava. Le plat déclenche 42 % des ventes premium.</p>
+        <dl class="dish-metrics">
+          <div>
+            <dt>Disponibilité</dt>
+            <dd>24 portions</dd>
+          </div>
+          <div>
+            <dt>C.U. food cost</dt>
+            <dd>17,30 €</dd>
+          </div>
+          <div>
+            <dt>Marge</dt>
+            <dd>71 %</dd>
+          </div>
+        </dl>
+        <p class="muted small">À préparer : bisque, raviole fraîche et herbes le matin.</p>
+      </article>
+      <article class="dish-card">
+        <div class="dish-card-head">
+          <h3>Risotto champignons anciens</h3>
+          <span class="dish-tag is-stable">Incontournable</span>
+        </div>
+        <p>Fumé au bois de hêtre, nappage parmesan affiné 24 mois. Plat le plus demandé pour les menus affaires.</p>
+        <dl class="dish-metrics">
+          <div>
+            <dt>Disponibilité</dt>
+            <dd>38 portions</dd>
+          </div>
+          <div>
+            <dt>C.U. food cost</dt>
+            <dd>7,60 €</dd>
+          </div>
+          <div>
+            <dt>Marge</dt>
+            <dd>82 %</dd>
+          </div>
+        </dl>
+        <p class="muted small">Vérifier le bouillon maison et les copeaux de parmesan le midi.</p>
+      </article>
+      <article class="dish-card">
+        <div class="dish-card-head">
+          <h3>Crumble de poire Safran</h3>
+          <span class="dish-tag is-new">Nouveauté</span>
+        </div>
+        <p>Dessert créé pour la carte d'hiver. Idéal pour booster les ventes à l'issue du menu dégustation.</p>
+        <dl class="dish-metrics">
+          <div>
+            <dt>Disponibilité</dt>
+            <dd>30 portions</dd>
+          </div>
+          <div>
+            <dt>C.U. food cost</dt>
+            <dd>4,20 €</dd>
+          </div>
+          <div>
+            <dt>Marge</dt>
+            <dd>79 %</dd>
+          </div>
+        </dl>
+        <p class="muted small">Prévoir un briefing service pour pousser les ventes croisée avec les boissons chaudes.
+        </p>
+      </article>
+    </div>
+    <div class="dish-actions">
+      <div>
+        <h4>Brief cuisine</h4>
+        <ul>
+          <li>Mettre à jour les fiches techniques dans RestauBot.</li>
+          <li>Remontée équipe pâtisserie tous les vendredis.</li>
+          <li>Suivre les plats signature versus nouveautés.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Idées service</h4>
+        <ul>
+          <li>Proposer un accord vin blanc sur la raviole.</li>
+          <li>Inclure le risotto en suggestion du jour.</li>
+          <li>Vendre le crumble en menu déjeuner gourmand.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
+    <header class="purchasing-panel-head">
+      <div>
+        <p class="eyebrow">Ventes par plat</p>
+        <h3>Quel plat tire les revenus ?</h3>
+      </div>
+      <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
+    </header>
+    <div class="sales-summary-grid">
+      <article class="sales-card">
+        <p class="sales-label">Ventes 7 derniers jours</p>
+        <strong>192 plats</strong>
+        <span class="trend-positive">+14 %</span>
+      </article>
+      <article class="sales-card">
+        <p class="sales-label">Panier moyen</p>
+        <strong>52,80 €</strong>
+        <span class="trend-neutral">=</span>
+      </article>
+      <article class="sales-card">
+        <p class="sales-label">Meilleure journée</p>
+        <strong>Samedi</strong>
+        <span class="muted">74 couverts</span>
+      </article>
+    </div>
+    <div class="sales-detail">
+      <div class="sales-chart">
+        <h4>Tendance hebdomadaire</h4>
+        <div class="sales-chart-bars" aria-hidden="true">
+          <span style="height: 45%" title="Lun"></span>
+          <span style="height: 52%" title="Mar"></span>
+          <span style="height: 61%" title="Mer"></span>
+          <span style="height: 70%" title="Jeu"></span>
+          <span style="height: 88%" title="Ven"></span>
+          <span style="height: 100%" title="Sam"></span>
+          <span style="height: 60%" title="Dim"></span>
+        </div>
+        <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans RestauBot.</p>
+      </div>
+      <div class="sales-table-wrapper">
+        <table class="sales-table">
+          <thead>
+            <tr>
+              <th>Plat</th>
+              <th>Volumes</th>
+              <th>Ticket moyen</th>
+              <th>Conversion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Raviole de homard</td>
+              <td>54</td>
+              <td>42 €</td>
+              <td><span class="trend-positive">+9 %</span></td>
+            </tr>
+            <tr>
+              <td>Risotto champignons anciens</td>
+              <td>68</td>
+              <td>36 €</td>
+              <td><span class="trend-neutral">=</span></td>
+            </tr>
+            <tr>
+              <td>Crumble de poire Safran</td>
+              <td>34</td>
+              <td>18 €</td>
+              <td><span class="trend-positive">+4 %</span></td>
+            </tr>
+            <tr>
+              <td>Tartare de maigre</td>
+              <td>36</td>
+              <td>38 €</td>
+              <td><span class="trend-negative">-6 %</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </section>
   </main>
   </div>
 
@@ -869,6 +1203,42 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Add Ingredient Modal -->
+  <div class="modal" id="add-ingredient-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-content" role="document">
+      <button class="modal-close" data-modal-close aria-label="Close modal">&times;</button>
+      <div class="modal-header">
+        <h3>Add New Ingredient</h3>
+        <p class="muted">Add a new ingredient to your inventory.</p>
+      </div>
+      <form id="add-ingredient-form">
+        <div class="form-group">
+          <label for="ingredient-name">Name <span class="required">*</span></label>
+          <input type="text" id="ingredient-name" name="name" required placeholder="e.g., Tomatoes" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="ingredient-unit">Unit <span class="required">*</span></label>
+          <select id="ingredient-unit" name="unit" required>
+            <option value="">Select a unit</option>
+            <option value="kg">kg (kilogram)</option>
+            <option value="g">g (gram)</option>
+            <option value="L">L (liter)</option>
+            <option value="ml">ml (milliliter)</option>
+            <option value="units">units</option>
+            <option value="pcs">pcs (pieces)</option>
+          </select>
+        </div>
+        <div class="form-footer">
+          <button type="button" class="ghost-btn" data-modal-close>Cancel</button>
+          <button type="submit" class="primary-btn">Add Ingredient</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/dashboard.js" type="module"></script>
 </body>
 
 </html>
