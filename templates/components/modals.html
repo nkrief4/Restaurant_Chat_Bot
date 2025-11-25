@@ -1,4 +1,4 @@
-<div class="modal" id="chatbot-modal" aria-hidden="true" role="dialog" aria-modal="true">
+<div class="modal" id="chatbot-modal" hidden aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal-content qr-modal" role="document">
         <button class="modal-close" data-modal-close aria-label="Fermer le modal">&times;</button>
         <div>
@@ -25,40 +25,5 @@
                     chatbot</button>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Add Ingredient Modal -->
-<div class="modal" id="add-ingredient-modal" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="modal-overlay" data-modal-close></div>
-    <div class="modal-content" role="document">
-        <button class="modal-close" data-modal-close aria-label="Close modal">&times;</button>
-        <div class="modal-header">
-            <h3>Add New Ingredient</h3>
-            <p class="muted">Add a new ingredient to your inventory.</p>
-        </div>
-        <form id="add-ingredient-form">
-            <div class="form-group">
-                <label for="ingredient-name">Name <span class="required">*</span></label>
-                <input type="text" id="ingredient-name" name="name" required placeholder="e.g., Tomatoes"
-                    autocomplete="off">
-            </div>
-            <div class="form-group">
-                <label for="ingredient-unit">Unit <span class="required">*</span></label>
-                <select id="ingredient-unit" name="unit" required>
-                    <option value="">Select a unit</option>
-                    <option value="kg">kg (kilogram)</option>
-                    <option value="g">g (gram)</option>
-                    <option value="L">L (liter)</option>
-                    <option value="ml">ml (milliliter)</option>
-                    <option value="units">units</option>
-                    <option value="pcs">pcs (pieces)</option>
-                </select>
-            </div>
-            <div class="form-footer">
-                <button type="button" class="ghost-btn" data-modal-close>Cancel</button>
-                <button type="submit" class="primary-btn">Add Ingredient</button>
-            </div>
-        </form>
     </div>
 </div>

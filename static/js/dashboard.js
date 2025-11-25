@@ -209,6 +209,15 @@
           method: "DELETE",
           headers: buildHeaders()
         });
+      },
+      async createIngredient(data) {
+        return request(`/api/purchasing/ingredients`, {
+          method: "POST",
+          headers: buildHeaders({
+            "Content-Type": "application/json"
+          }),
+          body: JSON.stringify(data)
+        });
       }
     }
   })();
@@ -767,6 +776,65 @@
     modal.dataset.eventsBound = "true";
   }
 
+  function bindAddIngredientModalEvents() {
+    const modal = document.getElementById('add-ingredient-modal');
+    if (!modal) return;
+
+    if (modal.dataset.eventsBound) return;
+
+    const closeBtns = modal.querySelectorAll('.close-modal-btn');
+    closeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        modal.classList.remove("open");
+      });
+    });
+
+    const form = document.getElementById('add-ingredient-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Adding...";
+
+        const data = {
+          name: document.getElementById('add-ingredient-name').value,
+          unit: document.getElementById('add-ingredient-unit').value,
+          current_stock: parseFloat(document.getElementById('add-ingredient-quantity').value),
+          safety_stock: parseFloat(document.getElementById('add-safety-stock').value),
+          // Optional fields
+          days_of_coverage: document.getElementById('add-ingredient-coverage').value ? parseFloat(document.getElementById('add-ingredient-coverage').value) : null
+        };
+
+        try {
+          await purchasingApi.createIngredient(data);
+          modal.hidden = true;
+          modal.setAttribute("aria-hidden", "true");
+          modal.classList.remove("open");
+          form.reset();
+          showToast("Ingredient added successfully!");
+
+          // Refresh data
+          const select = document.getElementById("stock-restaurant-select");
+          if (select && select.value) {
+            loadStockData(select.value);
+          }
+        } catch (error) {
+          console.error("Error creating ingredient:", error);
+          alert("Failed to add ingredient: " + error.message);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      });
+    }
+
+    modal.dataset.eventsBound = "true";
+  }
+
   function bindOverviewUI() {
     const select = document.getElementById("overview-restaurant-select");
     if (select) {
@@ -856,7 +924,33 @@
     if (statusFilter) statusFilter.addEventListener("change", filterHandler);
     if (categoryFilter) categoryFilter.addEventListener("change", filterHandler);
 
-    bindAddIngredientUI();
+    const addBtn = document.getElementById("btn-add-ingredient");
+    if (addBtn) {
+      console.log("Add ingredient button found");
+      addBtn.addEventListener("click", () => {
+        console.log("Add ingredient button clicked");
+        const modal = document.getElementById("add-ingredient-modal");
+        const select = document.getElementById("stock-restaurant-select");
+
+        if (!select || !select.value) {
+          alert("Please select a restaurant first.");
+          return;
+        }
+
+        if (modal) {
+          console.log("Opening modal");
+          modal.hidden = false;
+          modal.setAttribute("aria-hidden", "false");
+          modal.classList.add("open");
+          // Ensure events are bound
+          bindAddIngredientModalEvents();
+        } else {
+          console.error("Add ingredient modal NOT found");
+        }
+      });
+    } else {
+      console.warn("Add ingredient button NOT found in bindStockManagementUI");
+    }
   }
 
   // Store stock data in state to allow client-side filtering without re-fetching
@@ -2505,138 +2599,6 @@
   // The diff provided a snippet that seemed to indicate `loadStockData` was here,
   // but the original content has `populateStockRestaurantSelect`.
   // We will keep `populateStockRestaurantSelect` as it was.
-  function bindAddIngredientUI() {
-    const addBtn = document.getElementById("add-ingredient-btn");
-    const modal = document.getElementById("add-ingredient-modal");
-    const form = document.getElementById("add-ingredient-form");
-    const closeButtons = modal?.querySelectorAll("[data-modal-close]");
-
-    if (!addBtn || !modal || !form) return;
-
-    // Prevent duplicate bindings
-    if (modal.dataset.eventsBound) return;
-
-    let isSubmitting = false; // Prevent double submission
-
-    addBtn.addEventListener("click", () => {
-      modal.hidden = false;
-      modal.removeAttribute("aria-hidden");
-      form.reset();
-      isSubmitting = false; // Reset on open
-    });
-
-    const closeModal = () => {
-      modal.hidden = true;
-      modal.setAttribute("aria-hidden", "true");
-      isSubmitting = false; // Reset on close
-    };
-
-    closeButtons.forEach(btn => btn.addEventListener("click", closeModal));
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      // Prevent double submission
-      if (isSubmitting) {
-        console.log("Form already submitting, ignoring duplicate request");
-        return;
-      }
-
-      const restaurantId = document.getElementById("stock-restaurant-select")?.value;
-
-      if (!restaurantId) {
-        alert("Please select a restaurant first.");
-        return;
-      }
-
-      const formData = new FormData(form);
-      const name = formData.get("name")?.trim();
-      const unit = formData.get("unit")?.trim();
-      const currentStock = parseFloat(formData.get("current_stock") || 0);
-      const coverageDays = parseFloat(formData.get("coverage_days") || 7);
-
-      if (!name || !unit) {
-        alert("Please fill in all required fields.");
-        return;
-      }
-
-      // Calculate implied daily consumption and safety stock
-      // If we have 10kg lasting 5 days, consumption is 2kg/day.
-      // Default safety stock is set to cover 3 days of consumption (or 20% of coverage if coverage is small?)
-      // Let's use a simple rule: Safety Stock = Daily Consumption * 3 days.
-      let safetyStock = 0;
-      if (currentStock > 0 && coverageDays > 0) {
-        const dailyConsumption = currentStock / coverageDays;
-        safetyStock = dailyConsumption * 3;
-        // Ensure safety stock isn't larger than current stock initially? No, it can be.
-        // But if coverageDays < 3, then currentStock < safetyStock, so status will be LOW/CRITICAL immediately.
-        // This is correct behavior: "I have 2 days left" -> Critical.
-      }
-
-      const payload = {
-        name: name,
-        unit: unit,
-        current_stock: currentStock,
-        safety_stock: parseFloat(safetyStock.toFixed(2))
-      };
-
-      const submitBtn = form.querySelector("button[type='submit']");
-      const originalText = submitBtn.textContent;
-
-      try {
-        isSubmitting = true;
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Adding...";
-
-        const response = await fetch("/api/purchasing/ingredients", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${state.token}`,
-            "X-Restaurant-Id": restaurantId
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          // Try to get error message from response
-          let errorMessage = "Failed to create ingredient";
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.detail || errorMessage;
-          } catch (e) {
-            // If JSON parsing fails, use status text
-            errorMessage = response.statusText || errorMessage;
-          }
-          throw new Error(errorMessage);
-        }
-
-        // Success!
-        const newIngredient = await response.json();
-        console.log("Ingredient created successfully:", newIngredient);
-
-        closeModal();
-        form.reset();
-
-        // Refresh the stock table
-        if (typeof loadStockData === 'function') {
-          loadStockData(restaurantId);
-        }
-
-        // Optional: Show success toast
-        // showToast(`✓ ${name} added successfully!`);
-      } catch (error) {
-        console.error("Error creating ingredient:", error);
-        alert(`Error: ${error.message}`);
-      } finally {
-        isSubmitting = false;
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-      }
-    });
-
-    modal.dataset.eventsBound = "true";
-  }
 
   function populateStockRestaurantSelect() {
     const select = document.getElementById("stock-restaurant-select");
@@ -5428,6 +5390,130 @@
         }
       });
     }
+  }
+
+  // Global functions for stock management (called from inline HTML)
+  window.toggleStockActions = function (ingredientId) {
+    // Close all other dropdowns first
+    document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
+      if (dropdown.id !== `actions-${ingredientId}`) {
+        dropdown.classList.remove('show');
+      }
+    });
+
+    const dropdown = document.getElementById(`actions-${ingredientId}`);
+    if (dropdown) {
+      dropdown.classList.toggle('show');
+    }
+  };
+
+  window.openEditModal = function (id, name, safetyStock, unit) {
+    const modal = document.getElementById('edit-ingredient-modal');
+    if (!modal) return;
+
+    document.getElementById('edit-ingredient-id').value = id;
+    document.getElementById('edit-ingredient-name').value = name;
+    document.getElementById('edit-safety-stock').value = safetyStock;
+    document.getElementById('edit-ingredient-unit').textContent = unit;
+
+    modal.removeAttribute('hidden');
+    modal.removeAttribute('aria-hidden');
+
+    // Close any open action dropdowns
+    document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
+      dropdown.classList.remove('show');
+    });
+
+    // Focus the safety stock input
+    setTimeout(() => {
+      const input = document.getElementById('edit-safety-stock');
+      if (input) input.focus();
+    }, 100);
+  };
+
+  window.deleteIngredient = async function (id, name) {
+    const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?\n\nCette action est irréversible.`);
+    if (!confirmed) return;
+
+    try {
+      const restaurantId = document.getElementById('stock-restaurant-select')?.value;
+      if (!restaurantId) {
+        alert('Restaurant non sélectionné.');
+        return;
+      }
+
+      // Close any open action dropdowns
+      document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
+        dropdown.classList.remove('show');
+      });
+
+      const response = await fetch(`/api/purchasing/ingredients/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          'X-Restaurant-Id': restaurantId
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Échec de la suppression de l\'ingrédient';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Success - refresh the table
+      showToast(`✓ "${name}" supprimé avec succès`);
+      if (typeof loadStockData === 'function') {
+        loadStockData(restaurantId);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert(`Erreur: ${error.message}`);
+    }
+  };
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('.action-btn') && !event.target.closest('.actions-dropdown')) {
+      document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
+        dropdown.classList.remove('show');
+      });
+    }
+  });
+
+  // Enhanced modal close handlers for better UX
+  function enhanceModalHandlers() {
+    const modals = document.querySelectorAll('.modal');
+
+    modals.forEach(modal => {
+      // Close on ESC key
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hasAttribute('hidden')) {
+          const closeBtn = modal.querySelector('.close-modal-btn');
+          if (closeBtn) closeBtn.click();
+        }
+      });
+
+      // Close on backdrop click
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) {
+          const closeBtn = modal.querySelector('.close-modal-btn');
+          if (closeBtn) closeBtn.click();
+        }
+      });
+    });
+  }
+
+  // Call enhancements after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enhanceModalHandlers);
+  } else {
+    enhanceModalHandlers();
   }
 
 })();

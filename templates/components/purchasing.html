@@ -128,13 +128,16 @@
     <div class="purchasing-panel" data-purchasing-panel="stock" hidden>
         <div class="stock-management-header">
             <div class="stock-header-left">
-                <h2>Stock Management</h2>
+                <h1 class="stock-main-title">Stock Management</h1>
                 <p class="muted">Track and manage ingredient inventory in real-time.</p>
             </div>
             <div class="stock-header-actions">
-                <button type="button" class="ghost-btn" id="add-ingredient-btn">Add New Ingredient</button>
+                <button type="button" class="secondary-btn" id="btn-add-ingredient">
+                    <span class="icon">＋</span>
+                    Add New Ingredient
+                </button>
                 <button type="button" class="primary-btn">
-                    <span class="sparkle-icon">✨</span>
+                    <span class="sparkle-icon">🤖</span>
                     Get Purchasing Recommendations
                 </button>
             </div>
@@ -221,40 +224,82 @@
                 </div>
             </div>
         </div>
+
         <!-- Add Ingredient Modal -->
         <div id="add-ingredient-modal" class="modal" hidden>
-            <div class="modal-content">
+            <div class="modal-content add-ingredient-modal-content">
                 <div class="modal-header">
-                    <h3>Add New Ingredient</h3>
-                    <button type="button" class="close-modal-btn" data-modal-close>&times;</button>
+                    <div class="modal-header-icon">
+                        <span class="modal-icon">📦</span>
+                    </div>
+                    <div>
+                        <h3>Add New Ingredient</h3>
+                        <p class="muted">Add a new ingredient to your inventory</p>
+                    </div>
+                    <button type="button" class="close-modal-btn">&times;</button>
                 </div>
                 <div class="modal-body">
                     <form id="add-ingredient-form">
                         <div class="form-group">
-                            <label for="add-ingredient-name">Ingredient Name</label>
-                            <input type="text" name="name" id="add-ingredient-name" placeholder="e.g., Tomatoes"
-                                required>
+                            <label for="add-ingredient-name">
+                                <span class="label-icon">🏷️</span>
+                                Ingredient Name
+                            </label>
+                            <input type="text" id="add-ingredient-name" required
+                                placeholder="e.g., Tomatoes, Olive Oil, Flour...">
                         </div>
-                        <div class="form-group">
-                            <label for="add-ingredient-unit">Unit</label>
-                            <input type="text" name="unit" id="add-ingredient-unit" placeholder="e.g., kg, L, pcs"
-                                required>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="add-ingredient-unit">
+                                    <span class="label-icon">⚖️</span>
+                                    Unit
+                                </label>
+                                <select id="add-ingredient-unit" required>
+                                    <option value="kg">Kilogram (kg)</option>
+                                    <option value="g">Gram (g)</option>
+                                    <option value="l">Liter (l)</option>
+                                    <option value="ml">Milliliter (ml)</option>
+                                    <option value="pcs">Pieces (pcs)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="add-ingredient-quantity">
+                                    <span class="label-icon">📊</span>
+                                    Current Quantity
+                                </label>
+                                <input type="number" id="add-ingredient-quantity" step="0.01" min="0" required
+                                    placeholder="0.00">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="add-current-stock">Current Quantity</label>
-                            <input type="number" name="current_stock" id="add-current-stock" step="0.1" min="0"
-                                value="0" required>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="add-safety-stock">
+                                    <span class="label-icon">⚠️</span>
+                                    Safety Stock
+                                </label>
+                                <input type="number" id="add-safety-stock" step="0.01" min="0" required
+                                    placeholder="0.00">
+                                <p class="help-text">Minimum quantity before alert</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="add-ingredient-coverage">
+                                    <span class="label-icon">📅</span>
+                                    Days of Coverage
+                                </label>
+                                <input type="number" id="add-ingredient-coverage" step="1" min="0"
+                                    placeholder="Optional">
+                                <p class="help-text">Estimated days until reorder</p>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="add-coverage-days">Estimated Coverage (Days)</label>
-                            <p class="help-text">How many days will this stock last? Used to set initial safety alerts.
-                            </p>
-                            <input type="number" name="coverage_days" id="add-coverage-days" step="0.1" min="1"
-                                value="7" required>
-                        </div>
+
                         <div class="modal-actions">
-                            <button type="button" class="ghost-btn" data-modal-close>Cancel</button>
-                            <button type="submit" class="primary-btn">Add Ingredient</button>
+                            <button type="button" class="ghost-btn close-modal-btn">Cancel</button>
+                            <button type="submit" class="primary-btn">
+                                <span class="btn-icon">✓</span>
+                                Add Ingredient
+                            </button>
                         </div>
                     </form>
                 </div>
