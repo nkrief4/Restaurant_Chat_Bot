@@ -74,7 +74,7 @@
     padding: 0;
 }
 
-.sidebar-toggle {
+.dashboard .sidebar-toggle {
     display: none;
 }
 
@@ -118,7 +118,7 @@
 }
 
 @media (max-width: 1023px) {
-    .sidebar-toggle {
+    .dashboard .sidebar-toggle {
         display: inline-flex !important;
     }
 }
