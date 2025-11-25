@@ -285,3 +285,152 @@ def _preview_text(text: str, limit: int = 280) -> str:
     if len(safe) <= limit:
         return safe
     return safe[: limit - 3] + "..."
+
+
+def merge_menu_documents(*documents: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge multiple menu documents into a single document.
+    
+    Categories with the same name will have their items combined.
+    The order of categories follows the order of documents provided.
+    """
+    if not documents:
+        raise MenuExtractionError("Aucun document de menu à fusionner.")
+    
+    # Filter out None/empty documents
+    valid_docs = [doc for doc in documents if doc and isinstance(doc, dict)]
+    if not valid_docs:
+        raise MenuExtractionError("Aucun document de menu valide à fusionner.")
+    
+    if len(valid_docs) == 1:
+        return valid_docs[0]
+    
+    merged_categories = []
+    category_map = {}  # Track categories by name for merging
+    
+    # Merge categories from all documents
+    for doc in valid_docs:
+        categories = doc.get("categories", [])
+        if not isinstance(categories, list):
+            continue
+            
+        for category in categories:
+            if not isinstance(category, dict):
+                continue
+                
+            cat_name = category.get("name", "")
+            if not cat_name:
+                continue
+            
+            # If category already exists, merge items
+            if cat_name in category_map:
+                existing_cat = category_map[cat_name]
+                existing_items = existing_cat.get("items", [])
+                new_items = category.get("items", [])
+                
+                if isinstance(existing_items, list) and isinstance(new_items, list):
+                    existing_cat["items"] = existing_items + new_items
+            else:
+                # New category, add it
+                category_copy = {
+                    "name": cat_name,
+                    "items": category.get("items", [])
+                }
+                category_map[cat_name] = category_copy
+                merged_categories.append(category_copy)
+    
+    # Merge dietary guides
+    merged_dietary_guide = []
+    dietary_map = {}
+    
+    for doc in valid_docs:
+        dietary_guide = doc.get("dietaryGuide", [])
+        if not isinstance(dietary_guide, list):
+            continue
+            
+        for guide_entry in dietary_guide:
+            if not isinstance(guide_entry, dict):
+                continue
+                
+            label = guide_entry.get("label", "")
+            if not label:
+                continue
+            
+            items = guide_entry.get("items", [])
+            if not isinstance(items, list):
+                continue
+            
+            if label in dietary_map:
+                # Merge items, avoiding duplicates
+                existing_items = dietary_map[label].get("items", [])
+                for item in items:
+                    if item not in existing_items:
+                        existing_items.append(item)
+            else:
+                guide_copy = {
+                    "label": label,
+                    "items": items.copy() if isinstance(items, list) else []
+                }
+                dietary_map[label] = guide_copy
+                merged_dietary_guide.append(guide_copy)
+    
+    result = {
+        "categories": merged_categories
+    }
+    
+    if merged_dietary_guide:
+        result["dietaryGuide"] = merged_dietary_guide
+    
+    return result
+
+
+async def build_menu_document_from_multiple_uploads(
+    files: list[tuple[str, str | None, bytes]]
+) -> Dict[str, Any]:
+    """Build a menu document from multiple uploaded files.
+    
+    Args:
+        files: List of tuples (filename, content_type, data) for each file
+        
+    Returns:
+        Merged menu document
+        
+    Raises:
+        MenuExtractionError: If no files provided or all files fail to process
+    """
+    if not files:
+        raise MenuExtractionError("Aucun fichier fourni.")
+    
+    if len(files) > 5:
+        raise MenuExtractionError("Vous ne pouvez pas uploader plus de 5 fichiers à la fois.")
+    
+    documents = []
+    errors = []
+    
+    for idx, (filename, content_type, data) in enumerate(files, 1):
+        try:
+            logger.info("Processing file %d/%d: %s", idx, len(files), filename)
+            doc = await build_menu_document_from_upload(
+                filename=filename,
+                content_type=content_type,
+                data=data
+            )
+            documents.append(doc)
+        except MenuExtractionError as exc:
+            error_msg = f"{filename}: {str(exc)}"
+            errors.append(error_msg)
+            logger.warning("Failed to process file %s: %s", filename, exc)
+        except Exception as exc:
+            error_msg = f"{filename}: Erreur inattendue"
+            errors.append(error_msg)
+            logger.exception("Unexpected error processing file %s", filename)
+    
+    if not documents:
+        error_summary = "; ".join(errors) if errors else "Tous les fichiers ont échoué."
+        raise MenuExtractionError(f"Impossible d'analyser les fichiers. {error_summary}")
+    
+    # If some files failed but we have at least one success, log warnings
+    if errors:
+        logger.warning("Some files failed to process: %s", "; ".join(errors))
+    
+    # Merge all successfully processed documents
+    return merge_menu_documents(*documents)

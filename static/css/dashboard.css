@@ -4,8 +4,10 @@
 @import 'header.css';
 @import 'sidebar.css';
 @import 'components.css';
+@import 'overview.css';
 @import 'stats.css';
 @import 'charts.css';
 @import 'restaurants.css';
+@import 'overview-restaurant-cards.css';
 @import 'chatbot.css';
 @import 'purchasing.css';

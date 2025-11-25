@@ -1,0 +1,37 @@
+<section id="restaurants" class="section" aria-label="Restaurants">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Gestion</p>
+            <h2>Vos restaurants</h2>
+            <p class="subtitle">Visualisez vos établissements et testez leur chatbot.</p>
+        </div>
+        <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">
+            <span>✨</span> Créer un nouveau restaurant
+        </button>
+    </div>
+
+    <div class="restaurants-grid" id="restaurants-card-list" aria-live="polite">
+        <article class="restaurant-card loading-card">
+            <div class="restaurant-card-header">
+                <div class="skeleton name"></div>
+                <span class="status-badge">Chargement…</span>
+            </div>
+            <p class="skeleton line"></p>
+            <p class="skeleton line short"></p>
+        </article>
+    </div>
+    <div class="sr-only" aria-live="polite" aria-atomic="true">
+        <table>
+            <tbody id="restaurants-table-body"></tbody>
+        </table>
+    </div>
+    <div class="restaurants-cta">
+        <div>
+            <h3>Prêt à ajouter un nouvel établissement ?</h3>
+            <p class="muted">Connectez votre carte en quelques minutes pour entraîner RestauBot.</p>
+        </div>
+        <button type="button" class="primary-btn" data-open-section="manage-restaurants" data-open-tab="create">
+            <span>🚀</span> Créer un restaurant
+        </button>
+    </div>
+</section>

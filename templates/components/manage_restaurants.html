@@ -1,0 +1,218 @@
+<section id="manage-restaurants" class="section" aria-label="Créer ou modifier un restaurant">
+    <div class="section-header">
+        <div>
+            <h2>Gérer vos restaurants</h2>
+            <p>Créez un nouvel établissement ou mettez à jour une fiche existante depuis le même écran.</p>
+        </div>
+    </div>
+
+    <div class="restaurant-management" data-restaurant-tabs>
+        <div class="restaurant-tabs" role="tablist" aria-label="Choisir le mode de gestion">
+            <button type="button" class="restaurant-tab is-active" role="tab" aria-selected="true" tabindex="0"
+                id="restaurant-tab-edit" aria-controls="restaurant-panel-edit" data-restaurant-tab="edit">
+                Modification
+            </button>
+            <button type="button" class="restaurant-tab" role="tab" aria-selected="false" tabindex="-1"
+                id="restaurant-tab-create" aria-controls="restaurant-panel-create" data-restaurant-tab="create">
+                Création
+            </button>
+            <span class="restaurant-tab-indicator" data-tab-indicator aria-hidden="true"></span>
+        </div>
+
+        <div class="restaurant-panels" data-active-tab="edit">
+            <div class="restaurant-panel-track">
+                <div class="restaurant-panel" id="restaurant-panel-create" role="tabpanel"
+                    aria-labelledby="restaurant-tab-create" aria-hidden="true" data-tab-panel="create">
+                    <form class="form-grid restaurant-form" id="restaurant-create-form" data-form-type="create"
+                        novalidate>
+                        <p class="form-mode" data-role="form-mode">Création d'un nouvel établissement.</p>
+                        <label>
+                            <span>Nom du restaurant</span>
+                            <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
+                        </label>
+                        <label>
+                            <span>Slug public</span>
+                            <input type="text" name="slug" placeholder="lejardin-secret" required />
+                        </label>
+                        <label>
+                            <span>Langue principale</span>
+                            <select disabled>
+                                <option>Français</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Site web (optionnel)</span>
+                            <input type="url" placeholder="https://monsite.com" disabled />
+                        </label>
+                        <div class="menu-editor-wrapper full-width" data-role="menu-editor-wrapper">
+                            <div class="menu-editor-toolbar">
+                                <h3>Menu structuré</h3>
+                                <div class="menu-editor-mode-toggle">
+                                    <button type="button" class="mode-btn active" data-mode="visual">
+                                        Visuel
+                                    </button>
+                                    <button type="button" class="mode-btn" data-mode="json">
+                                        JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Visual Editor -->
+                            <div class="menu-editor-visual" data-role="menu-visual-editor">
+                                <!-- Categories will be rendered here by MenuEditor -->
+                            </div>
+
+                            <!-- JSON Editor (hidden by default) -->
+                            <div class="menu-editor-json" data-role="menu-json-editor" hidden>
+                                <textarea rows="12" name="menu_document" placeholder='{"categories": []}'></textarea>
+                            </div>
+                        </div>
+                        <div class="upload-card full-width">
+                            <div class="upload-card-header">
+                                <div>
+                                    <h3>Analyser des fichiers menu</h3>
+                                    <p class="muted">Importez jusqu'à 5 images ou PDFs, RestauBot les structurera
+                                        automatiquement.</p>
+                                </div>
+                            </div>
+                            <label class="upload-dropzone" data-role="menu-dropzone">
+                                <input type="file" data-role="menu-file" accept="application/pdf,image/*" multiple
+                                    aria-label="Sélectionner des menus à analyser" />
+                                <div class="dropzone-illustration" aria-hidden="true"></div>
+                                <div class="dropzone-copy">
+                                    <strong>Glissez-déposez vos images de menu</strong>
+                                    <span>ou cliquez pour parcourir vos fichiers</span>
+                                    <small>10 Mo par fichier · Max 5 images · Formats PDF / image</small>
+                                </div>
+                            </label>
+                            <div class="upload-files-gallery" data-role="files-gallery">
+                                <!-- Files will be displayed here dynamically -->
+                            </div>
+                            <div class="upload-controls">
+                                <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                                    <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                                    <span class="ai-glow" aria-hidden="true"></span>
+                                    <span class="ai-scanlines" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <p class="form-hint" data-role="menu-upload-status"></p>
+                        </div>
+                        <div class="form-footer">
+                            <button type="submit" class="primary-btn" data-role="submit-btn">Enregistrer le
+                                restaurant</button>
+                            <button type="button" class="ghost-btn" data-action="reset-form">Réinitialiser le
+                                formulaire</button>
+                            <p class="muted">Le restaurant apparaîtra ensuite dans la liste ci-dessus et pourra être
+                                testé dans
+                                la
+                                section Chatbot.</p>
+                            <p class="form-hint" data-role="form-message"></p>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="restaurant-panel" id="restaurant-panel-edit" role="tabpanel"
+                    aria-labelledby="restaurant-tab-edit" data-tab-panel="edit">
+                    <div class="panel-intro">
+                        <p class="form-mode" data-role="form-mode">Aucun restaurant sélectionné pour édition.</p>
+                        <div class="panel-selector">
+                            <label>
+                                <span>Sélectionner un restaurant</span>
+                                <select id="edit-restaurant-select" data-role="restaurant-selector">
+                                    <option value="">Sélectionnez un restaurant</option>
+                                </select>
+                            </label>
+                            <p class="form-hint">Utilisez les cartes dans l'aperçu ou la liste ci-dessus pour
+                                pré-remplir ce
+                                formulaire.</p>
+                        </div>
+                    </div>
+
+                    <form class="form-grid restaurant-form is-idle" id="restaurant-edit-form" data-form-type="edit"
+                        novalidate>
+                        <label>
+                            <span>Nom du restaurant</span>
+                            <input type="text" name="display_name" placeholder="Ex : Le Jardin Secret" required />
+                        </label>
+                        <label>
+                            <span>Slug public</span>
+                            <input type="text" name="slug" placeholder="lejardin-secret" required />
+                        </label>
+                        <label>
+                            <span>Langue principale</span>
+                            <select disabled>
+                                <option>Français</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Site web (optionnel)</span>
+                            <input type="url" placeholder="https://monsite.com" disabled />
+                        </label>
+                        <div class="menu-editor-wrapper full-width" data-role="menu-editor-wrapper">
+                            <div class="menu-editor-toolbar">
+                                <h3>Menu structuré</h3>
+                                <div class="menu-editor-mode-toggle">
+                                    <button type="button" class="mode-btn active" data-mode="visual">
+                                        Visuel
+                                    </button>
+                                    <button type="button" class="mode-btn" data-mode="json">
+                                        JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Visual Editor -->
+                            <div class="menu-editor-visual" data-role="menu-visual-editor">
+                                <!-- Categories will be rendered here by MenuEditor -->
+                            </div>
+
+                            <!-- JSON Editor (hidden by default) -->
+                            <div class="menu-editor-json" data-role="menu-json-editor" hidden>
+                                <textarea rows="12" name="menu_document" placeholder='{"categories": []}'></textarea>
+                            </div>
+                        </div>
+                        <div class="upload-card full-width">
+                            <div class="upload-card-header">
+                                <div>
+                                    <h3>Analyser des fichiers menu</h3>
+                                    <p class="muted">Importez jusqu'à 5 images ou PDFs, RestauBot les structurera
+                                        automatiquement.</p>
+                                </div>
+                            </div>
+                            <label class="upload-dropzone" data-role="menu-dropzone">
+                                <input type="file" data-role="menu-file" accept="application/pdf,image/*" multiple
+                                    aria-label="Sélectionner des menus à analyser" />
+                                <div class="dropzone-illustration" aria-hidden="true"></div>
+                                <div class="dropzone-copy">
+                                    <strong>Glissez-déposez vos images de menu</strong>
+                                    <span>ou cliquez pour parcourir vos fichiers</span>
+                                    <small>10 Mo par fichier · Max 5 images · Formats PDF / image</small>
+                                </div>
+                            </label>
+                            <div class="upload-files-gallery" data-role="files-gallery">
+                                <!-- Files will be displayed here dynamically -->
+                            </div>
+                            <div class="upload-controls">
+                                <button type="button" class="secondary-btn ai-upload-btn" data-action="upload-menu">
+                                    <span class="ai-btn-label" data-role="ai-btn-label">Analyser avec l'IA</span>
+                                    <span class="ai-glow" aria-hidden="true"></span>
+                                    <span class="ai-scanlines" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <p class="form-hint" data-role="menu-upload-status"></p>
+                        </div>
+                        <div class="form-footer">
+                            <button type="submit" class="primary-btn" data-role="submit-btn">Mettre à jour le
+                                restaurant</button>
+                            <button type="button" class="ghost-btn" data-action="reset-form">Terminer l'édition</button>
+                            <p class="muted">Utilisez les cartes de la section Restaurants pour choisir l'établissement
+                                à
+                                modifier.</p>
+                            <p class="form-hint" data-role="form-message"></p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

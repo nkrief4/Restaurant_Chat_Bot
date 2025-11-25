@@ -1,0 +1,49 @@
+<section id="chatbot" class="section chatbot-section" aria-label="Espace chatbot">
+    <div class="chatbot-shell">
+        <div class="chatbot-header">
+            <div class="chatbot-heading">
+                <p class="eyebrow">RestauBot</p>
+                <h2>Discutez avec votre assistant</h2>
+                <p>Choisissez un établissement, chargez son contexte puis testez vos scénarios en direct.</p>
+            </div>
+            <button type="button" class="chatbot-fullscreen-btn" id="chatbot-fullscreen-btn" data-open-chat disabled>
+                Lancer en plein écran
+            </button>
+        </div>
+
+        <div class="chatbot-toolbar" aria-describedby="chatbot-selection-hint">
+            <div class="chatbot-select">
+                <label for="chatbot-restaurant-select">Restaurant</label>
+                <div class="chatbot-select-wrapper">
+                    <select id="chatbot-restaurant-select" aria-label="Sélectionner le restaurant pour le chatbot">
+                        <option value="">Sélectionnez un restaurant</option>
+                    </select>
+                    <span class="chatbot-select-icon" aria-hidden="true"></span>
+                </div>
+            </div>
+            <p class="chatbot-status-text" id="chatbot-selection-hint" role="status" aria-live="polite">
+                Ajoutez un restaurant pour activer le chatbot.
+            </p>
+        </div>
+
+        <div class="chatbot-surface" aria-live="polite">
+            <div id="chatbot-thread" class="chatbot-thread" aria-label="Historique de la conversation"></div>
+            <div id="chatbot-empty-state" class="chatbot-empty">
+                <p>Sélectionnez un restaurant puis dites bonjour à votre assistant.</p>
+            </div>
+            <div id="chatbot-typing" class="chatbot-typing" role="status" aria-live="polite" hidden>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+
+        <form id="chatbot-form" class="chatbot-form" autocomplete="off">
+            <label for="chatbot-input" class="sr-only">Votre message</label>
+            <textarea id="chatbot-input" name="message" placeholder="Posez votre question…" rows="1" disabled
+                required></textarea>
+            <button type="submit" id="chatbot-send-btn" class="primary-btn" disabled>Envoyer</button>
+        </form>
+        <p id="chatbot-feedback" class="chatbot-feedback" role="status" aria-live="polite"></p>
+    </div>
+</section>

@@ -1,0 +1,344 @@
+<section id="purchasing" class="section" aria-label="Achats et stock">
+    <div class="purchasing-header">
+        <div class="purchasing-header-actions">
+            <!-- View switcher removed as requested -->
+        </div>
+    </div>
+
+    <div class="purchasing-panel is-active" data-purchasing-panel="dashboard">
+        <div class="purchasing-card-grid">
+            <article class="purchasing-card">
+                <div class="purchasing-card-head">
+                    <div>
+                        <p class="purchasing-label">Étape 1</p>
+                        <h3>Restaurant actif</h3>
+                    </div>
+                    <button type="button" class="info-trigger"
+                        data-tooltip="Synchronisez Achats & Stock avec l'établissement sélectionné dans le dashboard."
+                        aria-label="Informations sur le restaurant actif">
+                        i
+                    </button>
+                </div>
+                <label class="purchasing-select" for="purchasing-section-restaurant-select">
+                    <span>Choisissez un établissement</span>
+                    <select id="purchasing-section-restaurant-select">
+                        <option value="">Sélectionnez un restaurant</option>
+                    </select>
+                </label>
+                <p class="purchasing-card-hint">Le module Achats se met automatiquement à jour selon votre choix.</p>
+            </article>
+
+            <article class="purchasing-card">
+                <div class="purchasing-card-head">
+                    <div>
+                        <p class="purchasing-label">Étape 2</p>
+                        <h3>Comprendre l'état des stocks</h3>
+                    </div>
+                    <div class="purchasing-card-meta">
+                        <span class="purchasing-status-pill is-sync">Temps réel</span>
+                        <button type="button" class="info-trigger"
+                            data-tooltip="Visualisez les alertes CRITICAL, LOW et OK pour prioriser vos achats."
+                            aria-label="Informations sur l'état des stocks">
+                            i
+                        </button>
+                    </div>
+                </div>
+                <p>Visualisez les recommandations d'achat, les niveaux critiques et les fournisseurs prioritaires sans
+                    quitter cette page.</p>
+                <ul class="purchasing-card-list">
+                    <li>Alertes critiques mises en évidence</li>
+                    <li>Indicateurs LOW & OK lisibles immédiatement</li>
+                    <li>Glisser jusqu'au détail complet des ingrédients</li>
+                </ul>
+            </article>
+
+            <article class="purchasing-card">
+                <div class="purchasing-card-head">
+                    <div>
+                        <p class="purchasing-label">Étape 3</p>
+                        <h3>Besoin de plus d'espace ?</h3>
+                    </div>
+                    <div class="purchasing-card-meta">
+                        <span class="purchasing-status-pill">Confort</span>
+                        <button type="button" class="info-trigger"
+                            data-tooltip="Passez en plein écran pour vos inventaires ou commandes volumineuses."
+                            aria-label="Informations sur la vue plein écran">
+                            i
+                        </button>
+                    </div>
+                </div>
+                <p>Accédez à la version plein écran du module pour vos longues sessions de planification ou
+                    d'inventaire.
+                </p>
+                <a class="primary-btn" href="/purchasing" target="_blank" rel="noopener">Ouvrir en plein écran</a>
+            </article>
+        </div>
+
+        <div class="purchasing-embed">
+            <div class="purchasing-embed-head">
+                <button type="button" class="info-trigger"
+                    data-tooltip="Toutes les interactions Achats & Stock restent dans cette fenêtre, sans multiplier les onglets."
+                    aria-label="Informations sur le module Achats">
+                    i
+                </button>
+            </div>
+            <div class="purchasing-iframe-shell" id="purchasing-iframe-shell">
+                <div class="purchasing-iframe-loader" id="purchasing-iframe-loader" role="status" aria-live="polite">
+                    <span class="loader-dot" aria-hidden="true"></span>
+                    <p>Chargement du module Achats…</p>
+                </div>
+                <iframe id="purchasing-iframe" src="/purchasing?embedded=1" title="Module Achats & Stock" loading="lazy"
+                    referrerpolicy="no-referrer" class="purchasing-iframe"></iframe>
+            </div>
+        </div>
+        <p class="muted purchasing-hint">Astuce : manipulez vos recettes et vos fournisseurs ici, puis ouvrez la vue
+            plein écran pour vos clôtures mensuelles.</p>
+    </div>
+
+    <div class="purchasing-panel" data-purchasing-panel="stock" hidden>
+        <div class="stock-management-header">
+            <div class="stock-header-left">
+                <h2>Stock Management</h2>
+                <p class="muted">Track and manage ingredient inventory in real-time.</p>
+            </div>
+            <div class="stock-header-actions">
+                <button type="button" class="ghost-btn" id="add-ingredient-btn">Add New Ingredient</button>
+                <button type="button" class="primary-btn">
+                    <span class="sparkle-icon">✨</span>
+                    Get Purchasing Recommendations
+                </button>
+            </div>
+        </div>
+
+        <div class="stock-restaurant-selector">
+            <label for="stock-restaurant-select">Select Restaurant</label>
+            <select id="stock-restaurant-select">
+                <option value="">Select a restaurant</option>
+            </select>
+        </div>
+
+        <div class="stock-card">
+            <div class="stock-filters">
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="stock-search" placeholder="Search by Ingredient Name..." />
+                </div>
+                <div class="filter-dropdowns">
+                    <select id="stock-filter-status" class="filter-select">
+                        <option value="">Status</option>
+                        <option value="critical">Critical</option>
+                        <option value="low">Low</option>
+                        <option value="ok">OK</option>
+                    </select>
+                    <select id="stock-filter-category" class="filter-select">
+                        <option value="">Category</option>
+                        <option value="vegetables">Vegetables</option>
+                        <option value="meat">Meat</option>
+                        <option value="dairy">Dairy</option>
+                        <option value="dry">Dry Goods</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stock-table-container">
+                <table class="stock-table-new">
+                    <thead>
+                        <tr>
+                            <th>INGREDIENT NAME</th>
+                            <th>CURRENT QUANTITY</th>
+                            <th>SAFETY STOCK THRESHOLD</th>
+                            <th>DAYS OF COVERAGE</th>
+                            <th>STATUS</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-table-body">
+                        <!-- Rows will be populated by JS -->
+                        <tr>
+                            <td colspan="6" class="muted text-center">Select a restaurant to view stock.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="purchasing-panel" data-purchasing-panel="dishes" hidden>
+        <header class="purchasing-panel-head">
+            <div>
+                <p class="eyebrow">Plats & recettes</p>
+                <h3>Visibilité sur les créations phares</h3>
+            </div>
+            <p class="muted">Anticipez la mise à jour des fiches techniques avant chaque service.</p>
+        </header>
+        <div class="dish-grid">
+            <article class="dish-card">
+                <div class="dish-card-head">
+                    <h3>Raviole de homard</h3>
+                    <span class="dish-tag is-premium">Signature</span>
+                </div>
+                <p>Farce homard bleu, bisque corsée, écume de combava. Le plat déclenche 42 % des ventes premium.</p>
+                <dl class="dish-metrics">
+                    <div>
+                        <dt>Disponibilité</dt>
+                        <dd>24 portions</dd>
+                    </div>
+                    <div>
+                        <dt>C.U. food cost</dt>
+                        <dd>17,30 €</dd>
+                    </div>
+                    <div>
+                        <dt>Marge</dt>
+                        <dd>71 %</dd>
+                    </div>
+                </dl>
+                <p class="muted small">À préparer : bisque, raviole fraîche et herbes le matin.</p>
+            </article>
+            <article class="dish-card">
+                <div class="dish-card-head">
+                    <h3>Risotto champignons anciens</h3>
+                    <span class="dish-tag is-stable">Incontournable</span>
+                </div>
+                <p>Fumé au bois de hêtre, nappage parmesan affiné 24 mois. Plat le plus demandé pour les menus affaires.
+                </p>
+                <dl class="dish-metrics">
+                    <div>
+                        <dt>Disponibilité</dt>
+                        <dd>38 portions</dd>
+                    </div>
+                    <div>
+                        <dt>C.U. food cost</dt>
+                        <dd>7,60 €</dd>
+                    </div>
+                    <div>
+                        <dt>Marge</dt>
+                        <dd>82 %</dd>
+                    </div>
+                </dl>
+                <p class="muted small">Vérifier le bouillon maison et les copeaux de parmesan le midi.</p>
+            </article>
+            <article class="dish-card">
+                <div class="dish-card-head">
+                    <h3>Crumble de poire Safran</h3>
+                    <span class="dish-tag is-new">Nouveauté</span>
+                </div>
+                <p>Dessert créé pour la carte d'hiver. Idéal pour booster les ventes à l'issue du menu dégustation.</p>
+                <dl class="dish-metrics">
+                    <div>
+                        <dt>Disponibilité</dt>
+                        <dd>30 portions</dd>
+                    </div>
+                    <div>
+                        <dt>C.U. food cost</dt>
+                        <dd>4,20 €</dd>
+                    </div>
+                    <div>
+                        <dt>Marge</dt>
+                        <dd>79 %</dd>
+                    </div>
+                </dl>
+                <p class="muted small">Prévoir un briefing service pour pousser les ventes croisée avec les boissons
+                    chaudes.
+                </p>
+            </article>
+        </div>
+        <div class="dish-actions">
+            <div>
+                <h4>Brief cuisine</h4>
+                <ul>
+                    <li>Mettre à jour les fiches techniques dans RestauBot.</li>
+                    <li>Remontée équipe pâtisserie tous les vendredis.</li>
+                    <li>Suivre les plats signature versus nouveautés.</li>
+                </ul>
+            </div>
+            <div>
+                <h4>Idées service</h4>
+                <ul>
+                    <li>Proposer un accord vin blanc sur la raviole.</li>
+                    <li>Inclure le risotto en suggestion du jour.</li>
+                    <li>Vendre le crumble en menu déjeuner gourmand.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
+        <header class="purchasing-panel-head">
+            <div>
+                <p class="eyebrow">Ventes par plat</p>
+                <h3>Quel plat tire les revenus ?</h3>
+            </div>
+            <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
+        </header>
+        <div class="sales-summary-grid">
+            <article class="sales-card">
+                <p class="sales-label">Ventes 7 derniers jours</p>
+                <strong>192 plats</strong>
+                <span class="trend-positive">+14 %</span>
+            </article>
+            <article class="sales-card">
+                <p class="sales-label">Panier moyen</p>
+                <strong>52,80 €</strong>
+                <span class="trend-neutral">=</span>
+            </article>
+            <article class="sales-card">
+                <p class="sales-label">Meilleure journée</p>
+                <strong>Samedi</strong>
+                <span class="muted">74 couverts</span>
+            </article>
+        </div>
+        <div class="sales-detail">
+            <div class="sales-chart">
+                <h4>Tendance hebdomadaire</h4>
+                <div class="sales-chart-bars" aria-hidden="true">
+                    <span style="height: 45%" title="Lun"></span>
+                    <span style="height: 52%" title="Mar"></span>
+                    <span style="height: 61%" title="Mer"></span>
+                    <span style="height: 70%" title="Jeu"></span>
+                    <span style="height: 88%" title="Ven"></span>
+                    <span style="height: 100%" title="Sam"></span>
+                    <span style="height: 60%" title="Dim"></span>
+                </div>
+                <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans RestauBot.</p>
+            </div>
+            <div class="sales-table-wrapper">
+                <table class="sales-table">
+                    <thead>
+                        <tr>
+                            <th>Plat</th>
+                            <th>Volumes</th>
+                            <th>Ticket moyen</th>
+                            <th>Conversion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Raviole de homard</td>
+                            <td>54</td>
+                            <td>42 €</td>
+                            <td><span class="trend-positive">+9 %</span></td>
+                        </tr>
+                        <tr>
+                            <td>Risotto champignons anciens</td>
+                            <td>68</td>
+                            <td>36 €</td>
+                            <td><span class="trend-neutral">=</span></td>
+                        </tr>
+                        <tr>
+                            <td>Crumble de poire Safran</td>
+                            <td>34</td>
+                            <td>18 €</td>
+                            <td><span class="trend-positive">+4 %</span></td>
+                        </tr>
+                        <tr>
+                            <td>Tartare de maigre</td>
+                            <td>36</td>
+                            <td>38 €</td>
+                            <td><span class="trend-negative">-6 %</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

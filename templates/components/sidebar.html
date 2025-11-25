@@ -1,0 +1,51 @@
+<aside class="sidebar" id="dashboard-sidebar" aria-label="Navigation principale">
+    <div class="logo">
+        <span class="logo-icon">RB</span>
+        <div>
+            <p class="logo-title">RestauBot</p>
+            <p class="logo-subtitle">Assistant IA</p>
+        </div>
+    </div>
+    <nav class="nav" aria-label="Navigation principale">
+        <button type="button" class="nav-link active" data-section="overview">Vue d'ensemble</button>
+        <button type="button" class="nav-link" data-section="restaurants">Restaurants</button>
+        <button type="button" class="nav-link" data-section="manage-restaurants">Gérer vos restaurants</button>
+        <button type="button" class="nav-link" data-section="chatbot">Chatbot</button>
+        <button type="button" class="nav-link" data-section="statistics">Statistiques</button>
+        <div class="nav-dropdown" data-nav-dropdown="purchasing">
+            <button type="button" class="nav-link nav-dropdown-toggle" data-section="purchasing"
+                data-nav-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                <span>Achats & Stock</span>
+                <span class="nav-dropdown-icon" aria-hidden="true"></span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu" aria-label="Accès Achats & Stock">
+                <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="dashboard"
+                    data-purchasing-nav-link role="menuitem">
+                    Dashboard Achats & Stock
+                </button>
+                <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="stock"
+                    data-purchasing-nav-link role="menuitem">
+                    Stock management
+                </button>
+                <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="dishes"
+                    data-purchasing-nav-link role="menuitem">
+                    Plats & recettes
+                </button>
+                <button type="button" class="nav-sublink" data-section="purchasing" data-purchasing-view="sales"
+                    data-purchasing-nav-link role="menuitem">
+                    Ventes par plat
+                </button>
+            </div>
+        </div>
+        <button type="button" class="nav-link" data-section="billing">Facturation & abonnement</button>
+        <button type="button" class="nav-link" data-section="profile">Profil</button>
+        <button type="button" class="nav-link nav-link-logout" id="logout-btn">
+            <span class="logout-icon" aria-hidden="true"></span>
+            <span>Se déconnecter</span>
+        </button>
+    </nav>
+    <div class="sidebar-footer">
+        <p class="muted">Support premium</p>
+        <a class="support-link" href="mailto:support@restaubot.ai">Nous contacter</a>
+    </div>
+</aside>

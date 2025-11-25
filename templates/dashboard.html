@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RestauBot | Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
+  <link rel="stylesheet" href="/static/css/menu-upload-gallery.css" />
+  <link rel="stylesheet" href="/static/css/menu-editor.css" />
+  <link rel="stylesheet" href="/static/stock_management.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="/static/js/supabaseClient.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <script src="/static/js/menu-editor.js" defer></script>
+  <script src="/static/js/dashboard.js" defer></script>
+</head>
+
+<body>
+  <div class="dashboard-loading-overlay" id="dashboard-loading-overlay" role="status" aria-live="polite"
+    aria-busy="true">
+    <div class="loading-indicator">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <p>Chargement des données du dashboard…</p>
+    </div>
+  </div>
+  <div class="dashboard">
+    {% include "components/sidebar.html" %}
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+    <main class="main">
+      {% include "components/header.html" %}
+
+      {% include "components/overview.html" %}
+      {% include "components/restaurants.html" %}
+      {% include "components/manage_restaurants.html" %}
+      {% include "components/chatbot.html" %}
+      {% include "components/stats.html" %}
+      {% include "components/billing.html" %}
+      {% include "components/profile.html" %}
+      {% include "components/purchasing.html" %}
+    </main>
+  </div>
+
+  {% include "components/modals.html" %}
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+</body>
+
+</html>

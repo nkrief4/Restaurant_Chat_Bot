@@ -43,7 +43,7 @@
     chatTesterWindow: null,
     isLaunchingChat: false,
     restaurantForms: {
-      activeTab: "create",
+      activeTab: "edit",
     },
   };
 
@@ -191,6 +191,7 @@
     await ensureAuthenticated();
     bindFormEvents();
     setupUploadUI();
+    setupMenuEditors();
     bindProfileForm();
     await refreshDashboardData();
 
@@ -528,7 +529,9 @@
       });
     }
 
-    setRestaurantManagementTab(state.restaurantForms.activeTab || "create", { immediate: true });
+    // Read initial tab from HTML or default to edit
+    const initialTab = restaurantTabsRuntime.panelsWrapper?.dataset?.activeTab || "edit";
+    setRestaurantManagementTab(state.restaurantForms.activeTab || initialTab, { immediate: true });
   }
 
   function setRestaurantManagementTab(tabName, options = {}) {
@@ -707,6 +710,11 @@
     if (form) {
       form.addEventListener("submit", handleOverviewChatSubmit);
     }
+
+    const input = document.getElementById("overview-chat-input");
+    if (input) {
+      input.addEventListener("keydown", handleChatInputKeydown);
+    }
   }
 
   function bindChatbotUI() {
@@ -721,25 +729,20 @@
     }
 
     const input = document.getElementById("chatbot-input");
-    if (input && form) {
-      input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
-          event.preventDefault();
-          if (input.disabled) {
-            return;
-          }
-          if (typeof form.requestSubmit === "function") {
-            form.requestSubmit();
-          } else {
-            form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-          }
-        }
-      });
+    if (input) {
+      input.addEventListener("keydown", handleChatInputKeydown);
     }
+  }
 
-    updateChatbotEmptyState();
-    refreshChatbotFormAvailability();
-    setChatbotFeedback("Sélectionnez un restaurant pour lancer la discussion.");
+  function handleChatInputKeydown(event) {
+    // Envoyer le message avec Entrée (sans Shift)
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      const form = event.target.closest("form");
+      if (form) {
+        form.requestSubmit();
+      }
+    }
   }
 
   function bindPurchasingSectionUI() {
@@ -1916,12 +1919,16 @@
     function updateFormFieldsState(restaurantId) {
       if (!editForm) return;
 
+      const formModeMessage = editForm.closest('.restaurant-panel')?.querySelector('.panel-intro .form-mode');
+
       if (restaurantId) {
         editForm.classList.add('restaurant-selected');
         editForm.classList.remove('is-idle');
+        if (formModeMessage) formModeMessage.style.display = 'none';
       } else {
         editForm.classList.remove('restaurant-selected');
         editForm.classList.add('is-idle');
+        if (formModeMessage) formModeMessage.style.display = '';
       }
     }
 
@@ -1946,6 +1953,13 @@
             if (menuInput) menuInput.value = stringifyMenu(restaurant.menu_document || {});
             if (modeLabel) {
               modeLabel.textContent = `Édition — ${restaurant.display_name || "Restaurant"}`;
+            }
+
+            // Sync MenuEditor if it exists
+            const editorWrapper = editForm?.querySelector("[data-role='menu-editor-wrapper']");
+            if (editorWrapper && editorWrapper.menuEditorInstance) {
+              editorWrapper.menuEditorInstance.syncFromJSON();
+              editorWrapper.menuEditorInstance.render();
             }
 
             // Mettre à jour l'état du formulaire
@@ -1986,6 +2000,36 @@
     });
   }
 
+  function setupMenuEditors() {
+    const editorWrappers = document.querySelectorAll("[data-role='menu-editor-wrapper']");
+    if (!editorWrappers || !editorWrappers.length) {
+      return;
+    }
+
+    forEachNode(editorWrappers, (wrapper) => {
+      const textarea = wrapper.querySelector("[name='menu_document']");
+      if (!textarea) return;
+
+      // Initialize MenuEditor
+      if (typeof window.MenuEditor !== 'undefined') {
+        const editor = new window.MenuEditor(wrapper, textarea);
+
+        // Store editor instance on the wrapper for later access
+        wrapper.menuEditorInstance = editor;
+
+        // Sync to JSON before form submission
+        const form = wrapper.closest('form');
+        if (form) {
+          form.addEventListener('submit', () => {
+            if (editor) {
+              editor.syncToJSON();
+            }
+          });
+        }
+      }
+    });
+  }
+
   function initUploadCard(card) {
     if (!card || card.dataset.uploadReady === "true") {
       return;
@@ -1995,55 +2039,189 @@
       return;
     }
     const dropzone = card.querySelector("[data-role='menu-dropzone']");
-    const previewInfo = card.querySelector("[data-role='preview-info']");
-    const previewImage = card.querySelector("[data-role='preview-image']");
-    if (previewInfo && !previewInfo.dataset.defaultText) {
-      previewInfo.dataset.defaultText = previewInfo.textContent || "";
-    }
-    let previewUrl = null;
+    const gallery = card.querySelector("[data-role='files-gallery']");
+    const isMultiple = fileInput.hasAttribute("multiple");
 
-    const updatePreview = (file) => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        previewUrl = null;
-      }
-      if (!file) {
-        card.classList.remove("has-file");
-        if (previewInfo) {
-          previewInfo.textContent = previewInfo.dataset.defaultText || "Aucun fichier importé pour le moment.";
-        }
-        if (previewImage) {
-          previewImage.setAttribute("hidden", "true");
-          previewImage.removeAttribute("src");
-        }
+    // Store files array on the card element
+    card.uploadedFiles = [];
+    card.previewUrls = [];
+
+    // Function to render the files gallery
+    const renderFilesGallery = () => {
+      if (!gallery) return;
+
+      const files = card.uploadedFiles || [];
+
+      if (files.length === 0) {
+        gallery.innerHTML = "";
+        gallery.classList.remove("has-files");
+        card.classList.remove("has-multiple-files");
         return;
       }
-      if (previewInfo) {
-        const sizeLabel = formatFileSize(file.size);
-        previewInfo.textContent = sizeLabel ? `${file.name} · ${sizeLabel}` : file.name;
-      }
-      if (file.type && file.type.startsWith("image/") && previewImage) {
-        try {
-          previewUrl = URL.createObjectURL(file);
-          previewImage.src = previewUrl;
-          previewImage.removeAttribute("hidden");
-        } catch (error) {
-          previewUrl = null;
-          previewImage.setAttribute("hidden", "true");
-          previewImage.removeAttribute("src");
+
+      gallery.classList.add("has-files");
+      card.classList.add("has-multiple-files");
+      gallery.innerHTML = "";
+
+      files.forEach((file, index) => {
+        const fileCard = document.createElement("div");
+        fileCard.className = "file-preview-card";
+        fileCard.draggable = true;
+        fileCard.dataset.fileIndex = index;
+
+        // Position badge
+        const position = document.createElement("div");
+        position.className = "file-preview-position";
+        position.textContent = index + 1;
+
+        // Thumbnail
+        const thumbnail = document.createElement("div");
+        thumbnail.className = "file-preview-thumbnail";
+
+        if (file.type && file.type.startsWith("image/")) {
+          const img = document.createElement("img");
+          const url = URL.createObjectURL(file);
+          card.previewUrls.push(url);
+          img.src = url;
+          img.alt = file.name;
+          thumbnail.appendChild(img);
+        } else {
+          thumbnail.classList.add("no-preview");
+          thumbnail.textContent = "📄";
         }
-      } else if (previewImage) {
-        previewImage.setAttribute("hidden", "true");
-        previewImage.removeAttribute("src");
-      }
-      card.classList.add("has-file");
+
+        // File info
+        const info = document.createElement("div");
+        info.className = "file-preview-info";
+
+        const name = document.createElement("div");
+        name.className = "file-preview-name";
+        name.textContent = file.name;
+        name.title = file.name;
+
+        const meta = document.createElement("div");
+        meta.className = "file-preview-meta";
+        const sizeLabel = formatFileSize(file.size);
+        meta.textContent = sizeLabel || "—";
+
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        // Remove button
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "file-preview-remove";
+        removeBtn.innerHTML = "×";
+        removeBtn.title = "Supprimer ce fichier";
+        removeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          handleFileRemove(index);
+        });
+
+        // Drag handle (visual only)
+        const dragHandle = document.createElement("div");
+        dragHandle.className = "file-preview-drag-handle";
+        dragHandle.innerHTML = "⋮⋮";
+        dragHandle.title = "Glisser pour réorganiser";
+
+        fileCard.appendChild(position);
+        fileCard.appendChild(thumbnail);
+        fileCard.appendChild(info);
+        fileCard.appendChild(removeBtn);
+        fileCard.appendChild(dragHandle);
+
+        // Drag and drop for reordering
+        fileCard.addEventListener("dragstart", (e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", index);
+          fileCard.classList.add("is-dragging");
+        });
+
+        fileCard.addEventListener("dragend", () => {
+          fileCard.classList.remove("is-dragging");
+          document.querySelectorAll(".file-preview-card").forEach(c => {
+            c.classList.remove("drop-target");
+          });
+        });
+
+        fileCard.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          fileCard.classList.add("drop-target");
+        });
+
+        fileCard.addEventListener("dragleave", () => {
+          fileCard.classList.remove("drop-target");
+        });
+
+        fileCard.addEventListener("drop", (e) => {
+          e.preventDefault();
+          fileCard.classList.remove("drop-target");
+          const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+          const toIndex = index;
+          if (fromIndex !== toIndex) {
+            handleFileReorder(fromIndex, toIndex);
+          }
+        });
+
+        gallery.appendChild(fileCard);
+      });
     };
 
+    // Function to remove a file
+    const handleFileRemove = (index) => {
+      if (card.uploadedFiles && card.uploadedFiles[index]) {
+        card.uploadedFiles.splice(index, 1);
+        updateFileInput();
+        renderFilesGallery();
+      }
+    };
+
+    // Function to reorder files
+    const handleFileReorder = (fromIndex, toIndex) => {
+      if (!card.uploadedFiles) return;
+      const files = card.uploadedFiles;
+      const [movedFile] = files.splice(fromIndex, 1);
+      files.splice(toIndex, 0, movedFile);
+      updateFileInput();
+      renderFilesGallery();
+    };
+
+    // Function to update the file input with current files
+    const updateFileInput = () => {
+      if (!fileInput || !card.uploadedFiles) return;
+
+      try {
+        const dataTransfer = new DataTransfer();
+        card.uploadedFiles.forEach(file => {
+          dataTransfer.items.add(file);
+        });
+        fileInput.files = dataTransfer.files;
+      } catch (error) {
+        console.warn("Could not update file input:", error);
+      }
+    };
+
+    // Handle file input change
     fileInput.addEventListener("change", () => {
-      const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-      updatePreview(file);
+      const files = Array.from(fileInput.files || []);
+
+      if (isMultiple) {
+        // Check limit
+        if (files.length > 5) {
+          alert("Vous ne pouvez pas uploader plus de 5 fichiers à la fois.");
+          fileInput.value = "";
+          return;
+        }
+        card.uploadedFiles = files;
+      } else {
+        card.uploadedFiles = files.slice(0, 1);
+      }
+
+      renderFilesGallery();
     });
 
+    // Handle drag and drop on dropzone
     if (dropzone) {
       const stopDefault = (event) => {
         event.preventDefault();
@@ -2068,25 +2246,23 @@
       dropzone.addEventListener("drop", (event) => {
         stopDefault(event);
         dropzone.classList.remove("is-dragover");
-        const files = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files : null;
-        if (!files || !files.length) {
+        const files = event.dataTransfer && event.dataTransfer.files ? Array.from(event.dataTransfer.files) : [];
+        if (!files.length) {
           return;
         }
-        const file = files[0];
-        if (fileInput) {
-          try {
-            if (typeof DataTransfer !== "undefined") {
-              const dataTransfer = new DataTransfer();
-              dataTransfer.items.add(file);
-              fileInput.files = dataTransfer.files;
-            } else {
-              fileInput.files = files;
-            }
-          } catch (error) {
-            console.warn("Impossible d'attacher le fichier déposé.", error);
+
+        if (isMultiple) {
+          if (files.length > 5) {
+            alert("Vous ne pouvez pas uploader plus de 5 fichiers à la fois.");
+            return;
           }
+          card.uploadedFiles = files;
+        } else {
+          card.uploadedFiles = files.slice(0, 1);
         }
-        updatePreview(file);
+
+        updateFileInput();
+        renderFilesGallery();
       });
     }
 
@@ -2094,7 +2270,13 @@
     if (form) {
       form.addEventListener("reset", () => {
         window.requestAnimationFrame(() => {
-          updatePreview(null);
+          // Revoke all preview URLs
+          if (card.previewUrls) {
+            card.previewUrls.forEach(url => URL.revokeObjectURL(url));
+            card.previewUrls = [];
+          }
+          card.uploadedFiles = [];
+          renderFilesGallery();
         });
       });
     }
@@ -2588,7 +2770,7 @@
         : "Menu non importé";
 
       const actions = document.createElement("div");
-      actions.className = "card-actions";
+      actions.className = "restaurant-card-actions";
 
       const editBtn = document.createElement("button");
       editBtn.type = "button";
@@ -3307,107 +3489,49 @@
   function buildOverviewChatMessage(entry, options = {}) {
     const role = entry.role === "assistant" ? "assistant" : "user";
     const bubble = document.createElement("div");
-    bubble.className = `chat-preview-message ${role}`;
+    bubble.className = `chatbot-bubble ${role}`;
+
     if (options.isTyping) {
-      bubble.classList.add("typing");
+      bubble.classList.add("loading");
     }
-
-    const avatar = document.createElement("span");
-    avatar.className = "chat-preview-avatar";
-    avatar.textContent = role === "assistant" ? "RB" : "Vous";
-
-    const content = document.createElement("div");
-    content.className = "chat-preview-content";
-
-    const meta = document.createElement("div");
-    meta.className = "chat-preview-meta";
 
     const author = document.createElement("span");
-    author.className = "chat-preview-author";
+    author.className = "chatbot-author";
     author.textContent = role === "assistant" ? "RestauBot" : "Vous";
 
-    const timestamp = document.createElement("time");
-    timestamp.className = "chat-preview-timestamp";
-    const timestampValue = options.timestamp || entry.created_at || null;
-    if (timestampValue) {
-      timestamp.dateTime = timestampValue;
-    }
-    timestamp.textContent = formatChatTimestamp(timestampValue);
-
-    meta.append(author, timestamp);
-
     const text = document.createElement("div");
-    text.className = "chat-preview-text";
+    text.className = "chatbot-text";
+
     if (typeof options.renderText === "function") {
       options.renderText(text);
     } else {
-      text.textContent = entry.content || "";
+      const content = entry.content || "";
+      if (content) {
+        text.innerHTML = formatChatbotMessage(content);
+      }
     }
 
-    content.append(meta, text);
-    bubble.append(avatar, content);
+    bubble.append(author, text);
     return bubble;
   }
 
   function showOverviewTypingIndicator() {
-    if (overviewTypingNode) {
-      return;
-    }
-    const container = document.getElementById("overview-chat-messages");
-    if (!container) {
+    const typing = document.getElementById("overview-chat-typing");
+    if (!typing) {
       return;
     }
     const empty = document.getElementById("overview-chat-empty");
-    const timestamp = new Date().toISOString();
-    overviewTypingNode = buildOverviewChatMessage(
-      { role: "assistant", content: OVERVIEW_TYPING_LABEL, created_at: timestamp },
-      {
-        isTyping: true,
-        timestamp,
-        renderText(target) {
-          const wrapper = document.createElement("div");
-          wrapper.className = "chat-preview-typing";
-
-          const label = document.createElement("span");
-          label.className = "chat-preview-typing-label";
-          label.textContent = OVERVIEW_TYPING_LABEL;
-
-          const dots = document.createElement("span");
-          dots.className = "chat-preview-typing-dots";
-          for (let index = 0; index < 3; index += 1) {
-            const dot = document.createElement("span");
-            dot.className = "chat-preview-typing-dot";
-            dot.style.animationDelay = `${index * 0.15}s`;
-            dots.appendChild(dot);
-          }
-
-          wrapper.append(label, dots);
-          target.append(wrapper);
-        },
-      }
-    );
     if (empty) {
       empty.hidden = true;
     }
-    container.hidden = false;
-    container.appendChild(overviewTypingNode);
-    requestAnimationFrame(() => {
-      if (typeof container.scrollTo === "function") {
-        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-      } else {
-        container.scrollTop = container.scrollHeight;
-      }
-    });
+    typing.hidden = false;
   }
 
   function hideOverviewTypingIndicator() {
-    if (!overviewTypingNode) {
-      return;
+    const typing = document.getElementById("overview-chat-typing");
+    if (typing) {
+      typing.hidden = true;
     }
-    if (overviewTypingNode.parentElement) {
-      overviewTypingNode.parentElement.removeChild(overviewTypingNode);
-    }
-    overviewTypingNode = null;
   }
 
   function buildChatPayloadHistory(history, limit) {
@@ -3428,15 +3552,12 @@
       return;
     }
     container.innerHTML = "";
-    overviewTypingNode = null;
     const history = state.overview.history.slice(-OVERVIEW_HISTORY_LIMIT * 2);
     if (!history.length) {
       empty.hidden = false;
-      container.hidden = true;
       return;
     }
     empty.hidden = true;
-    container.hidden = false;
     history.forEach((entry) => {
       const bubble = buildOverviewChatMessage(entry);
       container.appendChild(bubble);
@@ -4612,9 +4733,10 @@
       status.textContent = "Une autre analyse est en cours. Patientez quelques secondes.";
       return;
     }
-    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-    if (!file) {
-      status.textContent = "Sélectionnez un fichier avant de lancer l'analyse.";
+
+    const files = fileInput.files ? Array.from(fileInput.files) : [];
+    if (!files.length) {
+      status.textContent = "Sélectionnez au moins un fichier avant de lancer l'analyse.";
       return;
     }
 
@@ -4623,32 +4745,67 @@
       trigger.disabled = true;
       setAIButtonState(trigger, true);
     }
-    status.textContent = "Analyse du menu en cours…";
+
+    const isMultiple = files.length > 1;
+    status.textContent = isMultiple
+      ? `Analyse de ${files.length} fichiers en cours…`
+      : "Analyse du menu en cours…";
 
     try {
       const token = await getAccessToken();
       const formData = new FormData();
-      formData.append("file", file);
-      const response = await fetch("/api/restaurants/menu/from-upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
 
-      const payload = await response.json().catch(() => ({}));
-      const detailMessage = payload && payload.detail ? payload.detail : null;
-      if (!response.ok) {
-        throw new Error(detailMessage || "Impossible d'analyser ce menu.");
-      }
+      if (isMultiple) {
+        // Upload multiple files
+        files.forEach(file => {
+          formData.append("files", file);
+        });
 
-      const { menu_document: menuDocument } = payload || {};
-      const menuField = form.querySelector("[name='menu_document']");
-      if (menuField) {
-        menuField.value = stringifyMenu(menuDocument);
+        const response = await fetch("/api/restaurants/menu/from-multiple-uploads", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        const detailMessage = payload && payload.detail ? payload.detail : null;
+        if (!response.ok) {
+          throw new Error(detailMessage || "Impossible d'analyser ces menus.");
+        }
+
+        const { menu_document: menuDocument } = payload || {};
+        const menuField = form.querySelector("[name='menu_document']");
+        if (menuField) {
+          menuField.value = stringifyMenu(menuDocument);
+        }
+        status.textContent = `${files.length} fichiers importés et fusionnés. Vérifiez puis sauvegardez.`;
+      } else {
+        // Upload single file (use existing endpoint)
+        formData.append("file", files[0]);
+
+        const response = await fetch("/api/restaurants/menu/from-upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        const detailMessage = payload && payload.detail ? payload.detail : null;
+        if (!response.ok) {
+          throw new Error(detailMessage || "Impossible d'analyser ce menu.");
+        }
+
+        const { menu_document: menuDocument } = payload || {};
+        const menuField = form.querySelector("[name='menu_document']");
+        if (menuField) {
+          menuField.value = stringifyMenu(menuDocument);
+        }
+        status.textContent = "Menu importé. Vérifiez puis sauvegardez.";
       }
-      status.textContent = "Menu importé. Vérifiez puis sauvegardez.";
     } catch (error) {
       console.error("Menu upload failed", error);
       status.textContent = error.message || "Erreur lors de l'analyse.";

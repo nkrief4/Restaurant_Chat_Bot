@@ -1,0 +1,411 @@
+/* ========================================
+   OVERVIEW RESTAURANT CARDS - Premium Glassmorphism
+   ======================================== */
+
+.overview-restaurant-card {
+    position: relative;
+    /* Fond plus transparent pour l'effet verre */
+    background: rgba(255, 255, 255, 0.65);
+    /* Flou d'arrière-plan essentiel pour le glassmorphism */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    /* Bordure semi-transparente pour définir les bords du verre */
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 20px;
+    padding: 20px;
+    /* Ombres douces pour la profondeur */
+    box-shadow:
+        0 8px 32px rgba(31, 38, 135, 0.07),
+        0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    cursor: pointer;
+    min-height: 280px;
+}
+
+/* Gradient border effect - Ajusté pour le glassmorphism */
+.overview-restaurant-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+            rgba(58, 117, 255, 0.8) 0%,
+            rgba(107, 157, 255, 0.8) 50%,
+            rgba(58, 117, 255, 0.8) 100%);
+    background-size: 200% 100%;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    border-radius: 20px 20px 0 0;
+}
+
+/* Subtle glow effect */
+
+
+.overview-restaurant-card:hover::before {
+    opacity: 1;
+    animation: shimmerGradient 2.5s linear infinite;
+}
+
+.overview-restaurant-card:hover {
+    transform: translateY(-3px);
+    /* Fond un peu plus opaque au survol */
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 1);
+    box-shadow:
+        0 12px 36px rgba(31, 38, 135, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+@keyframes shimmerGradient {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Header de la carte */
+.overview-restaurant-card .restaurant-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 4px;
+}
+
+.overview-restaurant-card .restaurant-card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    background: linear-gradient(135deg, #1a1f36 0%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.3;
+    transition: transform 0.2s ease;
+    letter-spacing: -0.01em;
+}
+
+.overview-restaurant-card:hover .restaurant-card-header h3 {
+    transform: translateX(2px);
+}
+
+/* Status badge premium */
+.overview-restaurant-card .status-badge {
+    padding: 5px 10px;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(47, 179, 117, 0.15), rgba(47, 179, 117, 0.08));
+    color: var(--success);
+    border: 1px solid rgba(47, 179, 117, 0.3);
+    box-shadow: 0 2px 8px rgba(47, 179, 117, 0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.overview-restaurant-card .status-badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 6px rgba(47, 179, 117, 0.6);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.15);
+    }
+}
+
+.overview-restaurant-card .status-badge.inactive {
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.15), rgba(148, 163, 184, 0.08));
+    color: var(--text-muted);
+    border-color: rgba(148, 163, 184, 0.3);
+    box-shadow: 0 2px 8px rgba(148, 163, 184, 0.1);
+}
+
+.overview-restaurant-card .status-badge.inactive::before {
+    background: var(--text-muted);
+    box-shadow: none;
+    animation: none;
+}
+
+/* Contenu de la carte */
+.overview-restaurant-card .restaurant-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.overview-restaurant-card p {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+    font-size: 0.85rem;
+}
+
+.overview-restaurant-card .restaurant-address {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.overview-restaurant-card .restaurant-address::before {
+    content: '📍';
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* Métadonnées avec icônes */
+.overview-restaurant-card .restaurant-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(58, 117, 255, 0.1);
+    position: relative;
+    z-index: 1;
+}
+
+.overview-restaurant-card .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: rgba(58, 117, 255, 0.06);
+    padding: 5px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.overview-restaurant-card .meta-item:hover {
+    background: rgba(58, 117, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.overview-restaurant-card .meta-item strong {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+/* Icon pour les meta items */
+.overview-restaurant-card .meta-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(58, 117, 255, 0.2), rgba(58, 117, 255, 0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+/* Actions premium - AMÉLIORÉES */
+.overview-restaurant-card .restaurant-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+.overview-restaurant-card .restaurant-card-actions button {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.overview-restaurant-card .restaurant-card-actions button:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 4px 12px rgba(58, 117, 255, 0.15);
+}
+
+.overview-restaurant-card .restaurant-card-actions button:active {
+    transform: scale(0.98);
+}
+
+/* Primary button style - HAUTE VISIBILITÉ */
+.overview-restaurant-card .restaurant-card-actions .primary-btn,
+.overview-restaurant-card .restaurant-card-actions button[type="button"]:first-child {
+    background: linear-gradient(135deg, var(--primary), #5a8dff);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(58, 117, 255, 0.2);
+    font-weight: 700;
+}
+
+.overview-restaurant-card .restaurant-card-actions .primary-btn:hover,
+.overview-restaurant-card .restaurant-card-actions button[type="button"]:first-child:hover {
+    background: linear-gradient(135deg, #315fcb, var(--primary));
+    box-shadow: 0 4px 14px rgba(58, 117, 255, 0.3);
+}
+
+/* Secondary button style - HAUTE VISIBILITÉ */
+.overview-restaurant-card .restaurant-card-actions .secondary-btn,
+.overview-restaurant-card .restaurant-card-actions button:not(:first-child) {
+    background: #fff;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+    font-weight: 600;
+}
+
+.overview-restaurant-card .restaurant-card-actions .secondary-btn:hover,
+.overview-restaurant-card .restaurant-card-actions button:not(:first-child):hover {
+    background: rgba(58, 117, 255, 0.08);
+    border-color: #315fcb;
+}
+
+/* Ghost button alternative */
+.overview-restaurant-card .restaurant-card-actions .ghost-btn {
+    background: rgba(58, 117, 255, 0.08);
+    color: var(--primary);
+    border: 1px solid rgba(58, 117, 255, 0.2);
+}
+
+.overview-restaurant-card .restaurant-card-actions .ghost-btn:hover {
+    background: rgba(58, 117, 255, 0.15);
+    border-color: rgba(58, 117, 255, 0.4);
+}
+
+/* Animation d'entrée sophistiquée */
+.overview-restaurant-card {
+    animation: cardEntrance 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.overview-restaurant-card:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.overview-restaurant-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.overview-restaurant-card:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.overview-restaurant-card:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.overview-restaurant-card:nth-child(n+5) {
+    animation-delay: 0.25s;
+}
+
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Empty state styling */
+.overview-restaurant-cards .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* Responsive optimizations */
+@media (max-width: 768px) {
+    .overview-restaurant-card {
+        min-height: 220px;
+        padding: 20px;
+    }
+
+    .overview-restaurant-card .restaurant-card-header h3 {
+        font-size: 1.05rem;
+    }
+
+    .overview-restaurant-card .meta-item {
+        font-size: 0.72rem;
+    }
+
+    .overview-restaurant-card .restaurant-card-actions button {
+        font-size: 0.8rem;
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .overview-restaurant-card {
+        min-height: 200px;
+        padding: 18px;
+        border-radius: 16px;
+    }
+
+    .overview-restaurant-card .restaurant-card-header h3 {
+        font-size: 1rem;
+    }
+
+    .overview-restaurant-card .restaurant-card-actions {
+        flex-direction: column;
+    }
+
+    .overview-restaurant-card .restaurant-card-actions button {
+        width: 100%;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+
+    .overview-restaurant-card,
+    .overview-restaurant-card::before,
+    .overview-restaurant-card::after,
+    .overview-restaurant-card .status-badge::before {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .overview-restaurant-card:hover {
+        transform: none;
+    }
+}

@@ -12,8 +12,9 @@ from uuid import UUID, uuid4
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile, Request, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from httpx import HTTPError as HttpxError
 from postgrest import APIError as PostgrestAPIError
 from pydantic import BaseModel, EmailStr, Field, StringConstraints
@@ -39,6 +40,7 @@ from app.services.dashboard_service import (
 from app.services.menu_ingest_service import (
     MenuExtractionError,
     build_menu_document_from_upload,
+    build_menu_document_from_multiple_uploads,
 )
 from app.services.signup_service import (
     SignupError,
@@ -64,8 +66,10 @@ DASHBOARD_FILE = STATIC_DIR / "dashboard.html"
 CHAT_FILE = STATIC_DIR / "chat.html"
 PURCHASING_FILE = STATIC_DIR / "purchasing.html"
 ORDER_DETAILS_FILE = STATIC_DIR / "order_details.html"
+TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 app.include_router(purchasing_router)
 
 
@@ -146,9 +150,9 @@ def read_signup() -> FileResponse:
     return FileResponse(SIGNUP_FILE)
 
 
-@app.get("/dashboard", response_class=FileResponse)
-def read_dashboard() -> FileResponse:
-    return FileResponse(DASHBOARD_FILE)
+@app.get("/dashboard")
+async def read_dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/purchasing", response_class=FileResponse)
@@ -301,6 +305,40 @@ async def menu_from_upload(
     except Exception as exc:  # pragma: no cover - unexpected errors
         logger.exception("Unexpected menu upload failure")
         raise HTTPException(status_code=500, detail="Erreur inattendue lors du traitement du menu.") from exc
+
+    return MenuUploadResponse(menu_document=document)
+
+
+@app.post("/api/restaurants/menu/from-multiple-uploads", response_model=MenuUploadResponse)
+async def menu_from_multiple_uploads(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    files: List[UploadFile] = File(...),
+) -> MenuUploadResponse:
+    """Upload and analyze multiple menu images/PDFs, merging them into a single menu document."""
+    extract_bearer_token(authorization)
+    
+    if not files:
+        raise HTTPException(status_code=400, detail="Aucun fichier fourni.")
+    
+    if len(files) > 5:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas uploader plus de 5 fichiers à la fois.")
+    
+    # Read all files
+    file_data = []
+    for file in files:
+        data = await file.read()
+        file_data.append((file.filename or "menu", file.content_type, data))
+    
+    try:
+        document = await build_menu_document_from_multiple_uploads(file_data)
+    except MenuExtractionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except APIError as exc:  # pragma: no cover - depends on OpenAI availability
+        logger.error("Multiple menu upload parsing failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Erreur lors de l'analyse par l'IA.") from exc
+    except Exception as exc:  # pragma: no cover - unexpected errors
+        logger.exception("Unexpected multiple menu upload failure")
+        raise HTTPException(status_code=500, detail="Erreur inattendue lors du traitement des menus.") from exc
 
     return MenuUploadResponse(menu_document=document)
 

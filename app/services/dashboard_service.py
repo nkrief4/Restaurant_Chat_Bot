@@ -40,13 +40,13 @@ PLAN_PRESETS: Dict[str, Dict[str, Any]] = {
     },
     "Plan Pro": {
         "description": "Plan complet incluant statistiques avancées et support prioritaire.",
-        "price": 189,
+        "price": 18,
         "currency": "EUR",
         "billing_cycle": "mensuel",
     },
     "Plan Premium": {
         "description": "Multi-sites avec intégrations personnalisées et succès client dédié.",
-        "price": 289,
+        "price": 28,
         "currency": "EUR",
         "billing_cycle": "mensuel",
     },
@@ -194,7 +194,6 @@ async def update_restaurant(access_token: str, restaurant_id: str, payload: Dict
                 )
                 .eq("id", restaurant_id)
                 .eq("tenant_id", tenant["id"])
-                .limit(1)
                 .execute()
             )
             if not response.data:

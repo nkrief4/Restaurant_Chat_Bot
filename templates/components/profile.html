@@ -1,0 +1,54 @@
+<section id="profile" class="section" aria-label="Profil du compte">
+    <div class="section-header">
+        <div>
+            <h2>Profil du compte</h2>
+            <p>Identité, coordonnées et fuseau horaire sont utilisés pour les emails, horaires et métriques.</p>
+        </div>
+    </div>
+    <form class="profile-form" id="profile-form" novalidate>
+        <div class="form-grid">
+            <label>
+                <span>Nom & prénom</span>
+                <input type="text" id="profile-full-name" placeholder="Jean Dupont" autocomplete="name" />
+                <p class="field-error" data-profile-error="full_name"></p>
+            </label>
+            <label>
+                <span>Email (lecture seule)</span>
+                <input type="email" id="profile-email" placeholder="jean.dupont@exemple.com" autocomplete="email"
+                    readonly />
+            </label>
+            <label>
+                <span>Nom de l'entreprise</span>
+                <input type="text" id="profile-company" placeholder="Groupe Saveurs" autocomplete="organization" />
+            </label>
+            <label>
+                <span>Pays</span>
+                <input type="text" id="profile-country" placeholder="France" autocomplete="country" />
+            </label>
+            <label>
+                <span>Téléphone</span>
+                <input type="tel" id="profile-phone" placeholder="+33 1 23 45 67 89" autocomplete="tel" />
+                <p class="field-error" data-profile-error="phone_number"></p>
+            </label>
+            <label>
+                <span>Fuseau horaire</span>
+                <select id="profile-timezone" required>
+                    <option value="">Sélectionnez votre zone</option>
+                    <option value="Europe/Paris">Europe/Paris (UTC+1)</option>
+                    <option value="Europe/Brussels">Europe/Bruxelles (UTC+1)</option>
+                    <option value="Europe/Zurich">Europe/Zurich (UTC+1)</option>
+                    <option value="Europe/London">Europe/Londres (UTC+0)</option>
+                    <option value="America/Montreal">Amérique/Montréal (UTC-5)</option>
+                </select>
+                <p class="field-error" data-profile-error="timezone"></p>
+            </label>
+        </div>
+        <div class="form-footer">
+            <div class="profile-feedback" id="profile-form-message" role="status" aria-live="polite"></div>
+            <div class="profile-actions">
+                <button class="ghost-btn" type="reset">Réinitialiser</button>
+                <button class="primary-btn" type="submit">Enregistrer les modifications</button>
+            </div>
+        </div>
+    </form>
+</section>

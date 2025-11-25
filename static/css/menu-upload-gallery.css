@@ -1,0 +1,216 @@
+/* Menu Upload Gallery Styles */
+
+.upload-files-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    min-height: 0;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+.upload-files-gallery.has-files {
+    opacity: 1;
+    max-height: 800px;
+    min-height: 120px;
+}
+
+.file-preview-card {
+    position: relative;
+    background: var(--card-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 12px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    cursor: grab;
+    user-select: none;
+}
+
+.file-preview-card:hover {
+    background: var(--card-hover-bg, rgba(255, 255, 255, 0.08));
+    border-color: var(--primary-color, #6366f1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.file-preview-card.is-dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.file-preview-card.drop-target {
+    border-color: var(--primary-color, #6366f1);
+    background: var(--primary-color-alpha, rgba(99, 102, 241, 0.1));
+}
+
+.file-preview-thumbnail {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--thumbnail-bg, rgba(0, 0, 0, 0.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.file-preview-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.file-preview-thumbnail.no-preview {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+}
+
+.file-preview-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.file-preview-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary, #fff);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-preview-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.6));
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.file-preview-position {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    background: var(--primary-color, #6366f1);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.file-preview-remove {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 2;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.file-preview-card:hover .file-preview-remove {
+    opacity: 1;
+}
+
+.file-preview-remove:hover {
+    background: rgba(220, 38, 38, 1);
+    transform: scale(1.1);
+}
+
+.file-preview-drag-handle {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    font-size: 1.25rem;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.file-preview-card:hover .file-preview-drag-handle {
+    opacity: 1;
+}
+
+/* Empty state for gallery */
+.upload-files-gallery-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    font-size: 0.875rem;
+}
+
+/* Animation for adding/removing files */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.file-preview-card {
+    animation: slideIn 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .upload-files-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .file-preview-card {
+        padding: 0.5rem;
+    }
+
+    .file-preview-remove,
+    .file-preview-drag-handle {
+        opacity: 1;
+    }
+}
+
+/* Hide old preview when using gallery */
+.upload-card.has-multiple-files .upload-preview {
+    display: none;
+}

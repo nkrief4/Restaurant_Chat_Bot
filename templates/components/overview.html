@@ -1,0 +1,151 @@
+<section id="overview" class="section active-section" aria-label="Vue d'ensemble">
+
+
+    <div class="section-header overview-header">
+        <form id="date-range-form" class="range-filter" aria-label="Choisir la période analysée">
+            <div class="filter-inputs">
+                <label>
+                    <span>Du</span>
+                    <input type="date" id="filter-start-date" required />
+                </label>
+                <label>
+                    <span>Au</span>
+                    <input type="date" id="filter-end-date" required />
+                </label>
+            </div>
+        </form>
+        <p class="form-error" id="date-filter-message" role="status" aria-live="polite"></p>
+        <div class="overview-meta">
+            <div class="meta-pill">
+                <span class="meta-label">Conversations / jour</span>
+                <strong id="overview-average-per-day">—</strong>
+            </div>
+            <div class="meta-pill">
+                <span class="meta-label">Messages / conversation</span>
+                <strong id="overview-average-messages">—</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="overview-layout">
+        <div class="overview-main">
+            <!-- Ligne 1 : 4 cartes KPI -->
+            <div class="kpi-grid overview-kpis">
+                <article class="kpi-card">
+                    <p class="kpi-label">Restaurants</p>
+                    <h3 id="kpi-restaurants">—</h3>
+                    <p class="kpi-detail">Établissements connectés</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Conversations</p>
+                    <h3 id="kpi-conversations">—</h3>
+                    <p class="kpi-detail">Sessions IA sur la période</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Messages envoyés</p>
+                    <h3 id="kpi-messages">—</h3>
+                    <p class="kpi-detail">Échanges cumulés client & bot</p>
+                </article>
+                <article class="kpi-card">
+                    <p class="kpi-label">Clients uniques</p>
+                    <h3 id="kpi-customers">—</h3>
+                    <p class="kpi-detail">Visiteurs accompagnés par RestauBot</p>
+                </article>
+            </div>
+
+            <!-- Ligne 2 : Graphe de conversation -->
+            <article class="card conversation-card">
+                <div class="card-header">
+                    <div>
+                        <h3>Activité des conversations</h3>
+                        <p class="muted">Évolution quotidienne sur la période sélectionnée.</p>
+                    </div>
+                </div>
+                <div class="chart-placeholder" aria-live="polite">
+                    <canvas id="overview-conversation-chart" role="img"
+                        aria-label="Évolution quotidienne des conversations" height="280"></canvas>
+                    <p class="chart-empty" id="overview-conversation-empty" hidden>Aucune donnée disponible sur cette
+                        période.
+                    </p>
+                </div>
+            </article>
+
+            <!-- Ligne 3 : Vos établissements + Chatbot -->
+            <div class="overview-columns">
+                <div class="overview-restaurants-block">
+                    <div class="overview-restaurants-header">
+                        <h3>Vos établissements</h3>
+                        <p class="muted">Accédez rapidement aux restaurants que vous gérez.</p>
+                    </div>
+                    <div id="overview-restaurant-cards" class="overview-restaurant-cards">
+                        <p class="muted empty-state">Ajoutez un restaurant pour commencer.</p>
+                    </div>
+                </div>
+
+                <div class="overview-chat-wrapper">
+                    <div class="overview-chat-config">
+                        <h3>Tester le chatbot</h3>
+                        <label for="overview-restaurant-select">Choisissez un restaurant</label>
+                        <div class="chatbot-select-wrapper">
+                            <select id="overview-restaurant-select"
+                                aria-label="Sélectionner le restaurant pour le test">
+                                <option value="">Sélectionnez un restaurant</option>
+                            </select>
+                            <span class="chatbot-select-icon" aria-hidden="true"></span>
+                        </div>
+                        <p class="form-hint" id="overview-chat-hint">Sélectionnez un restaurant pour activer l'aperçu.
+                        </p>
+                    </div>
+                    <div class="chatbot-surface" aria-live="polite">
+                        <div id="overview-chat-messages" class="chatbot-thread"
+                            aria-label="Historique de l'aperçu du chatbot"></div>
+                        <div id="overview-chat-empty" class="chatbot-empty">
+                            <p>Choisissez un restaurant puis envoyez une question pour voir la réponse de RestauBot.</p>
+                        </div>
+                        <div id="overview-chat-typing" class="chatbot-typing" role="status" aria-live="polite" hidden>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                        </div>
+                    </div>
+                    <form id="overview-chat-form" class="chatbot-form" autocomplete="off">
+                        <label class="sr-only" for="overview-chat-input">Votre message</label>
+                        <textarea id="overview-chat-input" name="message" placeholder="Posez votre question…" rows="1"
+                            required></textarea>
+                        <button type="submit" id="overview-chat-send" class="primary-btn">Envoyer</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ligne 4 (DERNIÈRE) : Restaurant actif + Abonnement + CTA -->
+            <div class="overview-info-row">
+                <article class="card insights-card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Restaurant le plus actif</h3>
+                            <p class="muted">Basé sur le volume de conversations.</p>
+                        </div>
+                    </div>
+                    <p id="overview-top-restaurant" class="insight-value">—</p>
+                </article>
+
+                <article class="plan-card overview-plan-card">
+                    <div>
+                        <h3>Votre abonnement</h3>
+                        <p class="muted">Résumé du plan en cours pour ce compte.</p>
+                    </div>
+                    <div class="plan-details">
+                        <p class="plan-name" id="overview-plan-name">—</p>
+                        <p class="muted" id="overview-plan-detail">—</p>
+                    </div>
+                </article>
+
+                <div class="overview-cta">
+                    <p>Besoin d'ajouter un nouvel établissement&nbsp;?</p>
+                    <button type="button" class="primary-btn" data-open-section="manage-restaurants"
+                        data-open-tab="create">Créer un restaurant</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

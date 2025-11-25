@@ -1,0 +1,231 @@
+:root {
+    --primary: #3a75ff;
+    --primary-hover: #315fcb;
+    --bg: #f5f7fa;
+    --text: #1a1f36;
+    --text-muted: #6b7280;
+    --card-bg: #ffffff;
+    --sidebar-bg: #ffffff;
+    --border: #e3e7ef;
+    --danger: #c63c3c;
+    --success: #2fb375;
+    --shadow-soft: 0 20px 60px rgba(16, 34, 74, 0.08);
+    --shadow-strong: 0 32px 70px rgba(16, 34, 74, 0.14);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+body.sidebar-overlay-open {
+    overflow: hidden;
+}
+
+body.dashboard-loading {
+    overflow: hidden;
+}
+
+
+.dashboard-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(58, 117, 255, 0.15), transparent 55%),
+        linear-gradient(180deg, #f7f9fc, #edf2ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 120;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+    animation: overlayGlow 4s ease-in-out infinite;
+}
+
+.dashboard-loading-overlay.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+
+.loading-indicator {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 32px 40px;
+    box-shadow: var(--shadow-soft);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+    animation: floatCard 2.6s ease-in-out infinite;
+}
+
+.loading-indicator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+    animation: loadingBar 2s ease-in-out infinite;
+    z-index: 2;
+}
+
+@keyframes loadingBar {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.loading-indicator p {
+    margin: 16px 0 0;
+    color: var(--text-muted);
+    font-weight: 500;
+    animation: pulseText 2s ease-in-out infinite;
+}
+
+.loading-spinner {
+    position: relative;
+    width: 56px;
+    height: 56px;
+}
+
+.loading-spinner::before,
+.loading-spinner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 4px solid transparent;
+}
+
+.loading-spinner::before {
+    border-top-color: var(--primary);
+    border-left-color: var(--primary);
+    animation: dashboard-spinner 0.9s linear infinite;
+}
+
+.loading-spinner::after {
+    border-bottom-color: rgba(58, 117, 255, 0.35);
+    border-right-color: rgba(58, 117, 255, 0.35);
+    animation: dashboard-spinner 1.5s linear infinite reverse;
+}
+
+@keyframes dashboard-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes overlayGlow {
+    0% {
+        opacity: 0.98;
+    }
+
+    50% {
+        opacity: 1;
+        filter: saturate(1.05);
+    }
+
+    100% {
+        opacity: 0.98;
+    }
+}
+
+@keyframes floatCard {
+    0% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+        box-shadow: 0 28px 50px rgba(16, 34, 74, 0.12);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseText {
+    0% {
+        opacity: 0.65;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.65;
+    }
+}
+
+a {
+    color: inherit;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.muted {
+    color: var(--text-muted);
+}
+
+.eyebrow {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--primary);
+}
+
+.subtitle {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}

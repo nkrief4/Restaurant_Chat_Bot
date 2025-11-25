@@ -1,0 +1,150 @@
+<section id="statistics" class="section" aria-label="Statistiques détaillées">
+    <div class="section-header stats-section-header">
+        <div>
+            <h2>Statistiques détaillées</h2>
+            <p id="statistics-range-label">Analyse des 7 derniers jours</p>
+        </div>
+        <p class="muted" id="statistics-selection-label">Tous vos établissements</p>
+    </div>
+
+    <div class="stats-filter-panel" aria-label="Filtres d'analyse">
+        <div class="stats-filter-block">
+            <p class="filter-label">Période analysée</p>
+            <div class="stats-range-pills" role="group" aria-label="Choisir la période">
+                <button type="button" class="range-pill active" data-stats-range="7">7 jours</button>
+                <button type="button" class="range-pill" data-stats-range="30">30 jours</button>
+                <button type="button" class="range-pill" data-stats-range="90">3 mois</button>
+                <button type="button" class="range-pill" data-stats-range="180">6 mois</button>
+            </div>
+            <div class="stats-custom-range">
+                <label>
+                    <span>Du</span>
+                    <input type="date" id="stats-start-date" />
+                </label>
+                <label>
+                    <span>Au</span>
+                    <input type="date" id="stats-end-date" />
+                </label>
+                <button type="button" class="ghost-btn" id="stats-apply-range">Appliquer</button>
+                <p class="form-error" id="stats-range-message" role="status" aria-live="polite"></p>
+            </div>
+        </div>
+
+        <div class="stats-filter-block">
+            <p class="filter-label">Restaurants analysés</p>
+            <div class="multi-select" id="stats-restaurant-picker">
+                <button type="button" class="multi-select-trigger" id="stats-restaurant-toggle" aria-haspopup="true"
+                    aria-expanded="false">
+                    <span id="stats-selected-summary">Tous les restaurants</span>
+                    <span class="multi-select-caret" aria-hidden="true"></span>
+                </button>
+                <div class="multi-select-panel" id="stats-restaurant-panel" hidden>
+                    <div class="multi-select-search">
+                        <input type="search" id="stats-restaurant-search" placeholder="Rechercher un établissement" />
+                    </div>
+                    <div class="multi-select-actions">
+                        <button type="button" data-action="select-all">Tout sélectionner</button>
+                        <button type="button" data-action="clear-all">Effacer</button>
+                    </div>
+                    <ul class="multi-select-options" id="stats-restaurant-options" role="listbox"
+                        aria-multiselectable="true">
+                        <li class="muted">Aucun restaurant disponible.</li>
+                    </ul>
+                </div>
+            </div>
+            <p class="form-hint" id="stats-selection-hint">Affichage global</p>
+        </div>
+    </div>
+
+    <div class="kpi-grid stats-kpis">
+        <article class="kpi-card">
+            <p class="kpi-label">Conversations</p>
+            <h3 id="stats-total-conversations">—</h3>
+            <p class="kpi-detail">Volume global sur la période</p>
+        </article>
+        <article class="kpi-card">
+            <p class="kpi-label">Messages échangés</p>
+            <h3 id="stats-total-messages">—</h3>
+            <p class="kpi-detail">Somme des messages clients et bot</p>
+        </article>
+        <article class="kpi-card">
+            <p class="kpi-label">Conversations / jour</p>
+            <h3 id="stats-average-per-day">—</h3>
+            <p class="kpi-detail">Moyenne journalière</p>
+        </article>
+        <article class="kpi-card">
+            <p class="kpi-label">Messages / conversation</p>
+            <h3 id="stats-average-messages">—</h3>
+            <p class="kpi-detail">Intensité moyenne des échanges</p>
+        </article>
+        <article class="kpi-card">
+            <p class="kpi-label">Restaurants actifs</p>
+            <h3 id="stats-active-restaurants">—</h3>
+            <p class="kpi-detail">Établissements avec des conversations</p>
+        </article>
+    </div>
+
+    <div class="stats-visual-grid">
+        <article class="card stats-chart-card">
+            <div class="card-header">
+                <div>
+                    <h3>Volume de conversations</h3>
+                    <p class="muted">Conversations et messages quotidiens.</p>
+                </div>
+            </div>
+            <div class="chart-placeholder">
+                <canvas id="stats-activity-chart" aria-label="Évolution des conversations" role="img"
+                    height="280"></canvas>
+                <p class="chart-empty" id="stats-activity-empty" hidden>Aucune interaction sur cette
+                    période.</p>
+            </div>
+        </article>
+
+        <article class="card stats-breakdown-card">
+            <div class="card-header">
+                <div>
+                    <h3>Répartition par restaurant</h3>
+                    <p class="muted">Poids des conversations sur la période.</p>
+                </div>
+            </div>
+            <ul class="stats-breakdown-list" id="stats-restaurant-breakdown">
+                <li class="muted">Sélectionnez au moins un restaurant pour voir le détail.</li>
+            </ul>
+        </article>
+
+        <article class="card">
+            <div class="card-header">
+                <h3>Questions les plus posées</h3>
+                <p class="muted">Tendances détectées automatiquement.</p>
+            </div>
+            <ul class="top-questions" id="stats-top-questions">
+                <li>Collecte des tendances en cours…</li>
+            </ul>
+        </article>
+
+        <article class="card chart-card">
+            <div class="card-header">
+                <h3>Régimes alimentaires</h3>
+                <span class="badge">Top 5</span>
+            </div>
+            <div class="diet-chart" id="stats-diet-breakdown" aria-hidden="true"></div>
+        </article>
+
+        <article class="card">
+            <div class="card-header">
+                <h3>Restaurants les plus sollicités</h3>
+            </div>
+            <ul class="busiest-list" id="stats-busiest-list">
+                <li>En attente de données.</li>
+            </ul>
+        </article>
+
+        <article class="card resolution-card">
+            <div class="card-header">
+                <h3>Taux de résolution</h3>
+            </div>
+            <p class="resolution-value" id="stats-resolution-rate">—</p>
+            <p class="muted">Part des conversations clôturées automatiquement.</p>
+        </article>
+    </div>
+</section>

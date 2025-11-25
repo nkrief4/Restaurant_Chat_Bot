@@ -1,0 +1,687 @@
+/* ========================================
+   OVERVIEW SECTION - Modern Styles & Animations
+   ======================================== */
+
+/* Overview Header */
+.overview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, rgba(58, 117, 255, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%);
+    border-radius: 16px;
+    padding: 16px 24px;
+    margin-bottom: 32px;
+    border: 1px solid rgba(58, 117, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(58, 117, 255, 0.06);
+    animation: slideInDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Range Filter */
+.range-filter {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* Meta Pills */
+.overview-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.meta-pill {
+    background: linear-gradient(135deg, rgba(58, 117, 255, 0.1), rgba(58, 117, 255, 0.05));
+    border: 1px solid rgba(58, 117, 255, 0.2);
+    border-radius: 999px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInScale 0.5s ease-out backwards;
+}
+
+.meta-pill:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.meta-pill:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.meta-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(58, 117, 255, 0.2);
+    border-color: rgba(58, 117, 255, 0.4);
+}
+
+.meta-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.meta-pill strong {
+    font-size: 1.1rem;
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Overview Layout */
+.overview-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.overview-main {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* Info Row - Restaurant actif + Abonnement + CTA */
+.overview-info-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    animation: slideInUp 0.7s ease-out 0.5s backwards;
+}
+
+/* KPI Grid */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    animation: staggerIn 0.8s ease-out;
+}
+
+@keyframes staggerIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* KPI Cards */
+.kpi-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: cardFadeIn 0.6s ease-out backwards;
+}
+
+.kpi-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.kpi-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.kpi-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.kpi-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), #6b9dff, var(--primary));
+    background-size: 200% 100%;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.kpi-card:hover::before {
+    opacity: 1;
+    animation: shimmerGradient 2s linear infinite;
+}
+
+@keyframes shimmerGradient {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.kpi-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 40px rgba(58, 117, 255, 0.15);
+    border-color: rgba(58, 117, 255, 0.3);
+}
+
+.kpi-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0;
+}
+
+.kpi-card h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 8px 0;
+    background: linear-gradient(135deg, var(--primary), #6b9dff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: transform 0.3s ease;
+}
+
+.kpi-card:hover h3 {
+    transform: scale(1.05);
+}
+
+.kpi-detail {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Conversation Card */
+.conversation-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
+    animation: slideInUp 0.7s ease-out 0.3s backwards;
+    transition: all 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.conversation-card:hover {
+    box-shadow: 0 12px 32px rgba(58, 117, 255, 0.12);
+    border-color: rgba(58, 117, 255, 0.2);
+}
+
+.conversation-card .card-header h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.chart-placeholder {
+    position: relative;
+    min-height: 280px;
+}
+
+/* Overview Columns */
+.overview-columns {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    animation: slideInUp 0.7s ease-out 0.4s backwards;
+}
+
+/* Restaurants Block */
+.overview-restaurants-block {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 700px;
+}
+
+.overview-restaurants-block:hover {
+    box-shadow: 0 12px 32px rgba(58, 117, 255, 0.12);
+    border-color: rgba(58, 117, 255, 0.2);
+}
+
+.overview-restaurants-header h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 8px;
+}
+
+.overview-restaurants-header .muted {
+    margin: 0 0 20px;
+}
+
+.overview-restaurant-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 20px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+}
+
+/* Scrollbar styling for restaurant cards */
+.overview-restaurant-cards::-webkit-scrollbar {
+    width: 6px;
+}
+
+.overview-restaurant-cards::-webkit-scrollbar-track {
+    background: rgba(58, 117, 255, 0.05);
+    border-radius: 10px;
+}
+
+.overview-restaurant-cards::-webkit-scrollbar-thumb {
+    background: rgba(58, 117, 255, 0.3);
+    border-radius: 10px;
+}
+
+.overview-restaurant-cards::-webkit-scrollbar-thumb:hover {
+    background: rgba(58, 117, 255, 0.5);
+}
+
+/* Chat Wrapper - utilise maintenant les styles du chatbot principal */
+.overview-chat-wrapper {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: all 0.3s ease;
+    height: 700px;
+}
+
+.overview-chat-wrapper:hover {
+    box-shadow: 0 12px 32px rgba(58, 117, 255, 0.12);
+    border-color: rgba(58, 117, 255, 0.2);
+}
+
+.overview-chat-config {
+    flex-shrink: 0;
+}
+
+.overview-chat-config h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 16px;
+}
+
+.overview-chat-config label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+/* Zone de chat qui occupe tout l'espace disponible */
+.overview-chat-wrapper .chatbot-surface {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.overview-chat-wrapper .chatbot-thread {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Formulaire fixé en bas */
+.overview-chat-wrapper .chatbot-form {
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+/* Le reste des styles est hérité de chatbot.css */
+
+/* Insights Card */
+.insights-card {
+    background: linear-gradient(135deg, rgba(58, 117, 255, 0.08) 0%, rgba(255, 255, 255, 0.95) 100%);
+    border: 1px solid rgba(58, 117, 255, 0.2);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(58, 117, 255, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.insights-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(58, 117, 255, 0.1) 0%, transparent 70%);
+    animation: rotateGlow 15s linear infinite;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+@keyframes rotateGlow {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.insights-card:hover::before {
+    opacity: 1;
+}
+
+.insights-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(58, 117, 255, 0.18);
+    border-color: rgba(58, 117, 255, 0.4);
+}
+
+.insights-card .card-header {
+    position: relative;
+    z-index: 1;
+}
+
+.insights-card h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.insight-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary);
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease;
+}
+
+.insights-card:hover .insight-value {
+    transform: scale(1.05);
+}
+
+/* Plan Card */
+.plan-card {
+    background: linear-gradient(135deg, #1a1f36 0%, #2d3548 100%);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.plan-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3a75ff, #6b9dff, #3a75ff);
+    background-size: 200% 100%;
+    animation: shimmerGradient 3s linear infinite;
+}
+
+.plan-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+    border-color: rgba(58, 117, 255, 0.4);
+}
+
+.plan-card h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.plan-card .muted {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.plan-details {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.plan-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #6b9dff;
+    margin: 0 0 8px;
+}
+
+/* Overview CTA */
+.overview-cta {
+    background: linear-gradient(135deg, rgba(58, 117, 255, 0.1) 0%, rgba(58, 117, 255, 0.05) 100%);
+    border: 1px solid rgba(58, 117, 255, 0.2);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.overview-cta:hover {
+    background: linear-gradient(135deg, rgba(58, 117, 255, 0.15) 0%, rgba(58, 117, 255, 0.08) 100%);
+    border-color: rgba(58, 117, 255, 0.3);
+    box-shadow: 0 8px 20px rgba(58, 117, 255, 0.15);
+}
+
+.overview-cta p {
+    margin: 0 0 16px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.overview-cta button {
+    width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 1280px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .overview-info-row {
+        gap: 20px;
+    }
+}
+
+@media (max-width: 1023px) {
+    .overview-info-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .overview-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .overview-restaurants-block,
+    .overview-chat-wrapper {
+        height: auto;
+        min-height: 400px;
+    }
+
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .overview-header {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-card h3 {
+        font-size: 2rem;
+    }
+
+    .overview-meta {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .meta-pill {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .overview-restaurant-cards {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+
+    .overview-restaurants-block,
+    .overview-chat-wrapper {
+        height: auto;
+        min-height: 350px;
+    }
+}
+
+@media (max-width: 480px) {
+    .overview-header {
+        padding: 12px;
+    }
+
+    .conversation-card,
+    .overview-restaurants-block,
+    .overview-chat-wrapper {
+        padding: 20px;
+    }
+
+    .kpi-card {
+        padding: 20px;
+    }
+
+    .kpi-card h3 {
+        font-size: 1.8rem;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+
+    .kpi-card,
+    .conversation-card,
+    .overview-columns,
+    .overview-info-row,
+    .overview-header,
+    .meta-pill,
+    .insights-card::before,
+    .plan-card::before,
+    .kpi-card::before {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .kpi-card:hover,
+    .conversation-card:hover,
+    .insights-card:hover,
+    .plan-card:hover,
+    .overview-cta:hover {
+        transform: none;
+    }
+}

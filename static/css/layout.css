@@ -1,0 +1,144 @@
+/* Layout */
+.dashboard {
+    display: grid;
+    grid-template-columns: minmax(240px, 260px) 1fr;
+    min-height: 100vh;
+    position: relative;
+}
+
+.sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 30;
+}
+
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    z-index: 20;
+}
+
+.dashboard.sidebar-open .sidebar-backdrop {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.main {
+    padding: 40px 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* Sections */
+.section {
+    display: none;
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: var(--shadow-soft);
+}
+
+.section.active-section {
+    display: block;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.section-header h2 {
+    margin: 8px 0 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.section-header .subtitle {
+    font-size: 1rem;
+    margin-top: 6px;
+}
+
+.section-header>div {
+    flex: 1;
+    min-width: 280px;
+}
+
+.section-header button {
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+/* Responsive Layout */
+@media (max-width: 1280px) {
+    .main {
+        padding: 32px 40px 48px;
+    }
+
+    .section {
+        padding: 28px;
+    }
+}
+
+@media (max-width: 1023px) {
+    .dashboard {
+        display: block;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(320px, 80vw);
+        transform: translateX(-100%);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+        transition: transform 0.3s ease;
+        height: 100vh;
+        z-index: 50;
+    }
+
+    .dashboard.sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+
+    .main {
+        padding: 32px 24px 48px;
+    }
+
+    .section {
+        padding: 24px;
+    }
+}
+
+@media (max-width: 560px) {
+    .main {
+        padding: 20px 14px 32px;
+    }
+
+    .section {
+        padding: 20px;
+        border-radius: 18px;
+    }
+}
