@@ -1,0 +1,11 @@
+/* Main Dashboard CSS - Imports all modules */
+@import 'base.css';
+@import 'layout.css';
+@import 'header.css';
+@import 'sidebar.css';
+@import 'components.css';
+@import 'stats.css';
+@import 'charts.css';
+@import 'restaurants.css';
+@import 'chatbot.css';
+@import 'purchasing.css';
