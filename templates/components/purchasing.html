@@ -6,93 +6,123 @@
     </div>
 
     <div class="purchasing-panel is-active" data-purchasing-panel="dashboard">
-        <div class="purchasing-card-grid">
-            <article class="purchasing-card">
-                <div class="purchasing-card-head">
-                    <div>
-                        <p class="purchasing-label">Étape 1</p>
-                        <h3>Restaurant actif</h3>
-                    </div>
-                    <button type="button" class="info-trigger"
-                        data-tooltip="Synchronisez Achats & Stock avec l'établissement sélectionné dans le dashboard."
-                        aria-label="Informations sur le restaurant actif">
-                        i
+        <div class="purchasing-header-controls" style="margin-bottom: 24px;">
+            <label class="purchasing-select" for="purchasing-section-restaurant-select">
+                <select id="purchasing-section-restaurant-select">
+                    <option value="">Sélectionnez un restaurant</option>
+                </select>
+            </label>
+        </div>
+
+        <!-- 1) KPIs Principaux -->
+        <div class="purchasing-kpi-grid">
+            <article class="kpi-card">
+                <div class="kpi-icon-wrapper is-blue">
+                    <span class="kpi-icon">📦</span>
+                </div>
+                <div class="kpi-content">
+                    <p class="kpi-label">Ingrédients en stock</p>
+                    <h3 class="kpi-value" id="kpi-total-stock">-</h3>
+                </div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-icon-wrapper is-orange">
+                    <span class="kpi-icon">⚠️</span>
+                </div>
+                <div class="kpi-content">
+                    <p class="kpi-label">Sous safety stock</p>
+                    <h3 class="kpi-value" id="kpi-low-stock">-</h3>
+                </div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-icon-wrapper is-purple">
+                    <span class="kpi-icon">🚚</span>
+                </div>
+                <div class="kpi-content">
+                    <p class="kpi-label">Commandes en cours</p>
+                    <h3 class="kpi-value" id="kpi-active-orders">-</h3>
+                </div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-icon-wrapper is-red">
+                    <span class="kpi-icon">🚨</span>
+                </div>
+                <div class="kpi-content">
+                    <p class="kpi-label">Ruptures / Critiques</p>
+                    <h3 class="kpi-value" id="kpi-critical-stock">-</h3>
+                </div>
+            </article>
+        </div>
+
+        <div class="purchasing-main-grid">
+            <!-- 2) Liste des ingrédients critiques -->
+            <section class="dashboard-block is-wide">
+                <div class="block-header">
+                    <h3>Ingrédients Critiques</h3>
+                    <button type="button" class="ghost-btn small" data-purchasing-nav-link data-section="purchasing"
+                        data-purchasing-view="stock">
+                        Tout voir
                     </button>
                 </div>
-                <label class="purchasing-select" for="purchasing-section-restaurant-select">
-                    <span>Choisissez un établissement</span>
-                    <select id="purchasing-section-restaurant-select">
-                        <option value="">Sélectionnez un restaurant</option>
-                    </select>
-                </label>
-                <p class="purchasing-card-hint">Le module Achats se met automatiquement à jour selon votre choix.</p>
-            </article>
-
-            <article class="purchasing-card">
-                <div class="purchasing-card-head">
-                    <div>
-                        <p class="purchasing-label">Étape 2</p>
-                        <h3>Comprendre l'état des stocks</h3>
-                    </div>
-                    <div class="purchasing-card-meta">
-                        <span class="purchasing-status-pill is-sync">Temps réel</span>
-                        <button type="button" class="info-trigger"
-                            data-tooltip="Visualisez les alertes CRITICAL, LOW et OK pour prioriser vos achats."
-                            aria-label="Informations sur l'état des stocks">
-                            i
-                        </button>
-                    </div>
+                <div class="table-responsive">
+                    <table class="dashboard-table">
+                        <thead>
+                            <tr>
+                                <th>Ingrédient</th>
+                                <th>Stock actuel</th>
+                                <th>Safety Stock</th>
+                                <th>Statut</th>
+                                <th>Fournisseur</th>
+                                <th>Recommandé</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-critical-ingredients-body">
+                            <tr>
+                                <td colspan="6" class="text-center muted">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <p>Visualisez les recommandations d'achat, les niveaux critiques et les fournisseurs prioritaires sans
-                    quitter cette page.</p>
-                <ul class="purchasing-card-list">
-                    <li>Alertes critiques mises en évidence</li>
-                    <li>Indicateurs LOW & OK lisibles immédiatement</li>
-                    <li>Glisser jusqu'au détail complet des ingrédients</li>
-                </ul>
-            </article>
+            </section>
 
-            <article class="purchasing-card">
-                <div class="purchasing-card-head">
-                    <div>
-                        <p class="purchasing-label">Étape 3</p>
-                        <h3>Besoin de plus d'espace ?</h3>
-                    </div>
-                    <div class="purchasing-card-meta">
-                        <span class="purchasing-status-pill">Confort</span>
-                        <button type="button" class="info-trigger"
-                            data-tooltip="Passez en plein écran pour vos inventaires ou commandes volumineuses."
-                            aria-label="Informations sur la vue plein écran">
-                            i
-                        </button>
-                    </div>
+            <!-- 3) Commandes fournisseur récentes -->
+            <section class="dashboard-block">
+                <div class="block-header">
+                    <h3>Commandes Récentes</h3>
                 </div>
-                <p>Accédez à la version plein écran du module pour vos longues sessions de planification ou
-                    d'inventaire.
-                </p>
-                <a class="primary-btn" href="/purchasing" target="_blank" rel="noopener">Ouvrir en plein écran</a>
-            </article>
+                <div class="orders-list" id="dashboard-recent-orders-list">
+                    <p class="text-center muted">Chargement...</p>
+                </div>
+            </section>
         </div>
 
-        <div class="purchasing-embed">
-            <div class="purchasing-embed-head">
-                <button type="button" class="info-trigger"
-                    data-tooltip="Toutes les interactions Achats & Stock restent dans cette fenêtre, sans multiplier les onglets."
-                    aria-label="Informations sur le module Achats">
-                    i
-                </button>
-            </div>
-            <div class="purchasing-iframe-shell" id="purchasing-iframe-shell">
-                <div class="purchasing-iframe-loader" id="purchasing-iframe-loader" role="status" aria-live="polite">
-                    <span class="loader-dot" aria-hidden="true"></span>
-                    <p>Chargement du module Achats…</p>
+        <!-- 4) Graphiques simples -->
+        <div class="purchasing-charts-grid">
+            <section class="dashboard-block">
+                <div class="block-header">
+                    <h3>Top Ventes par Plat</h3>
                 </div>
-                <iframe id="purchasing-iframe" src="/purchasing?embedded=1" title="Module Achats & Stock" loading="lazy"
-                    referrerpolicy="no-referrer" class="purchasing-iframe"></iframe>
-            </div>
+                <div class="chart-container">
+                    <canvas id="chart-top-sales"></canvas>
+                </div>
+            </section>
+            <section class="dashboard-block">
+                <div class="block-header">
+                    <h3>Top Ingrédients Consommés</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart-top-ingredients"></canvas>
+                </div>
+            </section>
+            <section class="dashboard-block">
+                <div class="block-header">
+                    <h3>Commandes Fournisseurs</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="chart-supplier-orders"></canvas>
+                </div>
+            </section>
         </div>
-        <p class="muted purchasing-hint">Astuce : manipulez vos recettes et vos fournisseurs ici, puis ouvrez la vue
-            plein écran pour vos clôtures mensuelles.</p>
     </div>
 
     <div class="purchasing-panel" data-purchasing-panel="stock" hidden>
@@ -146,7 +176,6 @@
                         <tr>
                             <th>INGREDIENT NAME</th>
                             <th>CURRENT QUANTITY</th>
-                            <th>SAFETY STOCK THRESHOLD</th>
                             <th>DAYS OF COVERAGE</th>
                             <th>STATUS</th>
                             <th></th>
@@ -155,10 +184,80 @@
                     <tbody id="stock-table-body">
                         <!-- Rows will be populated by JS -->
                         <tr>
-                            <td colspan="6" class="muted text-center">Select a restaurant to view stock.</td>
+                            <td colspan="5" class="muted text-center">Select a restaurant to view stock.</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Edit Ingredient Modal -->
+        <div id="edit-ingredient-modal" class="modal" hidden>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Ingredient</h3>
+                    <button type="button" class="close-modal-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-ingredient-form">
+                        <input type="hidden" id="edit-ingredient-id">
+                        <div class="form-group">
+                            <label for="edit-ingredient-name">Ingredient Name</label>
+                            <input type="text" id="edit-ingredient-name" disabled class="disabled-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-safety-stock">Safety Stock Threshold</label>
+                            <p class="help-text">Quantity below which the status becomes CRITICAL.</p>
+                            <div class="input-with-unit">
+                                <input type="number" id="edit-safety-stock" step="0.1" min="0" required>
+                                <span id="edit-ingredient-unit" class="unit-badge">kg</span>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="ghost-btn close-modal-btn">Cancel</button>
+                            <button type="submit" class="primary-btn">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Add Ingredient Modal -->
+        <div id="add-ingredient-modal" class="modal" hidden>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Ingredient</h3>
+                    <button type="button" class="close-modal-btn" data-modal-close>&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-ingredient-form">
+                        <div class="form-group">
+                            <label for="add-ingredient-name">Ingredient Name</label>
+                            <input type="text" name="name" id="add-ingredient-name" placeholder="e.g., Tomatoes"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add-ingredient-unit">Unit</label>
+                            <input type="text" name="unit" id="add-ingredient-unit" placeholder="e.g., kg, L, pcs"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add-current-stock">Current Quantity</label>
+                            <input type="number" name="current_stock" id="add-current-stock" step="0.1" min="0"
+                                value="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="add-coverage-days">Estimated Coverage (Days)</label>
+                            <p class="help-text">How many days will this stock last? Used to set initial safety alerts.
+                            </p>
+                            <input type="number" name="coverage_days" id="add-coverage-days" step="0.1" min="1"
+                                value="7" required>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="ghost-btn" data-modal-close>Cancel</button>
+                            <button type="submit" class="primary-btn">Add Ingredient</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

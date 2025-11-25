@@ -134,6 +134,8 @@ class IngredientCreatePayload(BaseModel):
     name: str
     unit: str
     default_supplier_id: Optional[UUID] = None
+    current_stock: float = Field(default=0, ge=0)
+    safety_stock: float = Field(default=0, ge=0)
 
 
 class RecipeUpsertPayload(BaseModel):
@@ -533,6 +535,135 @@ class SupabasePurchasingDAO:
         except HttpxError as exc:  # pragma: no cover - network interaction
             raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
 
+    async def fetch_purchase_orders(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieve the most recent purchase orders."""
+
+        def _request() -> List[Dict[str, Any]]:
+            with self._client() as client:
+                response = (
+                    client.table("purchase_orders")
+                    .select("id,restaurant_id,supplier_id,status,created_at,expected_delivery_date, purchase_order_lines(count)")
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .order("created_at", desc=True)
+                    .limit(limit)
+                    .execute()
+                )
+                orders = response.data or []
+                
+                # Fetch supplier names
+                supplier_ids = {o.get("supplier_id") for o in orders if o.get("supplier_id")}
+                supplier_map = {}
+                if supplier_ids:
+                    suppliers_response = (
+                        client.table("suppliers")
+                        .select("id,name")
+                        .in_("id", list(supplier_ids))
+                        .execute()
+                    )
+                    for s in suppliers_response.data or []:
+                        supplier_map[s.get("id")] = s.get("name")
+
+                # Enrich orders
+                enriched_orders = []
+                for order in orders:
+                    # Extract line count from the nested response if available, or default to 0
+                    # PostgREST returns count as a list of dicts or similar depending on query
+                    # Here we requested purchase_order_lines(count), so it might be in a specific format.
+                    # Actually, let's simplify and just get the raw data and process it.
+                    # A safer way for count is usually separate or careful selection. 
+                    # Let's try to map supplier name first.
+                    supplier_name = supplier_map.get(order.get("supplier_id"))
+                    
+                    # For line count, the select "purchase_order_lines(count)" usually returns a list like [{'count': N}]
+                    # Let's handle that safely.
+                    lines_data = order.get("purchase_order_lines")
+                    line_count = 0
+                    if isinstance(lines_data, list) and len(lines_data) > 0:
+                         line_count = lines_data[0].get("count", 0)
+                    elif isinstance(lines_data, int): # sometimes it might be just int if configured differently
+                         line_count = lines_data
+
+                    enriched_orders.append({
+                        "id": order.get("id"),
+                        "supplier_name": supplier_name or "Fournisseur inconnu",
+                        "status": order.get("status"),
+                        "created_at": order.get("created_at"),
+                        "expected_delivery_date": order.get("expected_delivery_date"),
+                        "line_count": line_count
+                    })
+                return enriched_orders
+
+        try:
+            return await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="fetch purchase orders")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    async def update_ingredient_safety_stock(self, ingredient_id: UUID, safety_stock: float) -> Dict[str, Any]:
+        """Update the safety stock for a specific ingredient."""
+        
+        def _request() -> Dict[str, Any]:
+            with self._client() as client:
+                # Check if stock record exists
+                response = (
+                    client.table("ingredient_stock")
+                    .select("id")
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .eq("ingredient_id", str(ingredient_id))
+                    .execute()
+                )
+                data = response.data or []
+                
+                if data:
+                    # Update existing
+                    update_response = (
+                        client.table("ingredient_stock")
+                        .update({"safety_stock": safety_stock, "updated_at": datetime.now(timezone.utc).isoformat()})
+                        .eq("restaurant_id", self.restaurant_id_str)
+                        .eq("ingredient_id", str(ingredient_id))
+                        .execute()
+                    )
+                    return update_response.data[0] if update_response.data else {}
+                else:
+                    # Create new stock record
+                    insert_response = (
+                        client.table("ingredient_stock")
+                        .insert({
+                            "restaurant_id": self.restaurant_id_str,
+                            "ingredient_id": str(ingredient_id),
+                            "safety_stock": safety_stock,
+                            "current_stock": 0  # Default to 0 if creating new
+                        })
+                        .execute()
+                    )
+                    return insert_response.data[0] if insert_response.data else {}
+
+        try:
+            return await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="update safety stock")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    async def delete_ingredient(self, ingredient_id: UUID) -> None:
+        """Delete an ingredient."""
+        
+        def _request():
+            with self._client() as client:
+                # First delete related stock records (if not cascading)
+                client.table("ingredient_stock").delete().eq("restaurant_id", self.restaurant_id_str).eq("ingredient_id", str(ingredient_id)).execute()
+                
+                # Then delete the ingredient
+                client.table("ingredients").delete().eq("restaurant_id", self.restaurant_id_str).eq("id", str(ingredient_id)).execute()
+
+        try:
+            await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="delete ingredient")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
     async def fetch_menu_items(self) -> List[Dict[str, Any]]:
         rows = await self._fetch_menu_items_rows(context="fetch menu items")
         if rows:
@@ -614,7 +745,20 @@ class SupabasePurchasingDAO:
                 )
                 if not response.data:
                     raise HTTPException(status_code=502, detail="Impossible de créer l'ingrédient.")
-                return response.data[0]
+                
+                ingredient = response.data[0]
+                ingredient_id = ingredient.get("id")
+                
+                # Create stock record
+                client.table("ingredient_stock").insert({
+                    "restaurant_id": self.restaurant_id_str,
+                    "ingredient_id": ingredient_id,
+                    "current_stock": payload.current_stock,
+                    "safety_stock": payload.safety_stock,
+                    "last_manual_update_at": datetime.now(timezone.utc).isoformat()
+                }).execute()
+                
+                return ingredient
 
         try:
             return await asyncio.to_thread(_request)
@@ -1197,6 +1341,51 @@ def _extract_menu_item_names(document: Dict[str, Any]) -> List[str]:
             if len(names) >= 200:
                 return names
     return names
+
+
+@router.get("/orders", response_model=List[Dict[str, Any]])
+async def get_purchase_orders(
+    limit: int = Query(10, ge=1, le=50),
+    restaurant_id: UUID = Depends(get_current_restaurant_id),
+    access_token: str = Depends(get_access_token),
+) -> List[Dict[str, Any]]:
+    """
+    Récupère les dernières commandes fournisseurs.
+    """
+    dao = SupabasePurchasingDAO(restaurant_id, access_token)
+    return await dao.fetch_purchase_orders(limit=limit)
+
+
+class SafetyStockUpdate(BaseModel):
+    safety_stock: float = Field(..., ge=0)
+
+
+@router.put("/ingredients/{ingredient_id}/stock", response_model=Dict[str, Any])
+async def update_ingredient_safety_stock(
+    ingredient_id: UUID,
+    payload: SafetyStockUpdate,
+    restaurant_id: UUID = Depends(get_current_restaurant_id),
+    access_token: str = Depends(get_access_token),
+) -> Dict[str, Any]:
+    """
+    Met à jour le stock de sécurité d'un ingrédient.
+    """
+    dao = SupabasePurchasingDAO(restaurant_id, access_token)
+    return await dao.update_ingredient_safety_stock(ingredient_id, payload.safety_stock)
+
+
+@router.delete("/ingredients/{ingredient_id}", status_code=204)
+async def delete_ingredient(
+    ingredient_id: UUID,
+    restaurant_id: UUID = Depends(get_current_restaurant_id),
+    access_token: str = Depends(get_access_token),
+):
+    """
+    Supprime un ingrédient.
+    """
+    dao = SupabasePurchasingDAO(restaurant_id, access_token)
+    await dao.delete_ingredient(ingredient_id)
+
 
 
 __all__ = [

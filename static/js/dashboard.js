@@ -144,9 +144,17 @@
         ...headers,
       };
       const includeRestaurantId = options.includeRestaurantId !== false;
-      // Use the selected restaurant ID from the stock selector if available, or state.overview.restaurantId
+
+      // Use the selected restaurant ID from the stock selector, purchasing selector, or state.overview.restaurantId
       const stockSelect = document.getElementById("stock-restaurant-select");
-      const restaurantId = stockSelect ? stockSelect.value : state.overview.restaurantId;
+      const purchasingSelect = document.getElementById("purchasing-section-restaurant-select");
+
+      let restaurantId = state.overview.restaurantId;
+      if (stockSelect && stockSelect.value) {
+        restaurantId = stockSelect.value;
+      } else if (purchasingSelect && purchasingSelect.value) {
+        restaurantId = purchasingSelect.value;
+      }
 
       if (includeRestaurantId && restaurantId) {
         finalHeaders["X-Restaurant-Id"] = restaurantId;
@@ -182,8 +190,27 @@
           headers: buildHeaders(),
         });
       },
-      // Add other methods if needed later
-    };
+      async fetchPurchaseOrders(limit = 10) {
+        return request(`/api/purchasing/orders?limit=${limit}`, {
+          headers: buildHeaders(),
+        });
+      },
+      async updateSafetyStock(ingredientId, safetyStock) {
+        return request(`/api/purchasing/ingredients/${ingredientId}/stock`, {
+          method: "PUT",
+          headers: buildHeaders({
+            "Content-Type": "application/json"
+          }),
+          body: JSON.stringify({ safety_stock: safetyStock })
+        });
+      },
+      async deleteIngredient(ingredientId) {
+        return request(`/api/purchasing/ingredients/${ingredientId}`, {
+          method: "DELETE",
+          headers: buildHeaders()
+        });
+      }
+    }
   })();
 
   async function initializeDashboard() {
@@ -700,6 +727,46 @@
     });
   }
 
+  // Bind modal events
+  function bindStockModalEvents() {
+    const modal = document.getElementById('edit-ingredient-modal');
+    if (!modal) return;
+
+    // Prevent duplicate bindings
+    if (modal.dataset.eventsBound) return;
+
+    const closeBtns = modal.querySelectorAll('.close-modal-btn');
+    closeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.hidden = true;
+      });
+    });
+
+    const form = document.getElementById('edit-ingredient-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-ingredient-id').value;
+        const safetyStock = parseFloat(document.getElementById('edit-safety-stock').value);
+
+        try {
+          await purchasingApi.updateSafetyStock(id, safetyStock);
+          modal.hidden = true;
+          // Refresh data
+          const select = document.getElementById("stock-restaurant-select");
+          if (select && select.value) {
+            loadStockData(select.value);
+          }
+        } catch (error) {
+          console.error("Error updating safety stock:", error);
+          alert("Failed to update safety stock. Please try again.");
+        }
+      });
+    }
+
+    modal.dataset.eventsBound = "true";
+  }
+
   function bindOverviewUI() {
     const select = document.getElementById("overview-restaurant-select");
     if (select) {
@@ -757,10 +824,12 @@
       selectOverviewRestaurant(value || null, { manual: true });
       syncPurchasingSectionSelectValue();
       updatePurchasingIframeSrc(value || null);
+      refreshPurchasingDashboard();
     });
     syncPurchasingSectionSelectValue();
     setupPurchasingEmbed();
     setupPurchasingViewSwitcher();
+    refreshPurchasingDashboard();
   }
 
   function bindStockManagementUI() {
@@ -798,12 +867,21 @@
     if (!tableBody) return;
 
     if (!restaurantId) {
-      tableBody.innerHTML = '<tr><td colspan="6" class="muted text-center">Select a restaurant to view stock.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">Select a restaurant to view stock.</td></tr>';
       state.stockData = [];
       return;
     }
 
-    tableBody.innerHTML = '<tr><td colspan="6" class="muted text-center">Loading stock data...</td></tr>';
+    // Skeleton loader
+    tableBody.innerHTML = Array(5).fill(0).map(() => `
+      <tr>
+        <td><span class="loading-skeleton"></span></td>
+        <td><span class="loading-skeleton" style="width: 60%"></span></td>
+        <td><span class="loading-skeleton" style="width: 40%"></span></td>
+        <td><span class="loading-skeleton" style="width: 30%"></span></td>
+        <td><span class="loading-skeleton" style="width: 20px"></span></td>
+      </tr>
+    `).join('');
 
     try {
       // Fetch recommendations which include stock levels and consumption
@@ -824,9 +902,12 @@
       state.stockData = recommendations || [];
       renderStockTable(state.stockData);
 
+      // Ensure modal events are bound (idempotent)
+      bindStockModalEvents();
+
     } catch (error) {
       console.error("Failed to load stock data:", error);
-      tableBody.innerHTML = `<tr><td colspan="6" class="muted text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="5" class="muted text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
       state.stockData = [];
     }
   }
@@ -836,44 +917,59 @@
     if (!tableBody) return;
 
     if (!data || data.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="6" class="muted text-center">No ingredients found.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">No stock data available.</td></tr>';
       return;
     }
 
     tableBody.innerHTML = data.map(item => {
-      // Calculate coverage
-      let coverageText = "—";
-      if (item.avg_daily_consumption > 0) {
-        const days = item.current_stock / item.avg_daily_consumption;
-        coverageText = `${Math.round(days)} days`;
-        if (days < 1) coverageText = "< 1 day";
-        if (days > 99) coverageText = "> 99 days";
-      } else if (item.current_stock > 0) {
-        coverageText = "No consumption";
+      // Ensure status always has a value and is not NO_DATA
+      let status = item.status || 'OK';
+      if (status === 'NO_DATA') {
+        // Calculate status if missing
+        if (item.current_stock <= item.safety_stock) {
+          status = 'CRITICAL';
+        } else if (item.current_stock <= item.safety_stock * 1.2) {
+          status = 'LOW';
+        } else {
+          status = 'OK';
+        }
       }
+      let statusClass = status.toLowerCase();
 
-      // Determine status if not provided by API (though API should provide it)
-      const status = item.status ? item.status.toLowerCase() : "ok";
+      // Calculate days of coverage
+      let coverageText = '∞';
+      if (item.total_quantity_consumed > 0) {
+        const dailyConsumption = item.total_quantity_consumed / 30; // Assuming 30 days period
+        const days = item.current_stock / dailyConsumption;
+        coverageText = days.toFixed(1) + ' days';
+      } else if (item.current_stock === 0) {
+        coverageText = '0 days';
+      }
 
       // Format numbers
       const qty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(item.current_stock);
-      const safety = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(item.safety_stock);
 
       return `
-      <tr data-category="${item.category || 'other'}" data-status="${status}">
-        <td>
-          <div class="stock-item-name">
-            <span class="stock-ingredient-name">${item.ingredient_name}</span>
-            <span class="text-xs text-gray-500 block">${item.unit}</span>
-          </div>
-        </td>
-        <td>${qty} <small class="text-gray-500">${item.unit}</small></td>
-        <td>${safety} <small class="text-gray-500">${item.unit}</small></td>
-        <td>${coverageText}</td>
-        <td><span class="stock-badge ${status}">${status.toUpperCase()}</span></td>
-        <td class="text-center"><span class="action-dots">•••</span></td>
-      </tr>
-    `}).join("");
+        <tr data-ingredient-id="${item.ingredient_id}" data-status="${status}" data-category="">
+          <td>
+            <div class="stock-item-name">
+              <span class="stock-ingredient-name">${item.ingredient_name}</span>
+              <span class="text-xs text-gray-500 block">${item.unit}</span>
+            </div>
+          </td>
+          <td>${qty} <small class="text-gray-500">${item.unit}</small></td>
+          <td>${coverageText}</td>
+          <td><span class="stock-badge ${statusClass}">${status}</span></td>
+          <td class="actions-cell">
+            <button class="action-btn" onclick="toggleStockActions('${item.ingredient_id}')">•••</button>
+            <div id="actions-${item.ingredient_id}" class="actions-dropdown">
+              <button onclick="openEditModal('${item.ingredient_id}', '${item.ingredient_name.replace(/'/g, "\\'")}', ${item.safety_stock}, '${item.unit}')">Edit</button>
+              <button class="delete-action" onclick="deleteIngredient('${item.ingredient_id}', '${item.ingredient_name.replace(/'/g, "\\'")}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 
   function filterStockTable() {
@@ -2417,17 +2513,20 @@
 
     if (!addBtn || !modal || !form) return;
 
+    // Prevent duplicate bindings
+    if (modal.dataset.eventsBound) return;
+
     let isSubmitting = false; // Prevent double submission
 
     addBtn.addEventListener("click", () => {
-      modal.classList.add("is-active");
+      modal.hidden = false;
       modal.removeAttribute("aria-hidden");
       form.reset();
       isSubmitting = false; // Reset on open
     });
 
     const closeModal = () => {
-      modal.classList.remove("is-active");
+      modal.hidden = true;
       modal.setAttribute("aria-hidden", "true");
       isSubmitting = false; // Reset on close
     };
@@ -2443,25 +2542,42 @@
         return;
       }
 
-      const restaurantId = document.getElementById("stock-restaurant-select").value;
+      const restaurantId = document.getElementById("stock-restaurant-select")?.value;
 
       if (!restaurantId) {
-        showToast("Please select a restaurant first.");
+        alert("Please select a restaurant first.");
         return;
       }
 
       const formData = new FormData(form);
       const name = formData.get("name")?.trim();
-      const unit = formData.get("unit");
+      const unit = formData.get("unit")?.trim();
+      const currentStock = parseFloat(formData.get("current_stock") || 0);
+      const coverageDays = parseFloat(formData.get("coverage_days") || 7);
 
       if (!name || !unit) {
-        showToast("Please fill in all required fields.");
+        alert("Please fill in all required fields.");
         return;
+      }
+
+      // Calculate implied daily consumption and safety stock
+      // If we have 10kg lasting 5 days, consumption is 2kg/day.
+      // Default safety stock is set to cover 3 days of consumption (or 20% of coverage if coverage is small?)
+      // Let's use a simple rule: Safety Stock = Daily Consumption * 3 days.
+      let safetyStock = 0;
+      if (currentStock > 0 && coverageDays > 0) {
+        const dailyConsumption = currentStock / coverageDays;
+        safetyStock = dailyConsumption * 3;
+        // Ensure safety stock isn't larger than current stock initially? No, it can be.
+        // But if coverageDays < 3, then currentStock < safetyStock, so status will be LOW/CRITICAL immediately.
+        // This is correct behavior: "I have 2 days left" -> Critical.
       }
 
       const payload = {
         name: name,
         unit: unit,
+        current_stock: currentStock,
+        safety_stock: parseFloat(safetyStock.toFixed(2))
       };
 
       const submitBtn = form.querySelector("button[type='submit']");
@@ -2507,10 +2623,11 @@
           loadStockData(restaurantId);
         }
 
-        showToast(`✓ ${name} added successfully!`);
+        // Optional: Show success toast
+        // showToast(`✓ ${name} added successfully!`);
       } catch (error) {
         console.error("Error creating ingredient:", error);
-        showToast(`Error: ${error.message}`);
+        alert(`Error: ${error.message}`);
       } finally {
         isSubmitting = false;
         submitBtn.disabled = false;
@@ -2518,6 +2635,7 @@
       }
     });
 
+    modal.dataset.eventsBound = "true";
   }
 
   function populateStockRestaurantSelect() {
@@ -5112,4 +5230,204 @@
     }
     return "—";
   }
+
+  async function refreshPurchasingDashboard() {
+    // Try to get restaurant ID from the specific purchasing selector first, then fallback to global state
+    const select = document.getElementById("purchasing-section-restaurant-select");
+    const restaurantId = select && select.value ? select.value : state.overview.restaurantId;
+
+    if (!restaurantId) {
+      // Clear data if no restaurant selected
+      const kpiTotal = document.getElementById('kpi-total-stock');
+      if (kpiTotal) kpiTotal.textContent = '-';
+
+      const kpiLow = document.getElementById('kpi-low-stock');
+      if (kpiLow) kpiLow.textContent = '-';
+
+      const kpiCritical = document.getElementById('kpi-critical-stock');
+      if (kpiCritical) kpiCritical.textContent = '-';
+
+      const kpiActive = document.getElementById('kpi-active-orders');
+      if (kpiActive) kpiActive.textContent = '-';
+
+      const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
+      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Veuillez sélectionner un restaurant.</td></tr>';
+
+      const ordersList = document.getElementById('dashboard-recent-orders-list');
+      if (ordersList) ordersList.innerHTML = '<p class="text-center muted">Veuillez sélectionner un restaurant.</p>';
+      return;
+    }
+
+    try {
+      // 1. Fetch Recommendations (for KPIs & Critical List)
+      const recommendations = await purchasingApi.fetchRecommendations({
+        date_from: new Date().toISOString().split('T')[0],
+        date_to: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
+
+      // 2. Fetch Recent Orders
+      const orders = await purchasingApi.fetchPurchaseOrders(5);
+
+      // 3. Update KPIs
+      const totalStock = recommendations.length;
+      const lowStock = recommendations.filter(r => r.status === 'LOW').length;
+      const criticalStock = recommendations.filter(r => r.status === 'CRITICAL').length;
+      const activeOrders = orders.filter(o => o.status === 'sent' || o.status === 'pending').length;
+
+      const kpiTotal = document.getElementById('kpi-total-stock');
+      if (kpiTotal) kpiTotal.textContent = totalStock;
+
+      const kpiLow = document.getElementById('kpi-low-stock');
+      if (kpiLow) kpiLow.textContent = lowStock;
+
+      const kpiCritical = document.getElementById('kpi-critical-stock');
+      if (kpiCritical) kpiCritical.textContent = criticalStock;
+
+      const kpiActive = document.getElementById('kpi-active-orders');
+      if (kpiActive) kpiActive.textContent = activeOrders;
+
+      // 4. Update Critical Ingredients Table
+      const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
+      if (criticalBody) {
+        const criticalItems = recommendations.filter(r => r.status === 'CRITICAL' || r.status === 'LOW').slice(0, 5);
+
+        if (criticalItems.length === 0) {
+          criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Aucun ingrédient critique.</td></tr>';
+        } else {
+          criticalBody.innerHTML = criticalItems.map(item => `
+            <tr>
+              <td><strong>${item.ingredient_name}</strong></td>
+              <td>${item.current_stock} ${item.unit}</td>
+              <td>${item.safety_stock} ${item.unit}</td>
+              <td><span class="stock-status is-${item.status.toLowerCase()}">${item.status}</span></td>
+              <td>${item.default_supplier ? item.default_supplier.name : '-'}</td>
+              <td><strong>${item.recommended_order_quantity.toFixed(1)} ${item.unit}</strong></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // 5. Update Recent Orders List
+      const ordersList = document.getElementById('dashboard-recent-orders-list');
+      if (ordersList) {
+        if (orders.length === 0) {
+          ordersList.innerHTML = '<p class="text-center muted">Aucune commande récente.</p>';
+        } else {
+          ordersList.innerHTML = orders.map(order => `
+            <div class="order-item">
+              <div class="order-info">
+                <h4>${order.supplier_name}</h4>
+                <p class="order-meta">${new Date(order.created_at).toLocaleDateString()} • ${order.line_count} articles</p>
+              </div>
+              <span class="order-status ${order.status}">${order.status}</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      // 6. Render Charts
+      renderPurchasingCharts(recommendations, orders);
+
+    } catch (error) {
+      console.error("Error refreshing purchasing dashboard:", error);
+      const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
+      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Erreur lors du chargement des données.</td></tr>';
+    }
+  }
+
+  let purchasingCharts = {};
+
+  function renderPurchasingCharts(recommendations, orders) {
+    if (typeof Chart === 'undefined') return;
+
+    // Destroy existing charts if they exist
+    ['chart-top-sales', 'chart-top-ingredients', 'chart-supplier-orders'].forEach(id => {
+      if (purchasingCharts[id]) {
+        purchasingCharts[id].destroy();
+      }
+    });
+
+    // 1. Top Ingredients Consumed
+    const topConsumed = [...recommendations]
+      .sort((a, b) => b.total_quantity_consumed - a.total_quantity_consumed)
+      .slice(0, 5);
+
+    const ctxIngredients = document.getElementById('chart-top-ingredients');
+    if (ctxIngredients) {
+      purchasingCharts['chart-top-ingredients'] = new Chart(ctxIngredients, {
+        type: 'bar',
+        data: {
+          labels: topConsumed.map(i => i.ingredient_name),
+          datasets: [{
+            label: 'Consommation',
+            data: topConsumed.map(i => i.total_quantity_consumed),
+            backgroundColor: 'rgba(37, 99, 235, 0.6)',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 2. Supplier Orders Over Time
+    const ordersByDate = {};
+    orders.forEach(o => {
+      const date = new Date(o.created_at).toLocaleDateString();
+      ordersByDate[date] = (ordersByDate[date] || 0) + 1;
+    });
+
+    const ctxOrders = document.getElementById('chart-supplier-orders');
+    if (ctxOrders) {
+      purchasingCharts['chart-supplier-orders'] = new Chart(ctxOrders, {
+        type: 'line',
+        data: {
+          labels: Object.keys(ordersByDate).reverse(),
+          datasets: [{
+            label: 'Commandes',
+            data: Object.values(ordersByDate).reverse(),
+            borderColor: '#10b981',
+            tension: 0.4,
+            fill: true,
+            backgroundColor: 'rgba(16, 185, 129, 0.1)'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    // 3. Top Sales (Placeholder)
+    const ctxSales = document.getElementById('chart-top-sales');
+    if (ctxSales) {
+      purchasingCharts['chart-top-sales'] = new Chart(ctxSales, {
+        type: 'doughnut',
+        data: {
+          labels: ['Plat A', 'Plat B', 'Plat C', 'Autres'],
+          datasets: [{
+            data: [35, 25, 20, 20],
+            backgroundColor: [
+              '#3b82f6',
+              '#10b981',
+              '#f59e0b',
+              '#cbd5e1'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' } }
+        }
+      });
+    }
+  }
+
 })();
