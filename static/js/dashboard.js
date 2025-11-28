@@ -2,6 +2,8 @@
   const OVERVIEW_HISTORY_LIMIT = 6;
   const CHATBOT_HISTORY_LIMIT = 12;
 
+  const CATEGORY_STORAGE_KEY = "restaubot-ingredient-categories";
+
   const state = {
     supabase: null,
     session: null,
@@ -45,6 +47,9 @@
     restaurantForms: {
       activeTab: "edit",
     },
+    stockData: [],
+    activeStockRestaurantId: null,
+    categoryStore: {},
   };
 
   let overviewConversationChart = null;
@@ -132,6 +137,7 @@
     bindStatisticsUI();
     bindPurchasingSectionUI();
     bindStockManagementUI();
+    setupIngredientFormModal();
     setupRestaurantTabs();
     setupDateFilters();
     initializeDashboard().catch(handleInitializationError);
@@ -149,7 +155,7 @@
       const stockSelect = document.getElementById("stock-restaurant-select");
       const purchasingSelect = document.getElementById("purchasing-section-restaurant-select");
 
-      let restaurantId = state.overview.restaurantId;
+      let restaurantId = null;
       if (stockSelect && stockSelect.value) {
         restaurantId = stockSelect.value;
       } else if (purchasingSelect && purchasingSelect.value) {
@@ -195,6 +201,13 @@
           headers: buildHeaders(),
         });
       },
+      async fetchSummary(params = {}) {
+        const query = new URLSearchParams(params).toString();
+        const suffix = query ? `?${query}` : "";
+        return request(`/api/purchasing/summary${suffix}`, {
+          headers: buildHeaders(),
+        });
+      },
       async updateSafetyStock(ingredientId, safetyStock) {
         return request(`/api/purchasing/ingredients/${ingredientId}/stock`, {
           method: "PUT",
@@ -213,6 +226,15 @@
       async createIngredient(data) {
         return request(`/api/purchasing/ingredients`, {
           method: "POST",
+          headers: buildHeaders({
+            "Content-Type": "application/json"
+          }),
+          body: JSON.stringify(data)
+        });
+      },
+      async updateIngredient(ingredientId, data) {
+        return request(`/api/purchasing/ingredients/${ingredientId}`, {
+          method: "PUT",
           headers: buildHeaders({
             "Content-Type": "application/json"
           }),
@@ -238,6 +260,12 @@
       }
       state.session = session;
       state.token = session.access_token || null;
+
+      // Expose token globally for other modules
+      window.supabaseToken = state.token;
+      document.dispatchEvent(new CustomEvent('tokenReady', {
+        detail: { token: state.token }
+      }));
     });
   }
 
@@ -736,103 +764,271 @@
     });
   }
 
-  // Bind modal events
-  function bindStockModalEvents() {
-    const modal = document.getElementById('edit-ingredient-modal');
-    if (!modal) return;
+  const ingredientFormRuntime = {
+    modal: null,
+    form: null,
+    title: null,
+    description: null,
+    submitButton: null,
+    inputs: {},
+    categoryNewBtn: null,
+  };
 
-    // Prevent duplicate bindings
-    if (modal.dataset.eventsBound) return;
+  function setupIngredientFormModal() {
+    const modal = document.getElementById('ingredient-form-modal');
+    const form = document.getElementById('ingredient-form');
+    if (!modal || !form) return;
 
-    const closeBtns = modal.querySelectorAll('.close-modal-btn');
-    closeBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        modal.hidden = true;
-      });
+    ingredientFormRuntime.modal = modal;
+    ingredientFormRuntime.form = form;
+    ingredientFormRuntime.title = modal.querySelector('[data-role="modal-title"]');
+    ingredientFormRuntime.description = modal.querySelector('[data-role="modal-description"]');
+    ingredientFormRuntime.submitButton = modal.querySelector('[data-role="modal-submit"]');
+    ingredientFormRuntime.inputs = {
+      id: document.getElementById('ingredient-form-id'),
+      name: document.getElementById('ingredient-name'),
+      unit: document.getElementById('ingredient-unit'),
+      categorySelect: document.getElementById('ingredient-category-select'),
+      categoryInput: document.getElementById('ingredient-category-input'),
+      currentStock: document.getElementById('ingredient-current-stock'),
+      coverage: document.getElementById('ingredient-coverage'),
+    };
+
+    ingredientFormRuntime.categoryNewBtn = modal.querySelector('[data-role="category-new-btn"]');
+
+    modal.querySelectorAll('.close-modal-btn').forEach(btn => {
+      btn.addEventListener('click', closeIngredientFormModal);
     });
 
-    const form = document.getElementById('edit-ingredient-form');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('edit-ingredient-id').value;
-        const safetyStock = parseFloat(document.getElementById('edit-safety-stock').value);
-
-        try {
-          await purchasingApi.updateSafetyStock(id, safetyStock);
-          modal.hidden = true;
-          // Refresh data
-          const select = document.getElementById("stock-restaurant-select");
-          if (select && select.value) {
-            loadStockData(select.value);
-          }
-        } catch (error) {
-          console.error("Error updating safety stock:", error);
-          alert("Failed to update safety stock. Please try again.");
-        }
+    if (ingredientFormRuntime.inputs.categorySelect) {
+      ingredientFormRuntime.inputs.categorySelect.addEventListener("change", handleCategorySelectChange);
+    }
+    if (ingredientFormRuntime.categoryNewBtn) {
+      ingredientFormRuntime.categoryNewBtn.addEventListener("click", () => {
+        if (!ingredientFormRuntime.inputs.categorySelect) return;
+        ingredientFormRuntime.inputs.categorySelect.value = "__new__";
+        showCategoryInput();
       });
     }
 
-    modal.dataset.eventsBound = "true";
+    form.addEventListener('submit', handleIngredientFormSubmit);
   }
 
-  function bindAddIngredientModalEvents() {
-    const modal = document.getElementById('add-ingredient-modal');
-    if (!modal) return;
+  function openIngredientFormModal(mode, ingredient = null) {
+    const runtime = ingredientFormRuntime;
+    if (!runtime.modal || !runtime.form || !runtime.inputs.name) return;
 
-    if (modal.dataset.eventsBound) return;
+    runtime.form.dataset.mode = mode;
+    const { inputs } = runtime;
+    const restaurantId = getActiveStockRestaurantId();
 
-    const closeBtns = modal.querySelectorAll('.close-modal-btn');
-    closeBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        modal.hidden = true;
-        modal.setAttribute("aria-hidden", "true");
-        modal.classList.remove("open");
-      });
-    });
-
-    const form = document.getElementById('add-ingredient-form');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Adding...";
-
-        const data = {
-          name: document.getElementById('add-ingredient-name').value,
-          unit: document.getElementById('add-ingredient-unit').value,
-          current_stock: parseFloat(document.getElementById('add-ingredient-quantity').value),
-          safety_stock: parseFloat(document.getElementById('add-safety-stock').value),
-          // Optional fields
-          days_of_coverage: document.getElementById('add-ingredient-coverage').value ? parseFloat(document.getElementById('add-ingredient-coverage').value) : null
-        };
-
-        try {
-          await purchasingApi.createIngredient(data);
-          modal.hidden = true;
-          modal.setAttribute("aria-hidden", "true");
-          modal.classList.remove("open");
-          form.reset();
-          showToast("Ingredient added successfully!");
-
-          // Refresh data
-          const select = document.getElementById("stock-restaurant-select");
-          if (select && select.value) {
-            loadStockData(select.value);
-          }
-        } catch (error) {
-          console.error("Error creating ingredient:", error);
-          alert("Failed to add ingredient: " + error.message);
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = originalText;
-        }
-      });
+    if (mode === "edit" && ingredient) {
+      inputs.id.value = ingredient.ingredient_id || "";
+      inputs.name.value = ingredient.ingredient_name || "";
+      inputs.unit.value = ingredient.unit || "";
+      inputs.currentStock.value =
+        ingredient.current_stock !== undefined ? String(ingredient.current_stock) : "0";
+      inputs.currentStock.disabled = true;
+      inputs.coverage.value = calculateCoverageDaysValue(ingredient);
+      inputs.coverage.disabled = true;
+      const derivedCategory = deriveIngredientCategory(ingredient, restaurantId);
+      const storedLabel = getIngredientCategoryLabel(restaurantId, ingredient.ingredient_id);
+      const initialCategoryLabel = storedLabel || derivedCategory.label || "";
+      populateIngredientCategoryOptions(initialCategoryLabel);
+      runtime.title.textContent = `Modifier ${ingredient.ingredient_name || "l'ingrédient"}`;
+      runtime.description.textContent = "Mettez à jour les informations principales de l'ingrédient.";
+      runtime.submitButton.textContent = "Mettre à jour";
+    } else {
+      runtime.form.reset();
+      if (inputs.id) inputs.id.value = "";
+      inputs.currentStock.disabled = false;
+      inputs.coverage.disabled = false;
+      populateIngredientCategoryOptions();
+      runtime.title.textContent = "Ajouter un ingrédient";
+      runtime.description.textContent = "Renseignez les informations clés pour suivre ce produit dans vos stocks.";
+      runtime.submitButton.textContent = "Ajouter l'ingrédient";
     }
 
-    modal.dataset.eventsBound = "true";
+    runtime.modal.hidden = false;
+    runtime.modal.setAttribute("aria-hidden", "false");
+    runtime.modal.classList.add("open");
+
+    // Prevent body scroll on mobile
+    document.body.classList.add("modal-open");
+
+    requestAnimationFrame(() => {
+      inputs.name.focus();
+      inputs.name.select();
+    });
+  }
+
+  function closeIngredientFormModal() {
+    const runtime = ingredientFormRuntime;
+    if (!runtime.modal || !runtime.form) return;
+    runtime.form.reset();
+    runtime.form.dataset.mode = "create";
+    if (runtime.inputs.id) {
+      runtime.inputs.id.value = "";
+    }
+    runtime.inputs.currentStock.disabled = false;
+    runtime.inputs.coverage.disabled = false;
+    hideCategoryInput(true);
+    runtime.modal.hidden = true;
+    runtime.modal.setAttribute("aria-hidden", "true");
+    runtime.modal.classList.remove("open");
+
+    // Restore body scroll
+    document.body.classList.remove("modal-open");
+  }
+
+  function handleCategorySelectChange(event) {
+    if (!ingredientFormRuntime.inputs.categorySelect) return;
+    if (event.target.value === "__new__") {
+      showCategoryInput();
+    } else {
+      hideCategoryInput(true);
+    }
+  }
+
+  function showCategoryInput(presetValue = "") {
+    const input = ingredientFormRuntime.inputs.categoryInput;
+    if (!input) return;
+    input.hidden = false;
+    if (presetValue) {
+      input.value = presetValue;
+    }
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  }
+
+  function hideCategoryInput(resetValue = false) {
+    const input = ingredientFormRuntime.inputs.categoryInput;
+    if (!input) return;
+    input.hidden = true;
+    if (resetValue) {
+      input.value = "";
+    }
+  }
+
+  function calculateCoverageDaysValue(ingredient) {
+    if (!ingredient) return "";
+    if (ingredient.total_quantity_consumed > 0) {
+      const dailyConsumption = ingredient.total_quantity_consumed / 30;
+      if (dailyConsumption > 0) {
+        return (ingredient.current_stock / dailyConsumption).toFixed(1);
+      }
+    }
+    if (ingredient.current_stock === 0) {
+      return "0";
+    }
+    return "";
+  }
+
+  async function handleIngredientFormSubmit(event) {
+    event.preventDefault();
+    const runtime = ingredientFormRuntime;
+    if (!runtime.form) return;
+    const mode = runtime.form.dataset.mode || "create";
+    const restaurantId = getActiveStockRestaurantId();
+    if (!restaurantId) {
+      alert("Veuillez sélectionner un restaurant dans la section Stock.");
+      return;
+    }
+
+    const { inputs } = runtime;
+    const name = inputs.name.value.trim();
+    const unit = inputs.unit.value;
+    const currentStock = parseFloat(inputs.currentStock.value || "0") || 0;
+    const coverage = inputs.coverage.value ? parseFloat(inputs.coverage.value) : null;
+
+    if (!name) {
+      alert("Saisissez le nom de l'ingrédient.");
+      inputs.name.focus();
+      return;
+    }
+    if (!unit) {
+      alert("Choisissez l'unité principale.");
+      inputs.unit.focus();
+      return;
+    }
+
+    const categoryLabel = resolveSelectedCategoryLabel();
+    let safetyStockValue = 0;
+    let effectiveCurrentStock = currentStock;
+    let ingredientId = inputs.id ? inputs.id.value : "";
+    if (mode === "edit" && ingredientId) {
+      const existing = findIngredientById(ingredientId);
+      if (existing) {
+        effectiveCurrentStock = existing.current_stock ?? effectiveCurrentStock;
+        safetyStockValue = existing.safety_stock ?? 0;
+      }
+    }
+
+    const payload = {
+      name,
+      unit,
+      current_stock: effectiveCurrentStock,
+      safety_stock: safetyStockValue,
+      days_of_coverage: Number.isFinite(coverage) ? coverage : null
+    };
+
+    const submitBtn = runtime.submitButton;
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = mode === "create" ? "Ajout..." : "Mise à jour...";
+
+    try {
+      let categoryRecipientId = "";
+      if (mode === "create") {
+        const created = await purchasingApi.createIngredient(payload);
+        if (created && created.id) {
+          categoryRecipientId = created.id;
+        }
+      } else {
+        if (!ingredientId) {
+          throw new Error("Ingrédient introuvable.");
+        }
+        categoryRecipientId = ingredientId;
+        await purchasingApi.updateIngredient(ingredientId, payload);
+      }
+
+      if (categoryLabel && categoryRecipientId) {
+        persistIngredientCategory(restaurantId, categoryRecipientId, categoryLabel);
+      } else if (!categoryLabel && categoryRecipientId) {
+        removeIngredientCategory(restaurantId, categoryRecipientId);
+      }
+
+      closeIngredientFormModal();
+      showToast(mode === "create" ? "Ingrédient ajouté avec succès." : "Ingrédient mis à jour.");
+
+      const select = document.getElementById("stock-restaurant-select");
+      if (select && select.value) {
+        loadStockData(select.value);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement de l'ingrédient:", error);
+      alert(error.message || "Impossible d'enregistrer l'ingrédient.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  }
+
+  async function deleteIngredientById(id, name) {
+    try {
+      const restaurantId = document.getElementById('stock-restaurant-select')?.value;
+      if (!restaurantId) return;
+
+      await purchasingApi.deleteIngredient(id);
+      showToast(`"${name}" supprimé.`);
+      removeIngredientCategory(restaurantId, id);
+      loadStockData(restaurantId);
+    } catch (error) {
+      console.error("Error deleting ingredient:", error);
+      alert("Failed to delete ingredient: " + error.message);
+    }
   }
 
   function bindOverviewUI() {
@@ -926,45 +1122,30 @@
 
     const addBtn = document.getElementById("btn-add-ingredient");
     if (addBtn) {
-      console.log("Add ingredient button found");
       addBtn.addEventListener("click", () => {
-        console.log("Add ingredient button clicked");
-        const modal = document.getElementById("add-ingredient-modal");
-        const select = document.getElementById("stock-restaurant-select");
-
-        if (!select || !select.value) {
-          alert("Please select a restaurant first.");
+        if (!restaurantSelect || !restaurantSelect.value) {
+          alert("Veuillez sélectionner un restaurant avant d'ajouter un ingrédient.");
           return;
         }
-
-        if (modal) {
-          console.log("Opening modal");
-          modal.hidden = false;
-          modal.setAttribute("aria-hidden", "false");
-          modal.classList.add("open");
-          // Ensure events are bound
-          bindAddIngredientModalEvents();
-        } else {
-          console.error("Add ingredient modal NOT found");
-        }
+        openIngredientFormModal("create");
       });
-    } else {
-      console.warn("Add ingredient button NOT found in bindStockManagementUI");
     }
-  }
 
-  // Store stock data in state to allow client-side filtering without re-fetching
-  state.stockData = [];
+    setupStockRowActions();
+  }
 
   async function loadStockData(restaurantId) {
     const tableBody = document.getElementById("stock-table-body");
     if (!tableBody) return;
 
+    state.activeStockRestaurantId = restaurantId || null;
     if (!restaurantId) {
-      tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">Select a restaurant to view stock.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">Sélectionnez un restaurant pour afficher le stock.</td></tr>';
       state.stockData = [];
       return;
     }
+
+    ensureCategoryStore(restaurantId);
 
     // Skeleton loader
     tableBody.innerHTML = Array(5).fill(0).map(() => `
@@ -996,9 +1177,6 @@
       state.stockData = recommendations || [];
       renderStockTable(state.stockData);
 
-      // Ensure modal events are bound (idempotent)
-      bindStockModalEvents();
-
     } catch (error) {
       console.error("Failed to load stock data:", error);
       tableBody.innerHTML = `<tr><td colspan="5" class="muted text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
@@ -1015,6 +1193,10 @@
       return;
     }
 
+    const restaurantId = getActiveStockRestaurantId();
+    const categories = new Map();
+    const statusCounts = { ok: 0, low: 0, critical: 0 };
+
     tableBody.innerHTML = data.map(item => {
       // Ensure status always has a value and is not NO_DATA
       let status = item.status || 'OK';
@@ -1028,7 +1210,10 @@
           status = 'OK';
         }
       }
-      let statusClass = status.toLowerCase();
+      const statusClass = normalizeStatus(status);
+      if (statusCounts[statusClass] !== undefined) {
+        statusCounts[statusClass] += 1;
+      }
 
       // Calculate days of coverage
       let coverageText = '∞';
@@ -1043,27 +1228,40 @@
       // Format numbers
       const qty = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(item.current_stock);
 
+      const categoryMeta = deriveIngredientCategory(item, restaurantId);
+      categories.set(categoryMeta.value, categoryMeta.label);
+
       return `
-        <tr data-ingredient-id="${item.ingredient_id}" data-status="${status}" data-category="">
+        <tr data-ingredient-id="${item.ingredient_id}" data-status="${statusClass}" data-category="${categoryMeta.value}">
           <td>
             <div class="stock-item-name">
               <span class="stock-ingredient-name">${item.ingredient_name}</span>
-              <span class="text-xs text-gray-500 block">${item.unit}</span>
+              <div class="stock-metadata-row">
+                <span class="stock-category-pill">${categoryMeta.label}</span>
+                <span class="stock-ingredient-unit">${item.unit}</span>
+              </div>
             </div>
           </td>
           <td>${qty} <small class="text-gray-500">${item.unit}</small></td>
           <td>${coverageText}</td>
-          <td><span class="stock-badge ${statusClass}">${status}</span></td>
+          <td><span class="stock-badge ${statusClass}">${formatStatusLabel(statusClass)}</span></td>
           <td class="actions-cell">
-            <button class="action-btn" onclick="toggleStockActions('${item.ingredient_id}')">•••</button>
-            <div id="actions-${item.ingredient_id}" class="actions-dropdown">
-              <button onclick="openEditModal('${item.ingredient_id}', '${item.ingredient_name.replace(/'/g, "\\'")}', ${item.safety_stock}, '${item.unit}')">Edit</button>
-              <button class="delete-action" onclick="deleteIngredient('${item.ingredient_id}', '${item.ingredient_name.replace(/'/g, "\\'")}')">Delete</button>
+            <div class="stock-row-actions">
+              <button type="button" class="action-edit-btn" data-action="edit-ingredient" data-ingredient-id="${item.ingredient_id}">
+                Modifier
+              </button>
+              <button type="button" class="action-delete-btn" data-action="delete-ingredient" data-ingredient-id="${item.ingredient_id}" data-ingredient-name="${item.ingredient_name}">
+                Supprimer
+              </button>
             </div>
           </td>
         </tr>
       `;
     }).join("");
+
+    updateStockCategoryFilterOptions(categories);
+    updateStockStatusOverview(statusCounts);
+    filterStockTable();
   }
 
   function filterStockTable() {
@@ -1075,7 +1273,7 @@
     if (!tableBody) return;
 
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
-    const statusTerm = statusFilter ? statusFilter.value : "";
+    const statusTerm = statusFilter ? statusFilter.value.toLowerCase() : "";
     const categoryTerm = categoryFilter ? categoryFilter.value : "";
 
     const rows = tableBody.querySelectorAll("tr");
@@ -1086,14 +1284,12 @@
       if (row.cells.length === 1) return;
 
       const name = row.querySelector(".stock-ingredient-name").textContent.toLowerCase();
-      const status = row.dataset.status;
-      // Note: API might not return category yet, so we might need to handle that
-      const category = row.dataset.category;
+      const status = (row.dataset.status || "").toLowerCase();
+      const category = row.dataset.category || "";
 
       const matchesSearch = name.includes(searchTerm);
       const matchesStatus = statusTerm === "" || status === statusTerm;
-      // Relax category filter if data doesn't have it
-      const matchesCategory = categoryTerm === "" || (category && category === categoryTerm);
+      const matchesCategory = categoryTerm === "" || category === categoryTerm;
 
       if (matchesSearch && matchesStatus && matchesCategory) {
         row.style.display = "";
@@ -1105,6 +1301,296 @@
 
     // Show message if no results match filters
     // (Optional enhancement)
+  }
+
+  function getActiveStockRestaurantId() {
+    return state.activeStockRestaurantId || (document.getElementById("stock-restaurant-select")?.value || null);
+  }
+
+  function loadCategoryStoreFromStorage(restaurantId) {
+    if (!restaurantId) {
+      return {};
+    }
+    try {
+      const raw = window.localStorage.getItem(`${CATEGORY_STORAGE_KEY}:${restaurantId}`);
+      if (!raw) {
+        return {};
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      console.warn("Impossible de charger les catégories d'ingrédients.", error);
+      return {};
+    }
+  }
+
+  function saveCategoryStore(restaurantId) {
+    if (!restaurantId) {
+      return;
+    }
+    try {
+      const payload = state.categoryStore && state.categoryStore[restaurantId] ? state.categoryStore[restaurantId] : {};
+      window.localStorage.setItem(`${CATEGORY_STORAGE_KEY}:${restaurantId}`, JSON.stringify(payload));
+    } catch (error) {
+      console.warn("Impossible d'enregistrer les catégories d'ingrédients.", error);
+    }
+  }
+
+  function ensureCategoryStore(restaurantId) {
+    if (!restaurantId) {
+      return {};
+    }
+    if (!state.categoryStore) {
+      state.categoryStore = {};
+    }
+    if (!state.categoryStore[restaurantId]) {
+      state.categoryStore[restaurantId] = loadCategoryStoreFromStorage(restaurantId);
+    }
+    return state.categoryStore[restaurantId];
+  }
+
+  function getIngredientCategoryLabel(restaurantId, ingredientId) {
+    if (!restaurantId || !ingredientId) {
+      return "";
+    }
+    const store = ensureCategoryStore(restaurantId);
+    const key = String(ingredientId);
+    return store && store[key] ? store[key] : "";
+  }
+
+  function persistIngredientCategory(restaurantId, ingredientId, label) {
+    if (!restaurantId || !ingredientId) {
+      return;
+    }
+    const normalized = label ? label.trim() : "";
+    if (!normalized) {
+      return;
+    }
+    const store = ensureCategoryStore(restaurantId);
+    store[String(ingredientId)] = normalized;
+    saveCategoryStore(restaurantId);
+  }
+
+  function removeIngredientCategory(restaurantId, ingredientId) {
+    if (!restaurantId || !ingredientId) {
+      return;
+    }
+    const store = ensureCategoryStore(restaurantId);
+    const key = String(ingredientId);
+    if (store && store[key]) {
+      delete store[key];
+      saveCategoryStore(restaurantId);
+    }
+  }
+
+  function normalizeStatus(status) {
+    const normalized = (status || "").toString().toLowerCase();
+    if (normalized === "critical" || normalized === "low" || normalized === "ok") {
+      return normalized;
+    }
+    return normalized || "ok";
+  }
+
+  function formatStatusLabel(status) {
+    switch (status) {
+      case "critical":
+        return "Critique";
+      case "low":
+        return "Faible";
+      default:
+        return "Stable";
+    }
+  }
+
+  function slugifyCategory(label) {
+    return label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "autres";
+  }
+
+  function deriveIngredientCategory(item, restaurantId) {
+    const fallbackLabel = "Autres";
+    const stored = restaurantId ? getIngredientCategoryLabel(restaurantId, item.ingredient_id) : "";
+    if (stored) {
+      return { label: stored, value: slugifyCategory(stored) };
+    }
+    const raw =
+      item.category ||
+      item.ingredient_category ||
+      (item.default_supplier && item.default_supplier.name) ||
+      mapUnitToCategory(item.unit) ||
+      fallbackLabel;
+    const label = (raw || fallbackLabel).trim() || fallbackLabel;
+    const value = slugifyCategory(label);
+    return { label, value };
+  }
+
+  function mapUnitToCategory(unit) {
+    if (!unit) return null;
+    const value = unit.toLowerCase();
+    if (["kg", "g"].includes(value)) return "Produits frais";
+    if (["l", "ml"].includes(value)) return "Liquides";
+    if (value === "pcs") return "Conditionnés";
+    return null;
+  }
+
+  function getCombinedCategoriesMap(baseMap) {
+    const combined = new Map();
+    if (baseMap && typeof baseMap.forEach === "function") {
+      baseMap.forEach((label, value) => {
+        if (value) {
+          combined.set(value, label);
+        }
+      });
+    }
+    const restaurantId = getActiveStockRestaurantId();
+    if (Array.isArray(state.stockData)) {
+      state.stockData.forEach((item) => {
+        const meta = deriveIngredientCategory(item, restaurantId);
+        combined.set(meta.value, meta.label);
+      });
+    }
+    const store = restaurantId ? ensureCategoryStore(restaurantId) : {};
+    Object.keys(store || {}).forEach((key) => {
+      const label = store[key];
+      if (label) {
+        combined.set(slugifyCategory(label), label);
+      }
+    });
+    return combined;
+  }
+
+  function populateIngredientCategoryOptions(selectedLabel = "") {
+    const select = ingredientFormRuntime.inputs.categorySelect;
+    if (!select) return;
+    const categoriesMap = getCombinedCategoriesMap();
+    const entries = Array.from(categoriesMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    const options = ['<option value="">Choisissez une catégorie</option>'];
+    entries.forEach(([value, label]) => {
+      options.push(`<option value="${value}">${label}</option>`);
+    });
+    options.push('<option value="__new__">Ajouter une catégorie…</option>');
+    select.innerHTML = options.join("");
+
+    if (selectedLabel) {
+      const slug = slugifyCategory(selectedLabel);
+      if (categoriesMap.has(slug)) {
+        select.value = slug;
+        hideCategoryInput(true);
+      } else {
+        select.value = "__new__";
+        showCategoryInput(selectedLabel);
+      }
+    } else {
+      select.value = "";
+      hideCategoryInput(true);
+    }
+  }
+
+  function resolveSelectedCategoryLabel() {
+    const select = ingredientFormRuntime.inputs.categorySelect;
+    const input = ingredientFormRuntime.inputs.categoryInput;
+    const combined = getCombinedCategoriesMap();
+    if (select) {
+      if (select.value && select.value !== "__new__") {
+        return combined.get(select.value) || "";
+      }
+      if (select.value === "__new__" && input) {
+        return input.value.trim();
+      }
+    }
+    if (input && !input.hidden) {
+      return input.value.trim();
+    }
+    return "";
+  }
+
+  function findIngredientById(ingredientId) {
+    if (!ingredientId || !Array.isArray(state.stockData)) {
+      return null;
+    }
+    const target = String(ingredientId);
+    return state.stockData.find((item) => String(item.ingredient_id) === target) || null;
+  }
+
+  function setupStockRowActions() {
+    const tableBody = document.getElementById("stock-table-body");
+    if (!tableBody || tableBody.dataset.actionsBound) {
+      return;
+    }
+    tableBody.addEventListener("click", (event) => {
+      const editBtn = event.target.closest('[data-action="edit-ingredient"]');
+      if (editBtn) {
+        const ingredientId = editBtn.dataset.ingredientId;
+        const ingredient = findIngredientById(ingredientId);
+        if (!ingredient) {
+          alert("Ingrédient introuvable.");
+          return;
+        }
+        openIngredientFormModal("edit", ingredient);
+        return;
+      }
+
+      const deleteBtn = event.target.closest('[data-action="delete-ingredient"]');
+      if (deleteBtn) {
+        const ingredientId = deleteBtn.dataset.ingredientId;
+        const ingredientName = deleteBtn.dataset.ingredientName || "";
+        if (!ingredientId) {
+          return;
+        }
+        const confirmed = confirm(`Supprimer "${ingredientName || "cet ingrédient"}" ?`);
+        if (!confirmed) {
+          return;
+        }
+        deleteIngredientById(ingredientId, ingredientName);
+      }
+    });
+    tableBody.dataset.actionsBound = "true";
+  }
+
+  function updateStockCategoryFilterOptions(categoriesMap) {
+    const select = document.getElementById("stock-filter-category");
+    if (!select) return;
+
+    const combined = getCombinedCategoriesMap(categoriesMap);
+    const previousValue = select.value;
+    const options = ['<option value="">Toutes les catégories</option>'];
+    const entries = Array.from(combined.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    entries.forEach(([value, label]) => {
+      options.push(`<option value="${value}">${label}</option>`);
+    });
+    select.innerHTML = options.join("");
+
+    if (previousValue && combined.has(previousValue)) {
+      select.value = previousValue;
+    } else {
+      select.value = "";
+    }
+  }
+
+  function updateStockStatusOverview(counts) {
+    const container = document.getElementById("stock-status-overview");
+    if (!container) return;
+
+    const total = (counts.ok || 0) + (counts.low || 0) + (counts.critical || 0);
+    if (!total) {
+      container.innerHTML = '<span class="stock-status-chip">Aucune donnée</span>';
+      return;
+    }
+
+    const definitions = [
+      { key: "critical", label: "Critiques" },
+      { key: "low", label: "Faibles" },
+      { key: "ok", label: "Stables" }
+    ];
+
+    container.innerHTML = definitions
+      .map(({ key, label }) => {
+        const value = counts[key] || 0;
+        return `<span class="stock-status-chip is-${key}"><span>${label}</span><strong>${value}</strong></span>`;
+      })
+      .join("");
   }
 
   function setupPurchasingEmbed() {
@@ -1939,6 +2425,12 @@
       const snapshot = await response.json();
       state.snapshot = snapshot;
       state.restaurants = snapshot.restaurants || [];
+
+      // Expose restaurants globally for other modules (like recipes.js)
+      window.restaurantData = state.restaurants;
+      document.dispatchEvent(new CustomEvent('restaurantsLoaded', {
+        detail: { restaurants: state.restaurants }
+      }));
       syncStatsRestaurantsFromSnapshot(state.restaurants);
       syncStatsRestaurantsFromSnapshot(state.restaurants);
       populatePurchasingSectionSelect();
@@ -5196,15 +5688,15 @@
   async function refreshPurchasingDashboard() {
     // Try to get restaurant ID from the specific purchasing selector first, then fallback to global state
     const select = document.getElementById("purchasing-section-restaurant-select");
-    const restaurantId = select && select.value ? select.value : state.overview.restaurantId;
+    const restaurantId = select && select.value ? select.value : null;
 
     if (!restaurantId) {
       // Clear data if no restaurant selected
       const kpiTotal = document.getElementById('kpi-total-stock');
       if (kpiTotal) kpiTotal.textContent = '-';
 
-      const kpiLow = document.getElementById('kpi-low-stock');
-      if (kpiLow) kpiLow.textContent = '-';
+      const kpiSales = document.getElementById('kpi-total-sales');
+      if (kpiSales) kpiSales.textContent = '-';
 
       const kpiCritical = document.getElementById('kpi-critical-stock');
       if (kpiCritical) kpiCritical.textContent = '-';
@@ -5221,26 +5713,39 @@
     }
 
     try {
+      const dateFrom = new Date().toISOString().split('T')[0];
+      const dateTo = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
       // 1. Fetch Recommendations (for KPIs & Critical List)
-      const recommendations = await purchasingApi.fetchRecommendations({
-        date_from: new Date().toISOString().split('T')[0],
-        date_to: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      });
+      const [recommendations, orders, summary] = await Promise.all([
+        purchasingApi.fetchRecommendations({
+          date_from: dateFrom,
+          date_to: dateTo
+        }),
+        purchasingApi.fetchPurchaseOrders(5),
+        purchasingApi.fetchSummary({
+          date_from: dateFrom,
+          date_to: dateTo
+        })
+      ]);
 
-      // 2. Fetch Recent Orders
-      const orders = await purchasingApi.fetchPurchaseOrders(5);
-
-      // 3. Update KPIs
+      // Update KPIs
       const totalStock = recommendations.length;
-      const lowStock = recommendations.filter(r => r.status === 'LOW').length;
       const criticalStock = recommendations.filter(r => r.status === 'CRITICAL').length;
       const activeOrders = orders.filter(o => o.status === 'sent' || o.status === 'pending').length;
+      const totalSales = Number(summary && typeof summary.total_dishes_sold !== 'undefined'
+        ? summary.total_dishes_sold
+        : 0);
 
       const kpiTotal = document.getElementById('kpi-total-stock');
       if (kpiTotal) kpiTotal.textContent = totalStock;
 
-      const kpiLow = document.getElementById('kpi-low-stock');
-      if (kpiLow) kpiLow.textContent = lowStock;
+      const kpiSales = document.getElementById('kpi-total-sales');
+      if (kpiSales) {
+        kpiSales.textContent = Number.isFinite(totalSales)
+          ? Math.round(totalSales).toLocaleString('fr-FR')
+          : '-';
+      }
 
       const kpiCritical = document.getElementById('kpi-critical-stock');
       if (kpiCritical) kpiCritical.textContent = criticalStock;
@@ -5391,100 +5896,6 @@
       });
     }
   }
-
-  // Global functions for stock management (called from inline HTML)
-  window.toggleStockActions = function (ingredientId) {
-    // Close all other dropdowns first
-    document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
-      if (dropdown.id !== `actions-${ingredientId}`) {
-        dropdown.classList.remove('show');
-      }
-    });
-
-    const dropdown = document.getElementById(`actions-${ingredientId}`);
-    if (dropdown) {
-      dropdown.classList.toggle('show');
-    }
-  };
-
-  window.openEditModal = function (id, name, safetyStock, unit) {
-    const modal = document.getElementById('edit-ingredient-modal');
-    if (!modal) return;
-
-    document.getElementById('edit-ingredient-id').value = id;
-    document.getElementById('edit-ingredient-name').value = name;
-    document.getElementById('edit-safety-stock').value = safetyStock;
-    document.getElementById('edit-ingredient-unit').textContent = unit;
-
-    modal.removeAttribute('hidden');
-    modal.removeAttribute('aria-hidden');
-
-    // Close any open action dropdowns
-    document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
-      dropdown.classList.remove('show');
-    });
-
-    // Focus the safety stock input
-    setTimeout(() => {
-      const input = document.getElementById('edit-safety-stock');
-      if (input) input.focus();
-    }, 100);
-  };
-
-  window.deleteIngredient = async function (id, name) {
-    const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?\n\nCette action est irréversible.`);
-    if (!confirmed) return;
-
-    try {
-      const restaurantId = document.getElementById('stock-restaurant-select')?.value;
-      if (!restaurantId) {
-        alert('Restaurant non sélectionné.');
-        return;
-      }
-
-      // Close any open action dropdowns
-      document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
-        dropdown.classList.remove('show');
-      });
-
-      const response = await fetch(`/api/purchasing/ingredients/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${state.token}`,
-          'X-Restaurant-Id': restaurantId
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Échec de la suppression de l\'ingrédient';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch (e) {
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Success - refresh the table
-      showToast(`✓ "${name}" supprimé avec succès`);
-      if (typeof loadStockData === 'function') {
-        loadStockData(restaurantId);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      alert(`Erreur: ${error.message}`);
-    }
-  };
-
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', function (event) {
-    if (!event.target.closest('.action-btn') && !event.target.closest('.actions-dropdown')) {
-      document.querySelectorAll('.actions-dropdown').forEach(dropdown => {
-        dropdown.classList.remove('show');
-      });
-    }
-  });
 
   // Enhanced modal close handlers for better UX
   function enhanceModalHandlers() {

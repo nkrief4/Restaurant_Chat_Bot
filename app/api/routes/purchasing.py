@@ -150,6 +150,41 @@ class ManualSalePayload(BaseModel):
     ordered_at: Optional[datetime] = None
 
 
+class RecipeIngredientWithCost(BaseModel):
+    ingredient_id: UUID
+    ingredient_name: str
+    unit: str
+    quantity_per_unit: float
+    unit_cost: float = Field(default=0.0)
+    total_cost: float = Field(default=0.0)
+
+
+class RecipeWithCostResponse(BaseModel):
+    menu_item_id: UUID
+    menu_item_name: str
+    category: Optional[str] = None
+    total_cost: float = Field(default=0.0)
+    menu_price: Optional[float] = None
+    profit_margin: Optional[float] = None
+    ingredients: List[RecipeIngredientWithCost] = Field(default_factory=list)
+    instructions: Optional[str] = None
+
+
+class MenuItemCreatePayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    category: Optional[str] = Field(default=None, max_length=100)
+    menu_price: Optional[float] = Field(default=None, ge=0)
+    instructions: Optional[str] = Field(default=None, max_length=2000)
+
+
+class MenuItemUpdatePayload(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    category: Optional[str] = Field(default=None, max_length=100)
+    menu_price: Optional[float] = Field(default=None, ge=0)
+    instructions: Optional[str] = Field(default=None, max_length=2000)
+
+
+
 class SupabasePurchasingDAO:
     """DAO relying on Supabase/PostgREST for multi-tenant purchasing data."""
 
@@ -864,6 +899,323 @@ class SupabasePurchasingDAO:
         except HttpxError as exc:
             raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
 
+    async def fetch_all_recipes_with_costs(self) -> List[Dict[str, Any]]:
+        """Fetch all recipes with calculated costs and profit margins."""
+        
+        def _request() -> List[Dict[str, Any]]:
+            with self._client() as client:
+                # Fetch all menu items for the restaurant
+                menu_items_response = (
+                    client.table("menu_items")
+                    .select("id,name,category,menu_price,instructions")
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .order("name")
+                    .execute()
+                )
+                menu_items = menu_items_response.data or []
+                
+                if not menu_items:
+                    return []
+                
+                menu_item_ids = [item["id"] for item in menu_items]
+                
+                # Fetch all recipes for these menu items
+                recipes_response = (
+                    client.table("recipes")
+                    .select("menu_item_id,ingredient_id,quantity_per_unit")
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .in_("menu_item_id", menu_item_ids)
+                    .execute()
+                )
+                recipes = recipes_response.data or []
+                
+                # Fetch ingredient costs from ingredient_stock
+                ingredient_ids = list(set(r["ingredient_id"] for r in recipes if r.get("ingredient_id")))
+                ingredient_costs = {}
+                ingredient_names = {}
+                
+                if ingredient_ids:
+                    # Get ingredient info
+                    ingredients_response = (
+                        client.table("ingredients")
+                        .select("id,name")
+                        .eq("restaurant_id", self.restaurant_id_str)
+                        .in_("id", ingredient_ids)
+                        .execute()
+                    )
+                    for ing in ingredients_response.data or []:
+                        ingredient_names[ing["id"]] = ing.get("name", "Unknown")
+                    
+                # Fetch ingredient costs
+                ingredient_costs = {}
+                if ingredient_ids: # Ensure ingredient_ids is not empty before querying
+                    stock_response = (
+                        client.table("ingredient_stock")
+                        .select("ingredient_id,unit_cost")
+                        .eq("restaurant_id", self.restaurant_id_str)
+                        .in_("ingredient_id", ingredient_ids)
+                        .execute()
+                    )
+                    for stock in stock_response.data or []:
+                        ingredient_costs[stock["ingredient_id"]] = float(stock.get("unit_cost", 0))
+                
+                # Group recipes by menu_item_id and calculate costs
+                recipes_by_menu_item = {}
+                for recipe in recipes:
+                    menu_item_id = recipe["menu_item_id"]
+                    if menu_item_id not in recipes_by_menu_item:
+                        recipes_by_menu_item[menu_item_id] = []
+                    recipes_by_menu_item[menu_item_id].append(recipe)
+                
+                # Build results with costs
+                results = []
+                for item in menu_items:
+                    item_id = item["id"]
+                    item_recipes = recipes_by_menu_item.get(item_id, [])
+                    
+                    # Calculate total cost
+                    total_cost = 0.0
+                    for recipe in item_recipes:
+                        ingredient_id = recipe.get("ingredient_id")
+                        quantity = float(recipe.get("quantity_per_unit", 0))
+                        unit_cost = ingredient_costs.get(ingredient_id, 0.0)
+                        total_cost += quantity * unit_cost
+                    
+                    # Calculate profit margin if menu price exists
+                    menu_price = item.get("menu_price")
+                    profit_margin = None
+                    if menu_price and menu_price > 0 and total_cost > 0:
+                        profit_margin = ((menu_price - total_cost) / menu_price) * 100
+                    
+                    results.append({
+                        "menu_item_id": item_id,
+                        "menu_item_name": item.get("name", ""),
+                        "category": item.get("category"),
+                        "total_cost": round(total_cost, 2),
+                        "menu_price": menu_price,
+                        "profit_margin": round(profit_margin, 1) if profit_margin is not None else None,
+                        "ingredient_count": len(item_recipes)
+                    })
+                
+                return results
+        
+        try:
+            return await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="fetch recipes with costs")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    async def fetch_recipe_details(self, menu_item_id: UUID) -> Optional[Dict[str, Any]]:
+        """Fetch detailed recipe information including ingredients with costs."""
+        
+        def _request() -> Optional[Dict[str, Any]]:
+            with self._client() as client:
+                # Fetch menu item
+                menu_item_response = (
+                    client.table("menu_items")
+                    .select("id,name,category,menu_price,instructions")
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .eq("id", str(menu_item_id))
+                    .limit(1)
+                    .execute()
+                )
+                
+                if not menu_item_response.data:
+                    return None
+                
+                menu_item = menu_item_response.data[0]
+                
+                # Fetch recipes (ingredients)
+                recipes_response = (
+                    client.table("recipes")
+                    .select("ingredient_id,quantity_per_unit")
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .eq("menu_item_id", str(menu_item_id))
+                    .execute()
+                )
+                recipes = recipes_response.data or []
+                
+                # Fetch ingredient details and costs
+                ingredient_ids = [r["ingredient_id"] for r in recipes if r.get("ingredient_id")]
+                ingredients_data = {}
+                
+                if ingredient_ids:
+                    # Get ingredient info
+                    ingredients_response = (
+                        client.table("ingredients")
+                        .select("id,name,unit")
+                        .eq("restaurant_id", self.restaurant_id_str)
+                        .in_("id", ingredient_ids)
+                        .execute()
+                    )
+                    for ing in ingredients_response.data or []:
+                        ingredients_data[ing["id"]] = {
+                            "name": ing.get("name", "Unknown"),
+                            "unit": ing.get("unit", ""),
+                            "unit_cost": 0.0
+                        }
+                    
+                    # Get costs from stock
+                    stock_response = (
+                        client.table("ingredient_stock")
+                        .select("ingredient_id,unit_cost")
+                        .eq("restaurant_id", self.restaurant_id_str)
+                        .in_("ingredient_id", ingredient_ids)
+                        .execute()
+                    )
+                    for stock in stock_response.data or []:
+                        ing_id = stock["ingredient_id"]
+                        if ing_id in ingredients_data:
+                            ingredients_data[ing_id]["unit_cost"] = float(stock.get("unit_cost", 0))
+                
+                # Build ingredient list with costs
+                ingredients_list = []
+                total_cost = 0.0
+                
+                for recipe in recipes:
+                    ing_id = recipe.get("ingredient_id")
+                    quantity = float(recipe.get("quantity_per_unit", 0))
+                    
+                    if ing_id and ing_id in ingredients_data:
+                        ing_data = ingredients_data[ing_id]
+                        unit_cost = ing_data["unit_cost"]
+                        item_total = quantity * unit_cost
+                        total_cost += item_total
+                        
+                        ingredients_list.append({
+                            "ingredient_id": ing_id,
+                            "ingredient_name": ing_data["name"],
+                            "unit": ing_data["unit"],
+                            "quantity_per_unit": quantity,
+                            "unit_cost": unit_cost,
+                            "total_cost": round(item_total, 2)
+                        })
+                
+                # Calculate profit margin
+                menu_price = menu_item.get("menu_price")
+                profit_margin = None
+                if menu_price and menu_price > 0 and total_cost > 0:
+                    profit_margin = ((menu_price - total_cost) / menu_price) * 100
+                
+                return {
+                    "menu_item_id": menu_item["id"],
+                    "menu_item_name": menu_item.get("name", ""),
+                    "category": menu_item.get("category"),
+                    "total_cost": round(total_cost, 2),
+                    "menu_price": menu_price,
+                    "profit_margin": round(profit_margin, 1) if profit_margin is not None else None,
+                    "ingredients": ingredients_list,
+                    "instructions": menu_item.get("instructions")
+                }
+        
+        try:
+            return await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="fetch recipe details")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    async def create_menu_item(self, payload: MenuItemCreatePayload) -> Dict[str, Any]:
+        """Create a new menu item."""
+        
+        def _request() -> Dict[str, Any]:
+            with self._client(prefer="return=representation") as client:
+                data = {
+                    "restaurant_id": self.restaurant_id_str,
+                    "name": payload.name,
+                }
+                if payload.category:
+                    data["category"] = payload.category
+                if payload.menu_price is not None:
+                    data["menu_price"] = payload.menu_price
+                if payload.instructions:
+                    data["instructions"] = payload.instructions
+                
+                response = (
+                    client.table("menu_items")
+                    .insert(data)
+                    .execute()
+                )
+                
+                if not response.data:
+                    raise HTTPException(status_code=502, detail="Impossible de créer le plat.")
+                
+                return response.data[0]
+        
+        try:
+            return await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="create menu item")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    async def update_menu_item(self, menu_item_id: UUID, payload: MenuItemUpdatePayload) -> Dict[str, Any]:
+        """Update a menu item."""
+        
+        def _request() -> Dict[str, Any]:
+            with self._client(prefer="return=representation") as client:
+                data = {}
+                if payload.name is not None:
+                    data["name"] = payload.name
+                if payload.category is not None:
+                    data["category"] = payload.category
+                if payload.menu_price is not None:
+                    data["menu_price"] = payload.menu_price
+                if payload.instructions is not None:
+                    data["instructions"] = payload.instructions
+                
+                if not data:
+                    raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour.")
+                
+                response = (
+                    client.table("menu_items")
+                    .update(data)
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .eq("id", str(menu_item_id))
+                    .execute()
+                )
+                
+                if not response.data:
+                    raise HTTPException(status_code=404, detail="Plat introuvable.")
+                
+                return response.data[0]
+        
+        try:
+            return await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="update menu item")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    async def delete_menu_item(self, menu_item_id: UUID) -> None:
+        """Delete a menu item and its associated recipes."""
+        
+        def _request() -> None:
+            with self._client() as client:
+                # First delete associated recipes
+                client.table("recipes").delete().eq("restaurant_id", self.restaurant_id_str).eq("menu_item_id", str(menu_item_id)).execute()
+                
+                # Then delete the menu item
+                response = (
+                    client.table("menu_items")
+                    .delete()
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .eq("id", str(menu_item_id))
+                    .execute()
+                )
+                
+                if not response.data:
+                    raise HTTPException(status_code=404, detail="Plat introuvable.")
+        
+        try:
+            await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="delete menu item")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+
     async def _fetch_menu_items_rows(
         self,
         *,
@@ -1204,6 +1556,59 @@ async def delete_ingredient_endpoint(
     dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
 ) -> None:
     await dao.delete_ingredient(ingredient_id)
+
+
+# ============================================
+# RECIPES ENDPOINTS
+# ============================================
+
+@router.get("/recipes", response_model=List[Dict[str, Any]])
+async def get_all_recipes_with_costs(
+    dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
+) -> List[Dict[str, Any]]:
+    """Get all recipes with calculated costs and profit margins."""
+    return await dao.fetch_all_recipes_with_costs()
+
+
+@router.get("/recipes/{menu_item_id}", response_model=RecipeWithCostResponse)
+async def get_recipe_details(
+    menu_item_id: UUID,
+    dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
+) -> RecipeWithCostResponse:
+    """Get detailed recipe information including ingredients with costs."""
+    details = await dao.fetch_recipe_details(menu_item_id)
+    if not details:
+        raise HTTPException(status_code=404, detail="Recette introuvable.")
+    return RecipeWithCostResponse(**details)
+
+
+@router.post("/menu-items", response_model=Dict[str, Any], status_code=201)
+async def create_menu_item_endpoint(
+    payload: MenuItemCreatePayload,
+    dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
+) -> Dict[str, Any]:
+    """Create a new menu item."""
+    return await dao.create_menu_item(payload)
+
+
+@router.put("/menu-items/{menu_item_id}", response_model=Dict[str, Any])
+async def update_menu_item_endpoint(
+    menu_item_id: UUID,
+    payload: MenuItemUpdatePayload,
+    dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
+) -> Dict[str, Any]:
+    """Update a menu item."""
+    return await dao.update_menu_item(menu_item_id, payload)
+
+
+@router.delete("/menu-items/{menu_item_id}", status_code=204)
+async def delete_menu_item_endpoint(
+    menu_item_id: UUID,
+    dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
+) -> None:
+    """Delete a menu item and its associated recipes."""
+    await dao.delete_menu_item(menu_item_id)
+
 
 
 @router.post("/recipes", status_code=204)

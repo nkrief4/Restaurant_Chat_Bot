@@ -144,7 +144,7 @@
 .card {
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 24px;
+    padding: 16px;
     background: var(--card-bg);
     display: flex;
     flex-direction: column;
@@ -224,7 +224,7 @@ textarea {
 .upload-card {
     border: 1px solid rgba(58, 117, 255, 0.2);
     border-radius: 22px;
-    padding: 24px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -348,6 +348,49 @@ textarea {
     pointer-events: auto;
 }
 
+/* Responsive modal styles */
+@media (max-width: 640px) {
+    .modal {
+        padding: 12px;
+        align-items: flex-end;
+    }
+    
+    .modal.open,
+    .modal.is-active,
+    .modal[aria-hidden='false'] {
+        align-items: center;
+    }
+}
+
+@media (max-height: 700px) {
+    .modal {
+        align-items: flex-start;
+        padding: 8px;
+    }
+    
+    .modal.open,
+    .modal.is-active,
+    .modal[aria-hidden='false'] {
+        align-items: flex-start;
+        padding-top: 20px;
+    }
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+@media (max-width: 640px) {
+    body.modal-open {
+        position: fixed; /* Prevent iOS rubber banding */
+        height: 100vh;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 .modal-overlay {
     position: absolute;
     inset: 0;
@@ -420,8 +463,8 @@ textarea {
 .modal-content {
     background: #fff;
     border-radius: 20px;
-    padding: 24px;
-    width: min(480px, 100%);
+    padding: 20px;
+    width: min(420px, 100%);
     box-shadow: var(--shadow-strong);
     position: relative;
     display: flex;
@@ -456,8 +499,8 @@ textarea {
 }
 
 .qr-frame {
-    width: 220px;
-    height: 220px;
+    width: 180px;
+    height: 180px;
     border-radius: 16px;
     border: 1px dashed var(--border-strong);
     display: flex;

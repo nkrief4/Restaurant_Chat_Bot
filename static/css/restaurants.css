@@ -3,7 +3,7 @@
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 28px;
-    padding: clamp(20px, 2.8vw, 40px);
+    padding: 20px;
     box-shadow: var(--shadow-soft);
 }
 
@@ -11,7 +11,7 @@
 .restaurants-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 28px;
+    gap: 16px;
     margin-top: 32px;
     animation: fadeInUp 0.6s ease-out;
 }
@@ -35,7 +35,7 @@
     background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
     border: 1px solid var(--border);
     border-radius: 24px;
-    padding: 28px;
+    padding: 16px;
     box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
@@ -124,7 +124,7 @@
 
 .restaurant-card-header h3 {
     margin: 0;
-    font-size: 1.35rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--text);
     background: linear-gradient(135deg, var(--text), var(--primary));
@@ -211,7 +211,7 @@
     gap: 12px;
     flex-wrap: wrap;
     margin-top: auto;
-    padding-top: 20px;
+    padding-top: 16px;
     border-top: 1px solid rgba(58, 117, 255, 0.1);
 }
 
@@ -261,7 +261,7 @@
     align-items: center;
     gap: 24px;
     margin-top: 48px;
-    padding: 32px;
+    padding: 20px;
     background: linear-gradient(135deg, rgba(58, 117, 255, 0.08) 0%, rgba(58, 117, 255, 0.02) 100%);
     border: 1px solid rgba(58, 117, 255, 0.15);
     border-radius: 24px;
@@ -297,7 +297,7 @@
 
 .restaurants-cta h3 {
     margin: 0 0 8px;
-    font-size: 1.4rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text);
 }
@@ -398,6 +398,103 @@
 
 .restaurant-panel[aria-hidden="true"] {
     opacity: 0.25;
+}
+
+.restaurant-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.restaurant-form-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+    gap: 24px;
+    margin-top: 8px;
+    align-items: flex-start;
+}
+
+.restaurant-form-main {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.restaurant-form-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.restaurant-form-heading .eyebrow {
+    margin: 0;
+    color: var(--primary);
+}
+
+.restaurant-form-heading h3 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.restaurant-form-heading p {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.restaurant-form-layout .form-grid {
+    width: 100%;
+}
+
+.restaurant-form-layout .form-grid label {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.compact-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.restaurant-form-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+.restaurant-form-aside>* {
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .restaurant-form-aside {
+        position: sticky;
+        top: 16px;
+    }
+}
+
+.restaurant-form .form-footer {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 16px 20px;
+    box-shadow: 0 18px 30px rgba(15, 23, 42, 0.05);
+}
+
+@media (max-width: 1023px) {
+    .restaurant-form-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .restaurant-form-aside {
+        position: static;
+    }
 }
 
 @media (max-width: 768px) {

@@ -603,11 +603,11 @@
 }
 
 .add-ingredient-modal-content {
-    max-width: 600px;
+    max-width: 520px;
 }
 
 .modal-header {
-    padding: 28px 32px;
+    padding: 20px 24px;
     border-bottom: 1px solid #f3f4f6;
     display: flex;
     justify-content: space-between;
@@ -624,10 +624,10 @@
 }
 
 .modal-icon {
-    width: 52px;
-    height: 52px;
+    width: 40px;
+    height: 40px;
     background: linear-gradient(135deg, var(--stock-primary) 0%, var(--stock-primary-dark) 100%);
-    border-radius: 14px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -637,8 +637,8 @@
 }
 
 .modal-header h3 {
-    margin: 0 0 6px 0;
-    font-size: 1.5rem;
+    margin: 0 0 4px 0;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #111827;
 }
@@ -674,7 +674,7 @@
 }
 
 .modal-body {
-    padding: 32px;
+    padding: 24px;
 }
 
 /* Form Styles */

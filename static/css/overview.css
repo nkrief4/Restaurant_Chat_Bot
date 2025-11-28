@@ -11,8 +11,8 @@
     flex-wrap: wrap;
     background: linear-gradient(135deg, rgba(58, 117, 255, 0.06) 0%, rgba(255, 255, 255, 0.95) 100%);
     border-radius: 16px;
-    padding: 16px 24px;
-    margin-bottom: 32px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
     border: 1px solid rgba(58, 117, 255, 0.1);
     box-shadow: 0 4px 12px rgba(58, 117, 255, 0.06);
     animation: slideInDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -48,7 +48,7 @@
     background: linear-gradient(135deg, rgba(58, 117, 255, 0.1), rgba(58, 117, 255, 0.05));
     border: 1px solid rgba(58, 117, 255, 0.2);
     border-radius: 999px;
-    padding: 12px 20px;
+    padding: 8px 16px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -114,14 +114,14 @@
 .overview-main {
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 24px;
 }
 
 /* Info Row - Restaurant actif + Abonnement + CTA */
 .overview-info-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 16px;
     animation: slideInUp 0.7s ease-out 0.5s backwards;
 }
 
@@ -129,7 +129,7 @@
 .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 24px;
+    gap: 16px;
     animation: staggerIn 0.8s ease-out;
 }
 
@@ -150,7 +150,7 @@
     background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 24px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -232,7 +232,7 @@
 }
 
 .kpi-card h3 {
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
     margin: 8px 0;
     background: linear-gradient(135deg, var(--primary), #6b9dff);
@@ -257,7 +257,7 @@
     background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
     border: 1px solid var(--border);
     border-radius: 24px;
-    padding: 32px;
+    padding: 20px;
     box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
     animation: slideInUp 0.7s ease-out 0.3s backwards;
     transition: all 0.3s ease;
@@ -281,7 +281,7 @@
 }
 
 .conversation-card .card-header h3 {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--text);
     margin: 0;
@@ -296,7 +296,7 @@
 .overview-columns {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 32px;
+    gap: 20px;
     animation: slideInUp 0.7s ease-out 0.4s backwards;
 }
 
@@ -305,12 +305,12 @@
     background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
     border: 1px solid var(--border);
     border-radius: 24px;
-    padding: 28px;
+    padding: 20px;
     box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    height: 700px;
+    height: 500px;
 }
 
 .overview-restaurants-block:hover {
@@ -319,7 +319,7 @@
 }
 
 .overview-restaurants-header h3 {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text);
     margin: 0 0 8px;
@@ -333,7 +333,7 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: repeat(2, 1fr);
-    gap: 20px;
+    gap: 16px;
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
@@ -364,13 +364,13 @@
     background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
     border: 1px solid var(--border);
     border-radius: 24px;
-    padding: 28px;
+    padding: 20px;
     box-shadow: 0 8px 24px rgba(58, 117, 255, 0.08);
     display: flex;
     flex-direction: column;
     gap: 20px;
     transition: all 0.3s ease;
-    height: 700px;
+    height: 500px;
 }
 
 .overview-chat-wrapper:hover {
@@ -383,7 +383,7 @@
 }
 
 .overview-chat-config h3 {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text);
     margin: 0 0 16px;
@@ -424,7 +424,7 @@
     background: linear-gradient(135deg, rgba(58, 117, 255, 0.08) 0%, rgba(255, 255, 255, 0.95) 100%);
     border: 1px solid rgba(58, 117, 255, 0.2);
     border-radius: 20px;
-    padding: 28px;
+    padding: 20px;
     box-shadow: 0 8px 24px rgba(58, 117, 255, 0.1);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -497,7 +497,7 @@
     color: #fff;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
-    padding: 28px;
+    padding: 20px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -550,7 +550,7 @@
     background: linear-gradient(135deg, rgba(58, 117, 255, 0.1) 0%, rgba(58, 117, 255, 0.05) 100%);
     border: 1px solid rgba(58, 117, 255, 0.2);
     border-radius: 20px;
-    padding: 24px;
+    padding: 16px;
     text-align: center;
     transition: all 0.3s ease;
 }

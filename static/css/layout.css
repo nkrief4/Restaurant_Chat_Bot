@@ -1,7 +1,7 @@
 /* Layout */
 .dashboard {
     display: grid;
-    grid-template-columns: minmax(240px, 260px) 1fr;
+    grid-template-columns: minmax(220px, 240px) 1fr;
     min-height: 100vh;
     position: relative;
 }
@@ -9,7 +9,7 @@
 .sidebar {
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border);
-    padding: 32px 24px;
+    padding: 24px 16px;
     display: flex;
     flex-direction: column;
     gap: 32px;
@@ -38,10 +38,10 @@
 }
 
 .main {
-    padding: 40px 56px;
+    padding: 24px 32px;
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 24px;
 }
 
 /* Sections */
@@ -49,7 +49,7 @@
     display: none;
     background: var(--card-bg);
     border-radius: 24px;
-    padding: 32px;
+    padding: 24px;
     box-shadow: var(--shadow-soft);
 }
 
@@ -63,12 +63,12 @@
     gap: 18px;
     align-items: flex-start;
     flex-wrap: wrap;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .section-header h2 {
     margin: 8px 0 0;
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text);
     letter-spacing: -0.02em;

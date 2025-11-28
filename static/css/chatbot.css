@@ -2,11 +2,11 @@
 .chatbot-shell {
     border-radius: 32px;
     background: var(--card-bg);
-    padding: 32px;
+    padding: 20px;
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
 }
 
 .chatbot-fullscreen-btn {
@@ -96,8 +96,8 @@
     border: 1px solid var(--border);
     border-radius: 28px;
     background: linear-gradient(180deg, #f6f8fc, #ffffff);
-    padding: 24px;
-    min-height: 320px;
+    padding: 12px;
+    min-height: 260px;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -201,7 +201,7 @@
     resize: none;
     font-size: 0.95rem;
     line-height: 1.5;
-    padding: 8px 0;
+    padding: 6px 0;
     color: var(--text);
     max-height: 120px;
     overflow-y: auto;
@@ -257,7 +257,7 @@
 .chatbot-bubble {
     max-width: min(520px, 100%);
     border-radius: 20px;
-    padding: 18px 22px;
+    padding: 12px 16px;
     box-shadow:
         0 4px 20px rgba(15, 23, 42, 0.08),
         0 1px 6px rgba(0, 0, 0, 0.04);
@@ -581,7 +581,7 @@ body.chat-experience.client-view {
 
 .hero-heading h1 {
     margin: 0;
-    font-size: clamp(28px, 5vw, 48px);
+    font-size: clamp(24px, 4vw, 36px);
 }
 
 .hero-subtitle {
@@ -757,7 +757,7 @@ body.chat-experience.client-view {
     padding: 0 24px 80px;
     display: grid;
     grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
-    gap: 32px;
+    gap: 24px;
     align-items: stretch;
 }
 
@@ -785,12 +785,12 @@ body.chat-experience.client-view {
 .chat-panel {
     background: rgba(255, 255, 255, 0.96);
     border-radius: 32px;
-    padding: 32px;
+    padding: 20px;
     box-shadow: var(--shadow-strong);
     display: flex;
     flex-direction: column;
     gap: 20px;
-    min-height: 640px;
+    min-height: 500px;
     border: 1px solid rgba(15, 23, 42, 0.06);
 }
 

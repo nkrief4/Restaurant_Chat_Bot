@@ -6,13 +6,23 @@
     </div>
 
     <div class="purchasing-panel is-active" data-purchasing-panel="dashboard">
-        <div class="purchasing-header-controls" style="margin-bottom: 24px;">
-            <label class="purchasing-select" for="purchasing-section-restaurant-select">
-                <select id="purchasing-section-restaurant-select">
-                    <option value="">Sélectionnez un restaurant</option>
-                </select>
-            </label>
-        </div>
+        <header class="purchasing-dashboard-head">
+            <div>
+                <p class="eyebrow">Pilotage</p>
+                <h1>Dashboard Achats & Stock</h1>
+                <p class="purchasing-dashboard-description">
+                    Suivez vos stocks et vos achats en temps réel pour anticiper les besoins de vos équipes.
+                </p>
+            </div>
+            <div class="purchasing-header-controls">
+                <label class="purchasing-select" for="purchasing-section-restaurant-select">
+                    <span>Sélection du restaurant</span>
+                    <select id="purchasing-section-restaurant-select">
+                        <option value="">Sélectionnez un restaurant</option>
+                    </select>
+                </label>
+            </div>
+        </header>
 
         <!-- 1) KPIs Principaux -->
         <div class="purchasing-kpi-grid">
@@ -27,11 +37,11 @@
             </article>
             <article class="kpi-card">
                 <div class="kpi-icon-wrapper is-orange">
-                    <span class="kpi-icon">⚠️</span>
+                    <span class="kpi-icon">🥗</span>
                 </div>
                 <div class="kpi-content">
-                    <p class="kpi-label">Sous safety stock</p>
-                    <h3 class="kpi-value" id="kpi-low-stock">-</h3>
+                    <p class="kpi-label">Ventes totales</p>
+                    <h3 class="kpi-value" id="kpi-total-sales">-</h3>
                 </div>
             </article>
             <article class="kpi-card">
@@ -143,36 +153,45 @@
             </div>
         </div>
 
-        <div class="stock-restaurant-selector">
-            <label for="stock-restaurant-select">Select Restaurant</label>
-            <select id="stock-restaurant-select">
-                <option value="">Select a restaurant</option>
-            </select>
+        <div class="stock-toolbar">
+            <div class="stock-toolbar-block">
+                <label for="stock-restaurant-select">Restaurant</label>
+                <select id="stock-restaurant-select">
+                    <option value="">Sélectionnez un établissement</option>
+                </select>
+            </div>
+            <div class="stock-toolbar-block stock-toolbar-search">
+                <label class="sr-only" for="stock-search">Rechercher un ingrédient</label>
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="stock-search" placeholder="Rechercher un ingrédient..." />
+                </div>
+            </div>
+            <div class="stock-toolbar-block compact">
+                <label for="stock-filter-status">Statut</label>
+                <select id="stock-filter-status" class="filter-select">
+                    <option value="">Tous les statuts</option>
+                    <option value="critical">Critique</option>
+                    <option value="low">Faible</option>
+                    <option value="ok">Stable</option>
+                </select>
+            </div>
+            <div class="stock-toolbar-block compact">
+                <label for="stock-filter-category">Catégorie</label>
+                <select id="stock-filter-category" class="filter-select">
+                    <option value="">Toutes les catégories</option>
+                </select>
+            </div>
         </div>
 
         <div class="stock-card">
-            <div class="stock-filters">
-                <div class="search-wrapper">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="stock-search" placeholder="Search by Ingredient Name..." />
+            <div class="stock-table-headline">
+                <div>
+                    <p class="eyebrow">Inventaire</p>
+                    <h3>Liste des ingrédients</h3>
                 </div>
-                <div class="filter-dropdowns">
-                    <select id="stock-filter-status" class="filter-select">
-                        <option value="">Status</option>
-                        <option value="critical">Critical</option>
-                        <option value="low">Low</option>
-                        <option value="ok">OK</option>
-                    </select>
-                    <select id="stock-filter-category" class="filter-select">
-                        <option value="">Category</option>
-                        <option value="vegetables">Vegetables</option>
-                        <option value="meat">Meat</option>
-                        <option value="dairy">Dairy</option>
-                        <option value="dry">Dry Goods</option>
-                    </select>
-                </div>
+                <div class="stock-status-overview" id="stock-status-overview" aria-live="polite"></div>
             </div>
-
             <div class="stock-table-container">
                 <table class="stock-table-new">
                     <thead>
@@ -187,302 +206,327 @@
                     <tbody id="stock-table-body">
                         <!-- Rows will be populated by JS -->
                         <tr>
-                            <td colspan="5" class="muted text-center">Select a restaurant to view stock.</td>
+                            <td colspan="5" class="muted text-center">Sélectionnez un restaurant pour afficher le stock.
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Edit Ingredient Modal -->
-        <div id="edit-ingredient-modal" class="modal" hidden>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Edit Ingredient</h3>
-                    <button type="button" class="close-modal-btn">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form id="edit-ingredient-form">
-                        <input type="hidden" id="edit-ingredient-id">
-                        <div class="form-group">
-                            <label for="edit-ingredient-name">Ingredient Name</label>
-                            <input type="text" id="edit-ingredient-name" disabled class="disabled-input">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-safety-stock">Safety Stock Threshold</label>
-                            <p class="help-text">Quantity below which the status becomes CRITICAL.</p>
-                            <div class="input-with-unit">
-                                <input type="number" id="edit-safety-stock" step="0.1" min="0" required>
-                                <span id="edit-ingredient-unit" class="unit-badge">kg</span>
-                            </div>
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" class="ghost-btn close-modal-btn">Cancel</button>
-                            <button type="submit" class="primary-btn">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Ingredient Modal -->
-        <div id="add-ingredient-modal" class="modal" hidden>
-            <div class="modal-content add-ingredient-modal-content">
-                <div class="modal-header">
-                    <div class="modal-header-icon">
-                        <span class="modal-icon">📦</span>
-                    </div>
+        <!-- Ingredient Form Modal -->
+        <div id="ingredient-form-modal" class="modal" hidden>
+            <div class="modal-content modal-sheet add-ingredient-modal" role="dialog" aria-modal="true"
+                aria-labelledby="ingredient-form-title">
+                <div class="modal-sheet-header">
                     <div>
-                        <h3>Add New Ingredient</h3>
-                        <p class="muted">Add a new ingredient to your inventory</p>
+                        <p class="eyebrow" data-role="modal-eyebrow">Inventaire</p>
+                        <h2 id="ingredient-form-title" data-role="modal-title">Ajouter un ingrédient</h2>
+                        <p class="modal-sheet-description" data-role="modal-description">
+                            Renseignez les informations clés pour suivre ce produit dans vos stocks.
+                        </p>
                     </div>
-                    <button type="button" class="close-modal-btn">&times;</button>
+                    <button type="button" class="close-modal-btn" aria-label="Fermer la fenêtre">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="modal-body">
-                    <form id="add-ingredient-form">
-                        <div class="form-group">
-                            <label for="add-ingredient-name">
-                                <span class="label-icon">🏷️</span>
-                                Ingredient Name
-                            </label>
-                            <input type="text" id="add-ingredient-name" required
-                                placeholder="e.g., Tomatoes, Olive Oil, Flour...">
-                        </div>
+                <form id="ingredient-form" class="modal-sheet-body ingredient-form-body" novalidate>
+                    <input type="hidden" id="ingredient-form-id" />
+                    <div class="ingredient-form-layout">
+                        <section class="ingredient-form-section">
+                            <div class="ingredient-section-header">
+                                <p class="eyebrow small">Profil</p>
+                                <h3>Informations générales</h3>
+                                <p class="muted">Nom, unité principale et catégorie visuelle.</p>
+                            </div>
+                            <div class="ingredient-fields-grid">
+                                <div class="modal-field-group">
+                                    <label for="ingredient-name">Nom de l'ingrédient <span
+                                            class="required-star">*</span></label>
+                                    <input type="text" id="ingredient-name" required
+                                        placeholder="Ex : Tomates, huile d'olive" autocomplete="off">
+                                </div>
+                                <div class="modal-field-group">
+                                    <label for="ingredient-unit">Unité de mesure <span
+                                            class="required-star">*</span></label>
+                                    <select id="ingredient-unit" required>
+                                        <option value="">Choisissez une unité…</option>
+                                        <option value="kg">Kilogramme (kg)</option>
+                                        <option value="g">Gramme (g)</option>
+                                        <option value="l">Litre (l)</option>
+                                        <option value="ml">Millilitre (ml)</option>
+                                        <option value="pcs">Pièces (pcs)</option>
+                                    </select>
+                                </div>
+                                <div class="modal-field-group category-field">
+                                    <label for="ingredient-category-select">Catégorie</label>
+                                    <div class="category-selector">
+                                        <select id="ingredient-category-select">
+                                            <option value="">Choisissez une catégorie</option>
+                                            <option value="__new__">Ajouter une catégorie…</option>
+                                        </select>
+                                        <button type="button" class="ghost-btn category-new-btn"
+                                            data-role="category-new-btn">Nouvelle catégorie</button>
+                                    </div>
+                                    <input type="text" id="ingredient-category-input" class="category-input"
+                                        placeholder="Nom de la nouvelle catégorie" hidden>
+                                    <p class="field-hint">Sélectionnez une catégorie existante ou créez-en une nouvelle.
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="ingredient-form-section">
+                            <div class="ingredient-section-header">
+                                <p class="eyebrow small">Stocks</p>
+                                <h3>Niveau disponible</h3>
+                                <p class="muted">Saisissez la quantité actuelle et, si besoin, une estimation de
+                                    couverture.</p>
+                            </div>
+                            <div class="ingredient-fields-grid">
+                                <div class="modal-field-group">
+                                    <label for="ingredient-current-stock">Stock actuel <span
+                                            class="required-star">*</span></label>
+                                    <input type="number" id="ingredient-current-stock" step="0.01" min="0" required
+                                        placeholder="0,00">
+                                </div>
+                                <div class="modal-field-group">
+                                    <label for="ingredient-coverage">Couverture estimée <span
+                                            class="optional-badge">Optionnel</span></label>
+                                    <input type="number" id="ingredient-coverage" step="1" min="0"
+                                        placeholder="Nombre de jours">
+                                    <p class="field-hint">Indiquez combien de jours le stock devrait couvrir vos
+                                        besoins.</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="add-ingredient-unit">
-                                    <span class="label-icon">⚖️</span>
-                                    Unit
-                                </label>
-                                <select id="add-ingredient-unit" required>
-                                    <option value="kg">Kilogram (kg)</option>
-                                    <option value="g">Gram (g)</option>
-                                    <option value="l">Liter (l)</option>
-                                    <option value="ml">Milliliter (ml)</option>
-                                    <option value="pcs">Pieces (pcs)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="add-ingredient-quantity">
-                                    <span class="label-icon">📊</span>
-                                    Current Quantity
-                                </label>
-                                <input type="number" id="add-ingredient-quantity" step="0.01" min="0" required
-                                    placeholder="0.00">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="add-safety-stock">
-                                    <span class="label-icon">⚠️</span>
-                                    Safety Stock
-                                </label>
-                                <input type="number" id="add-safety-stock" step="0.01" min="0" required
-                                    placeholder="0.00">
-                                <p class="help-text">Minimum quantity before alert</p>
-                            </div>
-                            <div class="form-group">
-                                <label for="add-ingredient-coverage">
-                                    <span class="label-icon">📅</span>
-                                    Days of Coverage
-                                </label>
-                                <input type="number" id="add-ingredient-coverage" step="1" min="0"
-                                    placeholder="Optional">
-                                <p class="help-text">Estimated days until reorder</p>
-                            </div>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button type="button" class="ghost-btn close-modal-btn">Cancel</button>
-                            <button type="submit" class="primary-btn">
-                                <span class="btn-icon">✓</span>
-                                Add Ingredient
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="modal-sheet-footer">
+                        <button type="button" class="ghost-btn close-modal-btn">Annuler</button>
+                        <button type="submit" class="primary-btn" data-role="modal-submit">Ajouter l'ingrédient</button>
+                    </div>
+                </form>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <div class="purchasing-panel" data-purchasing-panel="dishes" hidden>
-        <header class="purchasing-panel-head">
-            <div>
-                <p class="eyebrow">Plats & recettes</p>
-                <h3>Visibilité sur les créations phares</h3>
+        <!-- Recipes Header -->
+        <header class="recipes-header">
+            <div class="recipes-header-top">
+                <div class="recipes-title-block">
+                    <h1 class="recipes-main-title">Plats & Recettes</h1>
+                    <p class="recipes-subtitle">Optimisez vos marges et gérez vos fiches techniques.</p>
+                </div>
+                <div class="recipes-header-actions">
+                    <div class="recipes-restaurant-selector">
+                        <select id="recipes-restaurant-select" class="recipes-select">
+                            <option value="">Sélectionner un restaurant</option>
+                        </select>
+                    </div>
+                    <button type="button" class="primary-btn" id="btn-add-recipe">
+                        <span class="icon">＋</span>
+                        Nouveau Plat
+                    </button>
+                </div>
             </div>
-            <p class="muted">Anticipez la mise à jour des fiches techniques avant chaque service.</p>
+            <div class="recipes-header-controls">
+                <div class="recipes-search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="recipes-search" placeholder="Rechercher un plat..."
+                        class="recipes-search-input">
+                </div>
+                <div class="recipes-filters">
+                    <select id="recipes-category-filter" class="recipes-filter-select">
+                        <option value="">Toutes les catégories</option>
+                        <option value="main">Plat principal</option>
+                        <option value="appetizer">Entrée</option>
+                        <option value="dessert">Dessert</option>
+                        <option value="soup">Soupe</option>
+                    </select>
+                    <select id="recipes-sort" class="recipes-filter-select">
+                        <option value="name">Nom (A-Z)</option>
+                        <option value="margin">Marge (Décroissant)</option>
+                        <option value="cost">Coût (Croissant)</option>
+                        <option value="price">Prix (Décroissant)</option>
+                    </select>
+                </div>
+            </div>
         </header>
-        <div class="dish-grid">
-            <article class="dish-card">
-                <div class="dish-card-head">
-                    <h3>Raviole de homard</h3>
-                    <span class="dish-tag is-premium">Signature</span>
-                </div>
-                <p>Farce homard bleu, bisque corsée, écume de combava. Le plat déclenche 42 % des ventes premium.</p>
-                <dl class="dish-metrics">
-                    <div>
-                        <dt>Disponibilité</dt>
-                        <dd>24 portions</dd>
-                    </div>
-                    <div>
-                        <dt>C.U. food cost</dt>
-                        <dd>17,30 €</dd>
-                    </div>
-                    <div>
-                        <dt>Marge</dt>
-                        <dd>71 %</dd>
-                    </div>
-                </dl>
-                <p class="muted small">À préparer : bisque, raviole fraîche et herbes le matin.</p>
-            </article>
-            <article class="dish-card">
-                <div class="dish-card-head">
-                    <h3>Risotto champignons anciens</h3>
-                    <span class="dish-tag is-stable">Incontournable</span>
-                </div>
-                <p>Fumé au bois de hêtre, nappage parmesan affiné 24 mois. Plat le plus demandé pour les menus affaires.
-                </p>
-                <dl class="dish-metrics">
-                    <div>
-                        <dt>Disponibilité</dt>
-                        <dd>38 portions</dd>
-                    </div>
-                    <div>
-                        <dt>C.U. food cost</dt>
-                        <dd>7,60 €</dd>
-                    </div>
-                    <div>
-                        <dt>Marge</dt>
-                        <dd>82 %</dd>
-                    </div>
-                </dl>
-                <p class="muted small">Vérifier le bouillon maison et les copeaux de parmesan le midi.</p>
-            </article>
-            <article class="dish-card">
-                <div class="dish-card-head">
-                    <h3>Crumble de poire Safran</h3>
-                    <span class="dish-tag is-new">Nouveauté</span>
-                </div>
-                <p>Dessert créé pour la carte d'hiver. Idéal pour booster les ventes à l'issue du menu dégustation.</p>
-                <dl class="dish-metrics">
-                    <div>
-                        <dt>Disponibilité</dt>
-                        <dd>30 portions</dd>
-                    </div>
-                    <div>
-                        <dt>C.U. food cost</dt>
-                        <dd>4,20 €</dd>
-                    </div>
-                    <div>
-                        <dt>Marge</dt>
-                        <dd>79 %</dd>
-                    </div>
-                </dl>
-                <p class="muted small">Prévoir un briefing service pour pousser les ventes croisée avec les boissons
-                    chaudes.
-                </p>
-            </article>
-        </div>
-        <div class="dish-actions">
-            <div>
-                <h4>Brief cuisine</h4>
-                <ul>
-                    <li>Mettre à jour les fiches techniques dans RestauBot.</li>
-                    <li>Remontée équipe pâtisserie tous les vendredis.</li>
-                    <li>Suivre les plats signature versus nouveautés.</li>
-                </ul>
-            </div>
-            <div>
-                <h4>Idées service</h4>
-                <ul>
-                    <li>Proposer un accord vin blanc sur la raviole.</li>
-                    <li>Inclure le risotto en suggestion du jour.</li>
-                    <li>Vendre le crumble en menu déjeuner gourmand.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
 
-    <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
-        <header class="purchasing-panel-head">
-            <div>
-                <p class="eyebrow">Ventes par plat</p>
-                <h3>Quel plat tire les revenus ?</h3>
-            </div>
-            <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
-        </header>
-        <div class="sales-summary-grid">
-            <article class="sales-card">
-                <p class="sales-label">Ventes 7 derniers jours</p>
-                <strong>192 plats</strong>
-                <span class="trend-positive">+14 %</span>
-            </article>
-            <article class="sales-card">
-                <p class="sales-label">Panier moyen</p>
-                <strong>52,80 €</strong>
-                <span class="trend-neutral">=</span>
-            </article>
-            <article class="sales-card">
-                <p class="sales-label">Meilleure journée</p>
-                <strong>Samedi</strong>
-                <span class="muted">74 couverts</span>
-            </article>
-        </div>
-        <div class="sales-detail">
-            <div class="sales-chart">
-                <h4>Tendance hebdomadaire</h4>
-                <div class="sales-chart-bars" aria-hidden="true">
-                    <span style="height: 45%" title="Lun"></span>
-                    <span style="height: 52%" title="Mar"></span>
-                    <span style="height: 61%" title="Mer"></span>
-                    <span style="height: 70%" title="Jeu"></span>
-                    <span style="height: 88%" title="Ven"></span>
-                    <span style="height: 100%" title="Sam"></span>
-                    <span style="height: 60%" title="Dim"></span>
+        <!-- Main Recipes Container -->
+        <div class="recipes-container">
+            <!-- Left Panel: Recipes List -->
+            <div class="recipes-list-panel">
+                <div class="recipes-table-wrapper">
+                    <table class="recipes-table">
+                        <thead>
+                            <tr>
+                                <th>Plat</th>
+                                <th class="text-right">Coût</th>
+                                <th class="text-right">Prix</th>
+                                <th class="text-right">Marge</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recipes-table-body">
+                            <!-- Will be populated by JavaScript -->
+                            <tr>
+                                <td colspan="5" class="text-center muted">Sélectionnez un restaurant pour voir les
+                                    recettes.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans RestauBot.</p>
             </div>
-            <div class="sales-table-wrapper">
-                <table class="sales-table">
-                    <thead>
-                        <tr>
-                            <th>Plat</th>
-                            <th>Volumes</th>
-                            <th>Ticket moyen</th>
-                            <th>Conversion</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Raviole de homard</td>
-                            <td>54</td>
-                            <td>42 €</td>
-                            <td><span class="trend-positive">+9 %</span></td>
-                        </tr>
-                        <tr>
-                            <td>Risotto champignons anciens</td>
-                            <td>68</td>
-                            <td>36 €</td>
-                            <td><span class="trend-neutral">=</span></td>
-                        </tr>
-                        <tr>
-                            <td>Crumble de poire Safran</td>
-                            <td>34</td>
-                            <td>18 €</td>
-                            <td><span class="trend-positive">+4 %</span></td>
-                        </tr>
-                        <tr>
-                            <td>Tartare de maigre</td>
-                            <td>36</td>
-                            <td>38 €</td>
-                            <td><span class="trend-negative">-6 %</span></td>
-                        </tr>
-                    </tbody>
-                </table>
+
+            <!-- Right Panel: Recipe Details -->
+            <div class="recipe-details-panel">
+                <div class="recipe-details-empty" id="recipe-details-empty">
+                    <div class="empty-state-icon">�‍🍳</div>
+                    <h3>Sélectionnez un plat</h3>
+                    <p class="muted">Cliquez sur une recette pour voir le détail des coûts et la fiche technique.</p>
+                </div>
+
+                <div class="recipe-details-content" id="recipe-details-content" hidden>
+                    <!-- Recipe Header -->
+                    <div class="recipe-detail-header">
+                        <div>
+                            <h2 class="recipe-detail-title" id="recipe-detail-title">Nom du plat</h2>
+                            <span class="recipe-detail-category" id="recipe-detail-category">Catégorie</span>
+                        </div>
+                        <button type="button" class="secondary-btn small" id="btn-edit-recipe">
+                            <span class="icon">✏️</span>
+                            Modifier
+                        </button>
+                    </div>
+
+                    <!-- Recipe KPIs -->
+                    <div class="recipe-kpis">
+                        <div class="recipe-kpi-card">
+                            <p class="kpi-label">Coût Matière</p>
+                            <h3 class="kpi-value" id="recipe-detail-cost">0.00 €</h3>
+                        </div>
+                        <div class="recipe-kpi-card">
+                            <p class="kpi-label">Prix Menu</p>
+                            <h3 class="kpi-value" id="recipe-detail-price">0.00 €</h3>
+                        </div>
+                        <div class="recipe-kpi-card is-highlight">
+                            <p class="kpi-label">Marge Brute</p>
+                            <h3 class="kpi-value kpi-profit" id="recipe-detail-margin">0%</h3>
+                        </div>
+                    </div>
+
+                    <!-- Ingredients Section -->
+                    <div class="recipe-section">
+                        <div class="recipe-section-header">
+                            <h3>Ingrédients & Coûts</h3>
+                        </div>
+                        <div class="recipe-ingredients-table-wrapper">
+                            <table class="recipe-ingredients-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ingrédient</th>
+                                        <th class="text-right">Qté</th>
+                                        <th class="text-right">Coût</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recipe-ingredients-body">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Instructions Section -->
+                    <div class="recipe-section">
+                        <div class="recipe-section-header">
+                            <h3>Instructions de préparation</h3>
+                        </div>
+                        <ol class="recipe-instructions" id="recipe-instructions-list">
+                            <!-- Will be populated by JavaScript -->
+                        </ol>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
+            <header class="purchasing-panel-head">
+                <div>
+                    <p class="eyebrow">Ventes par plat</p>
+                    <h3>Quel plat tire les revenus ?</h3>
+                </div>
+                <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
+            </header>
+            <div class="sales-summary-grid">
+                <article class="sales-card">
+                    <p class="sales-label">Ventes 7 derniers jours</p>
+                    <strong>192 plats</strong>
+                    <span class="trend-positive">+14 %</span>
+                </article>
+                <article class="sales-card">
+                    <p class="sales-label">Panier moyen</p>
+                    <strong>52,80 €</strong>
+                    <span class="trend-neutral">=</span>
+                </article>
+                <article class="sales-card">
+                    <p class="sales-label">Meilleure journée</p>
+                    <strong>Samedi</strong>
+                    <span class="muted">74 couverts</span>
+                </article>
+            </div>
+            <div class="sales-detail">
+                <div class="sales-chart">
+                    <h4>Tendance hebdomadaire</h4>
+                    <div class="sales-chart-bars" aria-hidden="true">
+                        <span style="height: 45%" title="Lun"></span>
+                        <span style="height: 52%" title="Mar"></span>
+                        <span style="height: 61%" title="Mer"></span>
+                        <span style="height: 70%" title="Jeu"></span>
+                        <span style="height: 88%" title="Ven"></span>
+                        <span style="height: 100%" title="Sam"></span>
+                        <span style="height: 60%" title="Dim"></span>
+                    </div>
+                    <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans RestauBot.</p>
+                </div>
+                <div class="sales-table-wrapper">
+                    <table class="sales-table">
+                        <thead>
+                            <tr>
+                                <th>Plat</th>
+                                <th>Volumes</th>
+                                <th>Ticket moyen</th>
+                                <th>Conversion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Raviole de homard</td>
+                                <td>54</td>
+                                <td>42 €</td>
+                                <td><span class="trend-positive">+9 %</span></td>
+                            </tr>
+                            <tr>
+                                <td>Risotto champignons anciens</td>
+                                <td>68</td>
+                                <td>36 €</td>
+                                <td><span class="trend-neutral">=</span></td>
+                            </tr>
+                            <tr>
+                                <td>Crumble de poire Safran</td>
+                                <td>34</td>
+                                <td>18 €</td>
+                                <td><span class="trend-positive">+4 %</span></td>
+                            </tr>
+                            <tr>
+                                <td>Tartare de maigre</td>
+                                <td>36</td>
+                                <td>38 €</td>
+                                <td><span class="trend-negative">-6 %</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 </section>

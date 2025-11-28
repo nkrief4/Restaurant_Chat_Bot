@@ -12,7 +12,7 @@
     /* Bordure semi-transparente pour définir les bords du verre */
     border: 1px solid rgba(255, 255, 255, 0.8);
     border-radius: 20px;
-    padding: 20px;
+    padding: 16px;
     /* Ombres douces pour la profondeur */
     box-shadow:
         0 8px 32px rgba(31, 38, 135, 0.07),
@@ -23,7 +23,7 @@
     flex-direction: column;
     gap: 10px;
     cursor: pointer;
-    min-height: 280px;
+    min-height: 220px;
 }
 
 /* Gradient border effect - Ajusté pour le glassmorphism */
@@ -85,7 +85,7 @@
 
 .overview-restaurant-card .restaurant-card-header h3 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--text);
     background: linear-gradient(135deg, #1a1f36 0%, var(--primary) 100%);
