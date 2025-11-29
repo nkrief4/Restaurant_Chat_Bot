@@ -319,8 +319,9 @@
                     <p class="recipes-subtitle">Optimisez vos marges et gérez vos fiches techniques.</p>
                 </div>
                 <div class="recipes-header-actions">
-                    <div class="recipes-restaurant-selector">
-                        <select id="recipes-restaurant-select" class="recipes-select">
+                    <div class="stock-toolbar-block">
+                        <label for="recipes-restaurant-select">Restaurant</label>
+                        <select id="recipes-restaurant-select">
                             <option value="">Sélectionner un restaurant</option>
                         </select>
                     </div>
@@ -356,7 +357,7 @@
 
         <!-- Main Recipes Container -->
         <div class="recipes-container">
-            <!-- Left Panel: Recipes List -->
+            <!-- Left Panel: Recipes List (Full Width) -->
             <div class="recipes-list-panel">
                 <div class="recipes-table-wrapper">
                     <table class="recipes-table">
@@ -371,7 +372,7 @@
                         <tbody id="recipes-table-body">
                             <!-- Will be populated by JavaScript -->
                             <tr>
-                                <td colspan="5" class="text-center muted">Sélectionnez un restaurant pour voir les
+                                <td colspan="4" class="text-center muted">Sélectionnez un restaurant pour voir les
                                     recettes.</td>
                             </tr>
                         </tbody>
@@ -379,47 +380,58 @@
                 </div>
             </div>
 
-            <!-- Right Panel: Recipe Details -->
-            <div class="recipe-details-panel">
-                <div class="recipe-details-empty" id="recipe-details-empty">
-                    <div class="empty-state-icon">�‍🍳</div>
-                    <h3>Sélectionnez un plat</h3>
-                    <p class="muted">Cliquez sur une recette pour voir le détail des coûts et la fiche technique.</p>
-                </div>
+            <!-- Right Panel: Recipe Details (Sliding Overlay) -->
+            <div class="recipe-details-panel" id="recipe-details-panel">
+                <button type="button" class="close-panel-btn" id="btn-close-details" aria-label="Fermer">✕</button>
 
-                <div class="recipe-details-content" id="recipe-details-content" hidden>
-                    <!-- Recipe Header -->
-                    <div class="recipe-detail-header">
-                        <div>
-                            <h2 class="recipe-detail-title" id="recipe-detail-title">Nom du plat</h2>
-                            <span class="recipe-detail-category" id="recipe-detail-category">Catégorie</span>
-                        </div>
-                        <button type="button" class="secondary-btn small" id="btn-edit-recipe">
-                            <span class="icon">✏️</span>
-                            Modifier
-                        </button>
+                <div class="recipe-details-content" id="recipe-details-content">
+                    <div class="recipe-edit-header">
+                        <h2>Détails du plat</h2>
                     </div>
 
-                    <!-- Recipe KPIs -->
-                    <div class="recipe-kpis">
-                        <div class="recipe-kpi-card">
-                            <p class="kpi-label">Coût Matière</p>
-                            <h3 class="kpi-value" id="recipe-detail-cost">0.00 €</h3>
+                    <form id="recipe-edit-form" class="recipe-edit-form">
+                        <div class="form-group">
+                            <label for="edit-recipe-name">Nom du plat</label>
+                            <input type="text" id="edit-recipe-name" class="premium-input" placeholder="Nom du plat">
                         </div>
-                        <div class="recipe-kpi-card">
-                            <p class="kpi-label">Prix Menu</p>
-                            <h3 class="kpi-value" id="recipe-detail-price">0.00 €</h3>
-                        </div>
-                        <div class="recipe-kpi-card is-highlight">
-                            <p class="kpi-label">Marge Brute</p>
-                            <h3 class="kpi-value kpi-profit" id="recipe-detail-margin">0%</h3>
-                        </div>
-                    </div>
 
-                    <!-- Ingredients Section -->
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="edit-recipe-cost">Coût Production (€)</label>
+                                <input type="number" step="0.01" id="edit-recipe-cost" class="premium-input"
+                                    placeholder="0.00">
+                                <div class="cost-helper">
+                                    <small class="muted">Via ingrédients: <span id="calc-cost-display">0.00
+                                            €</span></small>
+                                    <button type="button" id="btn-use-calc-cost" class="ghost-btn tiny"
+                                        title="Utiliser le coût calculé">↺</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-recipe-price">Prix Vente (€)</label>
+                                <input type="number" step="0.01" id="edit-recipe-price" class="premium-input"
+                                    placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div class="margin-display-box" id="margin-display-box">
+                            <span class="margin-label">Marge Brute</span>
+                            <span class="margin-value-large" id="edit-margin-value">- %</span>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="primary-btn full-width" id="btn-save-recipe">
+                                Enregistrer les modifications
+                            </button>
+                        </div>
+                    </form>
+
                     <div class="recipe-section">
                         <div class="recipe-section-header">
-                            <h3>Ingrédients & Coûts</h3>
+                            <h3>Ingrédients</h3>
+                            <button type="button" class="ghost-btn tiny" id="btn-add-recipe-ingredient">
+                                + Ajouter
+                            </button>
                         </div>
                         <div class="recipe-ingredients-table-wrapper">
                             <table class="recipe-ingredients-table">
@@ -428,23 +440,24 @@
                                         <th>Ingrédient</th>
                                         <th class="text-right">Qté</th>
                                         <th class="text-right">Coût</th>
+                                        <th class="text-right"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="recipe-ingredients-body">
-                                    <!-- Will be populated by JavaScript -->
+                                    <!-- Populated by JS -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    <!-- Instructions Section -->
                     <div class="recipe-section">
                         <div class="recipe-section-header">
-                            <h3>Instructions de préparation</h3>
+                            <h3>Instructions</h3>
                         </div>
-                        <ol class="recipe-instructions" id="recipe-instructions-list">
-                            <!-- Will be populated by JavaScript -->
-                        </ol>
+                        <div class="form-group">
+                            <textarea id="edit-recipe-instructions" class="premium-input" rows="6"
+                                placeholder="Saisissez les instructions de la recette ici..."></textarea>
+                        </div>
                     </div>
                 </div>
             </div>

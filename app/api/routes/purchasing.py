@@ -174,6 +174,7 @@ class MenuItemCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     category: Optional[str] = Field(default=None, max_length=100)
     menu_price: Optional[float] = Field(default=None, ge=0)
+    production_cost: Optional[float] = Field(default=None, ge=0)
     instructions: Optional[str] = Field(default=None, max_length=2000)
 
 
@@ -181,6 +182,7 @@ class MenuItemUpdatePayload(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     category: Optional[str] = Field(default=None, max_length=100)
     menu_price: Optional[float] = Field(default=None, ge=0)
+    production_cost: Optional[float] = Field(default=None, ge=0)
     instructions: Optional[str] = Field(default=None, max_length=2000)
 
 
@@ -907,7 +909,7 @@ class SupabasePurchasingDAO:
                 # Fetch all menu items for the restaurant
                 menu_items_response = (
                     client.table("menu_items")
-                    .select("id,name,category,menu_price,instructions")
+                    .select("id,name,category,menu_price,production_cost,instructions")
                     .eq("restaurant_id", self.restaurant_id_str)
                     .order("name")
                     .execute()
@@ -974,27 +976,32 @@ class SupabasePurchasingDAO:
                     item_recipes = recipes_by_menu_item.get(item_id, [])
                     
                     # Calculate total cost
-                    total_cost = 0.0
+                    calculated_cost = 0.0
                     for recipe in item_recipes:
                         ingredient_id = recipe.get("ingredient_id")
                         quantity = float(recipe.get("quantity_per_unit", 0))
                         unit_cost = ingredient_costs.get(ingredient_id, 0.0)
-                        total_cost += quantity * unit_cost
+                        calculated_cost += quantity * unit_cost
+                    
+                    # Use production_cost if set, otherwise calculated_cost
+                    production_cost = item.get("production_cost")
+                    final_cost = float(production_cost) if production_cost is not None else calculated_cost
                     
                     # Calculate profit margin if menu price exists
                     menu_price = item.get("menu_price")
                     profit_margin = None
-                    if menu_price and menu_price > 0 and total_cost > 0:
-                        profit_margin = ((menu_price - total_cost) / menu_price) * 100
+                    if menu_price and menu_price > 0 and final_cost > 0:
+                        profit_margin = ((menu_price - final_cost) / menu_price) * 100
                     
                     results.append({
                         "menu_item_id": item_id,
                         "menu_item_name": item.get("name", ""),
                         "category": item.get("category"),
-                        "total_cost": round(total_cost, 2),
+                        "total_cost": round(final_cost, 2),
                         "menu_price": menu_price,
                         "profit_margin": round(profit_margin, 1) if profit_margin is not None else None,
-                        "ingredient_count": len(item_recipes)
+                        "ingredient_count": len(item_recipes),
+                        "is_manual_cost": production_cost is not None
                     })
                 
                 return results
@@ -1014,7 +1021,7 @@ class SupabasePurchasingDAO:
                 # Fetch menu item
                 menu_item_response = (
                     client.table("menu_items")
-                    .select("id,name,category,menu_price,instructions")
+                    .select("id,name,category,menu_price,production_cost,instructions")
                     .eq("restaurant_id", self.restaurant_id_str)
                     .eq("id", str(menu_item_id))
                     .limit(1)
@@ -1093,20 +1100,24 @@ class SupabasePurchasingDAO:
                         })
                 
                 # Calculate profit margin
+                production_cost = menu_item.get("production_cost")
+                final_cost = float(production_cost) if production_cost is not None else total_cost
+
                 menu_price = menu_item.get("menu_price")
                 profit_margin = None
-                if menu_price and menu_price > 0 and total_cost > 0:
-                    profit_margin = ((menu_price - total_cost) / menu_price) * 100
+                if menu_price and menu_price > 0 and final_cost > 0:
+                    profit_margin = ((menu_price - final_cost) / menu_price) * 100
                 
                 return {
                     "menu_item_id": menu_item["id"],
                     "menu_item_name": menu_item.get("name", ""),
                     "category": menu_item.get("category"),
-                    "total_cost": round(total_cost, 2),
+                    "total_cost": round(final_cost, 2),
                     "menu_price": menu_price,
                     "profit_margin": round(profit_margin, 1) if profit_margin is not None else None,
                     "ingredients": ingredients_list,
-                    "instructions": menu_item.get("instructions")
+                    "instructions": menu_item.get("instructions"),
+                    "production_cost": production_cost
                 }
         
         try:
@@ -1162,6 +1173,8 @@ class SupabasePurchasingDAO:
                     data["category"] = payload.category
                 if payload.menu_price is not None:
                     data["menu_price"] = payload.menu_price
+                if payload.production_cost is not None:
+                    data["production_cost"] = payload.production_cost
                 if payload.instructions is not None:
                     data["instructions"] = payload.instructions
                 
