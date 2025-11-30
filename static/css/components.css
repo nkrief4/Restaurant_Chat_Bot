@@ -120,6 +120,11 @@
 @media (max-width: 1023px) {
     .dashboard .sidebar-toggle {
         display: inline-flex !important;
+        flex-shrink: 0;
+        border: none;
+        padding: 0;
+        width: 40px;
+        height: 40px;
     }
 }
 
@@ -338,7 +343,7 @@ textarea {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
-    z-index: 60;
+    z-index: 200;
 }
 
 .modal.open,
@@ -354,7 +359,7 @@ textarea {
         padding: 12px;
         align-items: flex-end;
     }
-    
+
     .modal.open,
     .modal.is-active,
     .modal[aria-hidden='false'] {
@@ -367,7 +372,7 @@ textarea {
         align-items: flex-start;
         padding: 8px;
     }
-    
+
     .modal.open,
     .modal.is-active,
     .modal[aria-hidden='false'] {
@@ -385,7 +390,8 @@ body.modal-open {
 
 @media (max-width: 640px) {
     body.modal-open {
-        position: fixed; /* Prevent iOS rubber banding */
+        position: fixed;
+        /* Prevent iOS rubber banding */
         height: 100vh;
         -webkit-overflow-scrolling: touch;
     }
@@ -647,7 +653,7 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator {
     opacity: 0;
     transform: translateY(10px);
     transition: opacity 0.2s ease, transform 0.2s ease;
-    z-index: 80;
+    z-index: 210;
 }
 
 .toast.show {

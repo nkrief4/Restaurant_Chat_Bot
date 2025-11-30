@@ -1,0 +1,393 @@
+/* Dashboard Specifics */
+.dashboard-block {
+    background: #fff;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 12px 38px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.block-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+
+.order-item:hover {
+    background: #f1f5f9;
+}
+
+.order-info h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.order-meta {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.order-status {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 99px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.order-status.pending {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.order-status.sent {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.order-status.delivered {
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.order-status.cancelled {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.purchasing-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.chart-container {
+    position: relative;
+    height: 220px;
+    width: 100%;
+}
+
+/* Sales Summary */
+.sales-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.sales-detail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    align-items: stretch;
+}
+
+.sales-chart {
+    background: linear-gradient(140deg, rgba(37, 99, 235, 0.12), rgba(14, 116, 144, 0.15));
+    border-radius: 24px;
+    padding: 16px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sales-chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex: 1;
+}
+
+.sales-chart-bars span {
+    flex: 1;
+    border-radius: 14px 14px 0 0;
+    background: #1d4ed8;
+    min-height: 40px;
+}
+
+.sales-chart-bars span:last-child {
+    background: #0ea5e9;
+}
+
+.small {
+    font-size: 0.85rem;
+}
+/* ========================================
+   RESPONSIVE DESIGN - Dashboard Achats & Stock
+   ======================================== */
+
+/* Tablettes et petits écrans (≤ 1280px) */
+@media (max-width: 1280px) {
+    .purchasing-charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .sales-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+    
+    .chart-container {
+        height: 200px;
+    }
+}
+
+/* Tablettes moyennes (≤ 1024px) */
+@media (max-width: 1024px) {
+    .dashboard-block {
+        padding: 16px;
+        border-radius: 16px;
+    }
+    
+    .block-header h3 {
+        font-size: 1rem;
+    }
+    
+    .purchasing-charts-grid {
+        gap: 16px;
+    }
+    
+    .sales-detail {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .chart-container {
+        height: 180px;
+    }
+}
+
+/* Tablettes (≤ 768px) */
+@media (max-width: 768px) {
+    .dashboard-block {
+        padding: 14px;
+        border-radius: 14px;
+    }
+    
+    .block-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .block-header h3 {
+        font-size: 0.95rem;
+    }
+    
+    .orders-list {
+        gap: 10px;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px;
+    }
+    
+    .order-info h4 {
+        font-size: 0.9rem;
+    }
+    
+    .order-meta {
+        font-size: 0.75rem;
+    }
+    
+    .order-status {
+        align-self: flex-start;
+    }
+    
+    .purchasing-charts-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+    
+    .sales-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .sales-chart {
+        padding: 14px;
+        min-height: 180px;
+        border-radius: 18px;
+    }
+    
+    .chart-container {
+        height: 160px;
+    }
+}
+
+/* Mobiles (≤ 640px) */
+@media (max-width: 640px) {
+    .dashboard-block {
+        padding: 12px;
+        border-radius: 12px;
+    }
+    
+    .block-header h3 {
+        font-size: 0.9rem;
+    }
+    
+    .orders-list {
+        gap: 8px;
+    }
+    
+    .order-item {
+        padding: 8px;
+        border-radius: 10px;
+    }
+    
+    .order-info h4 {
+        font-size: 0.85rem;
+    }
+    
+    .order-meta {
+        font-size: 0.7rem;
+    }
+    
+    .order-status {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+    }
+    
+    .sales-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .sales-chart {
+        padding: 12px;
+        min-height: 160px;
+        border-radius: 16px;
+    }
+    
+    .sales-chart-bars {
+        gap: 6px;
+    }
+    
+    .chart-container {
+        height: 140px;
+    }
+    
+    .small {
+        font-size: 0.8rem;
+    }
+}
+
+/* Très petits mobiles (≤ 480px) */
+@media (max-width: 480px) {
+    .dashboard-block {
+        padding: 10px;
+    }
+    
+    .block-header h3 {
+        font-size: 0.85rem;
+    }
+    
+    .order-item {
+        padding: 6px;
+    }
+    
+    .sales-chart {
+        padding: 10px;
+        min-height: 140px;
+    }
+    
+    .chart-container {
+        height: 120px;
+    }
+}
+
+/* Amélioration responsive pour les commandes récentes */
+@media (max-width: 768px) {
+    .orders-list {
+        gap: 8px;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    .order-info {
+        width: 100%;
+    }
+    
+    .order-info h4 {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+    
+    .order-meta {
+        font-size: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .order-status {
+        align-self: flex-start;
+        margin-top: 4px;
+    }
+}
+
+@media (max-width: 640px) {
+    .order-item {
+        padding: 10px;
+    }
+    
+    .order-info h4 {
+        font-size: 0.85rem;
+    }
+    
+    .order-meta {
+        font-size: 0.7rem;
+        gap: 6px;
+    }
+    
+    .order-status {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .order-item {
+        padding: 8px;
+    }
+    
+    .order-info h4 {
+        font-size: 0.8rem;
+    }
+}

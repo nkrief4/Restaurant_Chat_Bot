@@ -1,0 +1,326 @@
+/* Purchasing & Stock Layout */
+#purchasing.section.active-section {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* Animations */
+#purchasing.active-section .purchasing-header {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+#purchasing.active-section .purchasing-kpi-grid {
+    animation: fadeInUp 0.5s ease-out 0.1s forwards;
+    opacity: 0;
+}
+
+#purchasing.active-section .purchasing-panel.is-active {
+    animation: fadeInUp 0.5s ease-out 0.2s forwards;
+    opacity: 0;
+}
+
+#purchasing.active-section .purchasing-card-grid {
+    animation: fadeInUp 0.5s ease-out 0.3s forwards;
+    opacity: 0;
+}
+
+.purchasing-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.purchasing-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.purchasing-dashboard-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.purchasing-dashboard-head .eyebrow {
+    margin-bottom: 4px;
+    color: #2563eb;
+}
+
+.purchasing-dashboard-head h1 {
+    font-size: clamp(1.6rem, 2vw, 2rem);
+    margin: 0;
+    color: #0f172a;
+}
+
+.purchasing-dashboard-description {
+    margin: 12px 0 0;
+    color: #475467;
+    font-size: 0.95rem;
+    max-width: 520px;
+}
+
+.purchasing-header-controls {
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #fff;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.purchasing-active-restaurant {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.purchasing-active-restaurant p {
+    margin: 0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+}
+
+.purchasing-active-restaurant strong {
+    font-size: 1.15rem;
+    color: #0f172a;
+}
+
+.purchasing-panel {
+    display: none;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.purchasing-panel.is-active {
+    display: flex;
+}
+
+.purchasing-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.purchasing-main-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 1024px) {
+    .purchasing-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .purchasing-dashboard-head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .purchasing-header-controls {
+        width: 100%;
+    }
+}
+
+/* Utilities */
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.muted {
+    color: var(--text-muted);
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+.full-width {
+    width: 100%;
+    justify-content: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.mb-2 {
+    margin-bottom: 8px;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+/* ========================================
+   RESPONSIVE DESIGN - Layout
+   ======================================== */
+
+/* Tablettes moyennes (≤ 1024px) */
+@media (max-width: 1024px) {
+    #purchasing.section.active-section {
+        gap: 24px;
+    }
+    
+    .purchasing-dashboard-head {
+        gap: 20px;
+        padding-bottom: 10px;
+    }
+    
+    .purchasing-dashboard-head h1 {
+        font-size: clamp(1.4rem, 2vw, 1.8rem);
+    }
+    
+    .purchasing-dashboard-description {
+        font-size: 0.9rem;
+        margin: 10px 0 0;
+    }
+    
+    .purchasing-header-controls {
+        min-width: 200px;
+        padding: 14px;
+        border-radius: 16px;
+    }
+    
+    .purchasing-active-restaurant strong {
+        font-size: 1.05rem;
+    }
+}
+
+/* Tablettes (≤ 768px) */
+@media (max-width: 768px) {
+    #purchasing.section.active-section {
+        gap: 20px;
+    }
+    
+    .purchasing-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .purchasing-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .purchasing-dashboard-head {
+        gap: 16px;
+        padding-bottom: 8px;
+    }
+    
+    .purchasing-dashboard-head h1 {
+        font-size: clamp(1.2rem, 2vw, 1.6rem);
+    }
+    
+    .purchasing-dashboard-description {
+        font-size: 0.85rem;
+        margin: 8px 0 0;
+    }
+    
+    .purchasing-header-controls {
+        min-width: 0;
+        padding: 12px;
+        border-radius: 14px;
+    }
+    
+    .purchasing-active-restaurant p {
+        font-size: 0.75rem;
+    }
+    
+    .purchasing-active-restaurant strong {
+        font-size: 1rem;
+    }
+    
+    .purchasing-panel {
+        gap: 20px;
+    }
+}
+
+/* Mobiles (≤ 640px) */
+@media (max-width: 640px) {
+    #purchasing.section.active-section {
+        gap: 16px;
+    }
+    
+    .purchasing-dashboard-head {
+        gap: 12px;
+    }
+    
+    .purchasing-dashboard-head h1 {
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+    }
+    
+    .purchasing-dashboard-head .eyebrow {
+        font-size: 0.7rem;
+    }
+    
+    .purchasing-dashboard-description {
+        font-size: 0.8rem;
+        margin: 6px 0 0;
+    }
+    
+    .purchasing-header-controls {
+        padding: 10px;
+        border-radius: 12px;
+    }
+    
+    .purchasing-active-restaurant p {
+        font-size: 0.7rem;
+    }
+    
+    .purchasing-active-restaurant strong {
+        font-size: 0.95rem;
+    }
+    
+    .purchasing-panel {
+        gap: 16px;
+    }
+}
+
+/* Très petits mobiles (≤ 480px) */
+@media (max-width: 480px) {
+    #purchasing.section.active-section {
+        gap: 12px;
+    }
+    
+    .purchasing-dashboard-head h1 {
+        font-size: clamp(1rem, 2vw, 1.2rem);
+    }
+    
+    .purchasing-dashboard-description {
+        font-size: 0.75rem;
+    }
+    
+    .purchasing-header-controls {
+        padding: 8px;
+    }
+    
+    .purchasing-active-restaurant strong {
+        font-size: 0.9rem;
+    }
+}

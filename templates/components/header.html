@@ -1,4 +1,9 @@
 <nav class="global-toolbar" aria-label="Navigation principale">
+    <button type="button" class="ghost-btn icon-btn sidebar-toggle" id="sidebar-toggle"
+        aria-controls="dashboard-sidebar" aria-expanded="false">
+        <span class="sr-only">Ouvrir le menu</span>
+        <span class="sidebar-toggle-icon" aria-hidden="true"></span>
+    </button>
     <div class="global-restaurant-picker">
         <div class="global-restaurant-select">
             <select id="global-restaurant-select" aria-label="Choisir le restaurant actif">
@@ -15,11 +20,7 @@
 </nav>
 
 <div class="topbar-main">
-    <button type="button" class="ghost-btn icon-btn sidebar-toggle" id="sidebar-toggle"
-        aria-controls="dashboard-sidebar" aria-expanded="false">
-        <span class="sr-only">Ouvrir le menu</span>
-        <span class="sidebar-toggle-icon" aria-hidden="true"></span>
-    </button>
+
     <div class="topbar-content">
         <p class="eyebrow">RestauBot</p>
         <h1 id="welcome-title">Bonjour</h1>

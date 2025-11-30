@@ -1,0 +1,557 @@
+/* Tables */
+.stock-table-wrapper,
+.sales-table-wrapper {
+    background: #fff;
+    border-radius: 24px;
+    padding: 10px;
+    box-shadow: 0 15px 45px rgba(15, 23, 42, 0.08);
+}
+
+.stock-table,
+.sales-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.stock-table thead th,
+.sales-table thead th {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    font-weight: 600;
+    padding: 14px;
+}
+
+.stock-table tbody td,
+.sales-table tbody td {
+    padding: 16px 14px;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    vertical-align: top;
+}
+
+.stock-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stock-item span {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.stock-quantity {
+    font-weight: 600;
+    margin: 0;
+    color: #0f172a;
+}
+
+.stock-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.stock-status.is-ok {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+}
+
+.stock-status.is-low {
+    background: rgba(251, 191, 36, 0.2);
+    color: #92400e;
+}
+
+.stock-status.is-warning {
+    background: rgba(249, 115, 22, 0.2);
+    color: #c2410c;
+}
+
+.stock-status.is-critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: #b91c1c;
+}
+
+.stock-trend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.trend-positive {
+    color: #0f8e3d;
+    font-weight: 600;
+}
+
+.trend-negative {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.trend-neutral {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.dashboard-table th {
+    text-align: left;
+    padding: 12px 8px;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.dashboard-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.dashboard-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Modern Stock Table */
+.stock-table-container {
+    overflow-x: auto;
+    background: #fff;
+}
+
+.stock-table-new {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.stock-table-new thead {
+    background: #f8fafc;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.stock-table-new thead th {
+    padding: 20px 24px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.stock-table-new tbody tr {
+    transition: background 0.2s ease;
+}
+
+.stock-table-new tbody tr:hover {
+    background: #f8fafc;
+}
+
+.stock-table-new tbody td {
+    padding: 20px 24px;
+    font-size: 0.95rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.stock-table-new tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.stock-item-name {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stock-metadata-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.stock-ingredient-name {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 1rem;
+}
+
+.stock-ingredient-unit {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.stock-category-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+/* Recipes Table */
+.recipes-table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.recipes-table-wrapper::-webkit-scrollbar-track {
+    background: rgba(58, 117, 255, 0.03);
+    border-radius: 10px;
+    margin: 8px 0;
+}
+
+.recipes-table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(58, 117, 255, 0.25);
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.recipes-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(58, 117, 255, 0.4);
+}
+
+.recipes-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.recipes-table th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    backdrop-filter: blur(8px);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border-bottom: 2px solid rgba(58, 117, 255, 0.08);
+    z-index: 10;
+}
+
+.recipes-table th.text-right {
+    text-align: right;
+}
+
+.recipes-table th:nth-child(1) {
+    width: 45%;
+}
+
+.recipes-table th:nth-child(2) {
+    width: 15%;
+}
+
+.recipes-table th:nth-child(3) {
+    width: 15%;
+}
+
+.recipes-table th:nth-child(4) {
+    width: 25%;
+}
+
+.recipes-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(58, 117, 255, 0.04);
+    color: var(--text);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.recipe-card-row {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    animation: fadeInUp 0.4s ease-out backwards;
+    animation-delay: calc(var(--row-index, 0) * 0.03s);
+}
+
+.recipe-card-row td:first-child {
+    position: relative;
+}
+
+.recipe-card-row td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.recipe-card-row:hover {
+    transform: scale(1.005);
+}
+
+.recipe-card-row:hover td {
+    background: rgba(58, 117, 255, 0.04);
+}
+
+.recipe-card-row.active td:first-child::before {
+    opacity: 1;
+}
+
+.recipe-card-row.active td {
+    background: rgba(58, 117, 255, 0.08);
+    border-bottom-color: rgba(58, 117, 255, 0.12);
+}
+
+.recipe-card-row.active .recipe-name {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.recipe-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.recipe-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1.3;
+}
+/* ========================================
+   RESPONSIVE DESIGN - Tables
+   ======================================== */
+
+/* Tablettes moyennes (≤ 1024px) */
+@media (max-width: 1024px) {
+    .dashboard-table th {
+        padding: 10px 6px;
+        font-size: 0.75rem;
+    }
+    
+    .dashboard-table td {
+        padding: 10px 6px;
+        font-size: 0.85rem;
+    }
+    
+    .stock-table-new thead th {
+        padding: 16px 18px;
+        font-size: 0.7rem;
+    }
+    
+    .stock-table-new tbody td {
+        padding: 16px 18px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Tablettes (≤ 768px) */
+@media (max-width: 768px) {
+    /* Transformation du tableau en cartes pour mobile */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .dashboard-table {
+        font-size: 0.85rem;
+    }
+    
+    .dashboard-table th {
+        padding: 8px 4px;
+        font-size: 0.7rem;
+    }
+    
+    .dashboard-table td {
+        padding: 8px 4px;
+        font-size: 0.8rem;
+    }
+    
+    .stock-table-new thead th {
+        padding: 12px 14px;
+        font-size: 0.65rem;
+    }
+    
+    .stock-table-new tbody td {
+        padding: 12px 14px;
+        font-size: 0.85rem;
+    }
+    
+    .stock-ingredient-name {
+        font-size: 0.9rem;
+    }
+    
+    .stock-ingredient-unit {
+        font-size: 0.8rem;
+    }
+    
+    .stock-category-pill {
+        font-size: 0.65rem;
+        padding: 2px 8px;
+    }
+}
+
+/* Mobiles (≤ 640px) */
+@media (max-width: 640px) {
+    /* Transformation complète en cartes pour les petits écrans */
+    .table-responsive {
+        overflow: visible;
+    }
+    
+    .dashboard-table {
+        display: block;
+        overflow: visible;
+    }
+    
+    .dashboard-table thead {
+        display: none;
+    }
+    
+    .dashboard-table tbody {
+        display: block;
+    }
+    
+    .dashboard-table tr {
+        display: block;
+        margin-bottom: 12px;
+        padding: 12px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .dashboard-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: right;
+    }
+    
+    .dashboard-table td:last-child {
+        border-bottom: none;
+    }
+    
+    .dashboard-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: left;
+        flex: 1;
+    }
+    
+    .dashboard-table td:first-child {
+        font-weight: 600;
+        color: #0f172a;
+    }
+    
+    /* Styles pour le tableau des stocks sur mobile */
+    .stock-table-container {
+        overflow-x: auto;
+    }
+    
+    .stock-table-new {
+        min-width: 600px;
+    }
+    
+    .stock-table-new thead th {
+        padding: 10px 12px;
+        font-size: 0.6rem;
+    }
+    
+    .stock-table-new tbody td {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .stock-ingredient-name {
+        font-size: 0.85rem;
+    }
+    
+    .stock-ingredient-unit {
+        font-size: 0.75rem;
+    }
+    
+    .stock-status {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+    }
+}
+
+/* Très petits mobiles (≤ 480px) */
+@media (max-width: 480px) {
+    .dashboard-table tr {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+    }
+    
+    .dashboard-table td {
+        padding: 6px 0;
+        font-size: 0.75rem;
+    }
+    
+    .dashboard-table td::before {
+        font-size: 0.7rem;
+    }
+    
+    .stock-table-new {
+        min-width: 500px;
+    }
+    
+    .stock-table-new thead th {
+        padding: 8px 10px;
+        font-size: 0.55rem;
+    }
+    
+    .stock-table-new tbody td {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+    
+    .stock-ingredient-name {
+        font-size: 0.8rem;
+    }
+    
+    .stock-status {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+    }
+    
+    .stock-category-pill {
+        font-size: 0.6rem;
+        padding: 1px 6px;
+    }
+}

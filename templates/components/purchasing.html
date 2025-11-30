@@ -384,18 +384,27 @@
                     <!-- Content (hidden during loading) -->
                     <div class="recipe-details-content" id="recipe-details-content">
                         <div class="recipe-details-header">
-                            <div>
-                                <p class="recipe-detail-category" id="recipe-detail-category">Non catégorisé</p>
-                                <h2 id="recipe-detail-name">Sélectionnez un plat</h2>
+                            <div class="header-text-content">
+                                <div class="editable-field" data-field="category">
+                                    <p class="recipe-detail-category display-view" id="recipe-detail-category">Non
+                                        catégorisé</p>
+                                    <input type="text" class="edit-view premium-input small" id="edit-recipe-category"
+                                        placeholder="Catégorie">
+                                </div>
+                                <div class="editable-field" data-field="name">
+                                    <h2 class="display-view" id="recipe-detail-name">Sélectionnez un plat</h2>
+                                    <input type="text" class="edit-view premium-input large" id="edit-recipe-name"
+                                        placeholder="Nom du plat">
+                                </div>
                             </div>
                             <div class="recipe-details-header-actions">
                                 <button type="button" class="ghost-btn icon-only" id="btn-collapse-details"
                                     aria-label="Fermer le panneau">
                                     <span aria-hidden="true">×</span>
                                 </button>
-                                <button type="button" class="recipe-edit-btn" id="btn-edit-recipe">
+                                <button type="button" class="recipe-edit-btn" id="btn-toggle-edit">
                                     <span class="icon-pencil" aria-hidden="true"></span>
-                                    <span>Modifier</span>
+                                    <span class="btn-text">Modifier</span>
                                 </button>
                             </div>
                         </div>
@@ -403,11 +412,17 @@
                         <div class="recipe-stats-grid">
                             <article class="recipe-stat-card">
                                 <p class="stat-label">Coût production</p>
-                                <strong id="recipe-detail-cost">—</strong>
+                                <strong id="recipe-detail-cost" class="display-view">—</strong>
+                                <div class="edit-view input-with-hint">
+                                    <input type="number" step="0.01" id="edit-recipe-cost" class="premium-input"
+                                        readonly placeholder="0.00">
+                                </div>
                             </article>
-                            <article class="recipe-stat-card">
+                            <article class="recipe-stat-card editable-field" data-field="price">
                                 <p class="stat-label">Prix de vente</p>
-                                <strong id="recipe-detail-price">—</strong>
+                                <strong id="recipe-detail-price" class="display-view">—</strong>
+                                <input type="number" step="0.01" id="edit-recipe-price" class="edit-view premium-input"
+                                    placeholder="0.00">
                             </article>
                             <article class="recipe-stat-card">
                                 <p class="stat-label">Marge</p>
@@ -421,10 +436,10 @@
                                     <h3>Ingrédients</h3>
                                     <p class="muted small">Inventaire utilisé pour ce plat</p>
                                 </div>
-                                <button type="button" class="ghost-btn small" id="btn-edit-ingredients">Ajouter /
-                                    retirer</button>
                             </div>
-                            <div class="recipe-ingredients-table">
+
+                            <!-- Display View: Read-only Table -->
+                            <div class="recipe-ingredients-table display-view">
                                 <table>
                                     <thead>
                                         <tr>
@@ -440,220 +455,134 @@
                                     </tbody>
                                 </table>
                             </div>
+
+                            <!-- Edit View: Ingredient Manager -->
+                            <div class="ingredients-manager edit-view">
+                                <div class="ingredients-header">
+                                    <span>Ingrédient</span>
+                                    <span>Quantité</span>
+                                    <span>Unité</span>
+                                    <span>Coût</span>
+                                    <span>Action</span>
+                                </div>
+                                <div id="edit-recipe-ingredients-list" class="ingredients-list">
+                                    <!-- Dynamic content -->
+                                </div>
+                                <div class="add-ingredient-row">
+                                    <select id="new-ingredient-select" class="ingredient-select">
+                                        <option value="">Ajouter un ingrédient...</option>
+                                    </select>
+                                    <input type="number" id="new-ingredient-quantity" placeholder="Qté" step="0.01"
+                                        min="0">
+                                    <span class="unit-display" id="new-ingredient-unit">-</span>
+                                    <button type="button" id="btn-add-ingredient" class="icon-btn success"
+                                        title="Ajouter">
+                                        <span>+</span>
+                                    </button>
+                                </div>
+                            </div>
                         </section>
 
-                        <section class="recipe-section">
+                        <section class="recipe-section editable-field" data-field="instructions">
                             <div class="recipe-section-header">
                                 <div>
                                     <h3>Instructions</h3>
                                     <p class="muted small">Fiche technique et étapes de préparation</p>
                                 </div>
                             </div>
-                            <div class="recipe-instructions" id="recipe-instructions">
+                            <div class="recipe-instructions display-view" id="recipe-instructions">
                                 Sélectionnez un plat pour afficher sa fiche.
                             </div>
+                            <textarea id="edit-recipe-instructions" class="edit-view premium-input" rows="6"
+                                placeholder="Saisissez les étapes de préparation..."></textarea>
                         </section>
 
                         <div class="recipe-secondary-actions">
+                            <button type="button" class="ghost-btn" id="btn-cancel-edit">Annuler</button>
                             <button type="button" class="ghost-btn danger" id="btn-delete-recipe">Supprimer ce
                                 plat</button>
                         </div>
                     </div>
-                    <!-- End of recipe-details-content -->
+                </div>
 
-                    <!-- Edit Modal -->
-                    <div class="recipe-edit-modal" id="recipe-edit-modal" hidden>
-                        <div class="recipe-edit-modal-overlay"></div>
-                        <div class="recipe-edit-modal-content">
-                            <div class="recipe-edit-modal-header">
-                                <div>
-                                    <p class="eyebrow">Modification</p>
-                                    <h3>Éditer le plat</h3>
-                                </div>
-                                <button type="button" class="modal-close-btn" id="btn-close-edit-modal"
-                                    aria-label="Fermer">
-                                    <span aria-hidden="true">×</span>
-                                </button>
+                <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
+                    <header class="purchasing-panel-head">
+                        <div>
+                            <p class="eyebrow">Ventes par plat</p>
+                            <h3>Quel plat tire les revenus ?</h3>
+                        </div>
+                        <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
+                    </header>
+                    <div class="sales-summary-grid">
+                        <article class="sales-card">
+                            <p class="sales-label">Ventes 7 derniers jours</p>
+                            <strong>192 plats</strong>
+                            <span class="trend-positive">+14 %</span>
+                        </article>
+                        <article class="sales-card">
+                            <p class="sales-label">Panier moyen</p>
+                            <strong>52,80 €</strong>
+                            <span class="trend-neutral">=</span>
+                        </article>
+                        <article class="sales-card">
+                            <p class="sales-label">Meilleure journée</p>
+                            <strong>Samedi</strong>
+                            <span class="muted">74 couverts</span>
+                        </article>
+                    </div>
+                    <div class="sales-detail">
+                        <div class="sales-chart">
+                            <h4>Tendance hebdomadaire</h4>
+                            <div class="sales-chart-bars" aria-hidden="true">
+                                <span style="height: 45%" title="Lun"></span>
+                                <span style="height: 52%" title="Mar"></span>
+                                <span style="height: 61%" title="Mer"></span>
+                                <span style="height: 70%" title="Jeu"></span>
+                                <span style="height: 88%" title="Ven"></span>
+                                <span style="height: 100%" title="Sam"></span>
+                                <span style="height: 60%" title="Dim"></span>
                             </div>
-                            <form class="recipe-edit-form-modal" id="recipe-edit-form">
-                                <div class="recipe-edit-grid">
-                                    <div class="form-group">
-                                        <label for="edit-recipe-name">
-                                            <span class="label-icon">📝</span>
-                                            Nom du plat
-                                        </label>
-                                        <input type="text" id="edit-recipe-name" placeholder="Nom du plat" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="edit-recipe-category">
-                                            <span class="label-icon">🏷️</span>
-                                            Catégorie
-                                        </label>
-                                        <input type="text" id="edit-recipe-category"
-                                            placeholder="Entrée, Plat, Dessert...">
-                                    </div>
-                                </div>
-
-                                <!-- Ingredients Section -->
-                                <div class="form-group full-width">
-                                    <label>
-                                        <span class="label-icon">🥕</span>
-                                        Ingrédients & Fiche Technique
-                                    </label>
-
-                                    <div class="ingredients-manager">
-                                        <!-- Header Row -->
-                                        <div class="ingredients-header">
-                                            <span>Ingrédient</span>
-                                            <span>Quantité</span>
-                                            <span>Unité</span>
-                                            <span>Coût</span>
-                                            <span>Action</span>
-                                        </div>
-
-                                        <!-- Ingredients List -->
-                                        <div id="edit-recipe-ingredients-list" class="ingredients-list">
-                                            <!-- Dynamic content will be inserted here -->
-                                        </div>
-
-                                        <!-- Add New Ingredient Row -->
-                                        <div class="add-ingredient-row">
-                                            <select id="new-ingredient-select" class="ingredient-select">
-                                                <option value="">Ajouter un ingrédient...</option>
-                                                <!-- Options populated via JS -->
-                                            </select>
-                                            <input type="number" id="new-ingredient-quantity" placeholder="Qté"
-                                                step="0.01" min="0">
-                                            <span class="unit-display" id="new-ingredient-unit">-</span>
-                                            <button type="button" id="btn-add-ingredient" class="icon-btn success"
-                                                title="Ajouter">
-                                                <span>+</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="recipe-edit-grid">
-                                    <div class="form-group">
-                                        <label for="edit-recipe-cost">
-                                            <span class="label-icon">💰</span>
-                                            Coût de production (€)
-                                        </label>
-                                        <div class="input-with-hint">
-                                            <input type="number" step="0.01" id="edit-recipe-cost" placeholder="0.00"
-                                                readonly>
-                                            <span class="input-hint">Calculé auto.</span>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="edit-recipe-price">
-                                            <span class="label-icon">💵</span>
-                                            Prix de vente (€)
-                                        </label>
-                                        <input type="number" step="0.01" id="edit-recipe-price" placeholder="0.00">
-                                    </div>
-                                </div>
-
-                                <div class="form-group full-width">
-                                    <label for="edit-recipe-instructions">
-                                        <span class="label-icon">📋</span>
-                                        Instructions de préparation
-                                    </label>
-                                    <textarea id="edit-recipe-instructions" rows="6"
-                                        placeholder="Saisissez les étapes de préparation..."></textarea>
-                                </div>
-
-                                <div class="recipe-edit-modal-actions">
-                                    <button type="button" class="ghost-btn" id="btn-cancel-edit">Annuler</button>
-                                    <button type="submit" class="primary-btn" id="btn-save-recipe">
-                                        <span class="btn-icon">✓</span>
-                                        Enregistrer les modifications
-                                    </button>
-                                </div>
-                            </form>
+                            <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans
+                                RestauBot.</p>
+                        </div>
+                        <div class="sales-table-wrapper">
+                            <table class="sales-table">
+                                <thead>
+                                    <tr>
+                                        <th>Plat</th>
+                                        <th>Volumes</th>
+                                        <th>Ticket moyen</th>
+                                        <th>Conversion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Raviole de homard</td>
+                                        <td>54</td>
+                                        <td>42 €</td>
+                                        <td><span class="trend-positive">+9 %</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Risotto champignons anciens</td>
+                                        <td>68</td>
+                                        <td>36 €</td>
+                                        <td><span class="trend-neutral">=</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Crumble de poire Safran</td>
+                                        <td>34</td>
+                                        <td>18 €</td>
+                                        <td><span class="trend-positive">+4 %</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Tartare de maigre</td>
+                                        <td>36</td>
+                                        <td>38 €</td>
+                                        <td><span class="trend-negative">-6 %</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-            </aside>
-        </div>
-
-        <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
-            <header class="purchasing-panel-head">
-                <div>
-                    <p class="eyebrow">Ventes par plat</p>
-                    <h3>Quel plat tire les revenus ?</h3>
-                </div>
-                <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
-            </header>
-            <div class="sales-summary-grid">
-                <article class="sales-card">
-                    <p class="sales-label">Ventes 7 derniers jours</p>
-                    <strong>192 plats</strong>
-                    <span class="trend-positive">+14 %</span>
-                </article>
-                <article class="sales-card">
-                    <p class="sales-label">Panier moyen</p>
-                    <strong>52,80 €</strong>
-                    <span class="trend-neutral">=</span>
-                </article>
-                <article class="sales-card">
-                    <p class="sales-label">Meilleure journée</p>
-                    <strong>Samedi</strong>
-                    <span class="muted">74 couverts</span>
-                </article>
-            </div>
-            <div class="sales-detail">
-                <div class="sales-chart">
-                    <h4>Tendance hebdomadaire</h4>
-                    <div class="sales-chart-bars" aria-hidden="true">
-                        <span style="height: 45%" title="Lun"></span>
-                        <span style="height: 52%" title="Mar"></span>
-                        <span style="height: 61%" title="Mer"></span>
-                        <span style="height: 70%" title="Jeu"></span>
-                        <span style="height: 88%" title="Ven"></span>
-                        <span style="height: 100%" title="Sam"></span>
-                        <span style="height: 60%" title="Dim"></span>
-                    </div>
-                    <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans RestauBot.</p>
-                </div>
-                <div class="sales-table-wrapper">
-                    <table class="sales-table">
-                        <thead>
-                            <tr>
-                                <th>Plat</th>
-                                <th>Volumes</th>
-                                <th>Ticket moyen</th>
-                                <th>Conversion</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Raviole de homard</td>
-                                <td>54</td>
-                                <td>42 €</td>
-                                <td><span class="trend-positive">+9 %</span></td>
-                            </tr>
-                            <tr>
-                                <td>Risotto champignons anciens</td>
-                                <td>68</td>
-                                <td>36 €</td>
-                                <td><span class="trend-neutral">=</span></td>
-                            </tr>
-                            <tr>
-                                <td>Crumble de poire Safran</td>
-                                <td>34</td>
-                                <td>18 €</td>
-                                <td><span class="trend-positive">+4 %</span></td>
-                            </tr>
-                            <tr>
-                                <td>Tartare de maigre</td>
-                                <td>36</td>
-                                <td>38 €</td>
-                                <td><span class="trend-negative">-6 %</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 </section>

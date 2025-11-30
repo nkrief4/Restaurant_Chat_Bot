@@ -346,6 +346,13 @@
       });
     }
 
+    const sidebarClose = document.getElementById("sidebar-close");
+    if (sidebarClose) {
+      sidebarClose.addEventListener("click", () => {
+        closeSidebar();
+      });
+    }
+
     if (sidebarBackdrop) {
       sidebarBackdrop.addEventListener("click", () => {
         closeSidebar();
@@ -5811,3 +5818,47 @@
   }
 
 })();
+
+// Ajouter les data-labels pour la responsivité des tableaux
+function addTableDataLabels() {
+    const tables = document.querySelectorAll('.dashboard-table');
+    
+    tables.forEach(table => {
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        const rows = table.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach((cell, index) => {
+                if (headers[index] && !cell.hasAttribute('data-label')) {
+                    cell.setAttribute('data-label', headers[index]);
+                }
+            });
+        });
+    });
+}
+
+// Exécuter au chargement et lors des mises à jour du tableau
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addTableDataLabels);
+} else {
+    addTableDataLabels();
+}
+
+// Observer les changements dans le tbody pour ajouter les labels aux nouvelles lignes
+const observeTableChanges = () => {
+    const tbody = document.getElementById('dashboard-critical-ingredients-body');
+    if (tbody) {
+        const observer = new MutationObserver(() => {
+            addTableDataLabels();
+        });
+        
+        observer.observe(tbody, {
+            childList: true,
+            subtree: true
+        });
+    }
+};
+
+observeTableChanges();
+
