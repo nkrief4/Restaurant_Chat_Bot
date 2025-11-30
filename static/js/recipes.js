@@ -12,6 +12,13 @@
     let currentRecipeId = null;
     let allRecipes = [];
     let filteredRecipes = [];
+    let currentRecipeData = null;
+    let isEditingRecipe = false;
+
+    // Ingredient Management State
+    let currentRecipeIngredients = [];
+    let originalRecipeIngredients = [];
+    let allIngredients = [];
 
     // DOM Elements
     const searchInput = document.getElementById('recipes-search');
@@ -22,7 +29,6 @@
     // Details Panel Elements
     const layout = document.getElementById('recipes-layout');
     const detailsShell = document.getElementById('recipe-details-shell');
-    const btnCloseDetails = document.getElementById('btn-close-details');
     const detailNameEl = document.getElementById('recipe-detail-name');
     const detailCategoryEl = document.getElementById('recipe-detail-category');
     const detailCostEl = document.getElementById('recipe-detail-cost');
@@ -31,9 +37,15 @@
     const detailInstructionsEl = document.getElementById('recipe-instructions');
     const editRecipeBtn = document.getElementById('btn-edit-recipe');
     const collapseDetailsBtn = document.getElementById('btn-collapse-details');
-    const duplicateRecipeBtn = document.getElementById('btn-duplicate-recipe');
     const deleteRecipeBtn = document.getElementById('btn-delete-recipe');
     const editIngredientsBtn = document.getElementById('btn-edit-ingredients');
+    const editForm = document.getElementById('recipe-edit-form');
+    const editNameInput = document.getElementById('edit-recipe-name');
+    const editCostInput = document.getElementById('edit-recipe-cost');
+    const editPriceInput = document.getElementById('edit-recipe-price');
+    const editInstructionsInput = document.getElementById('edit-recipe-instructions');
+    const btnSaveRecipe = document.getElementById('btn-save-recipe');
+    const btnCancelEdit = document.getElementById('btn-cancel-edit');
 
     /**
      * Initialize the recipes module
@@ -70,27 +82,22 @@
         if (tableBody) tableBody.addEventListener('click', handleRecipeClick);
 
         // Panel controls
-        if (btnCloseDetails) btnCloseDetails.addEventListener('click', hideRecipeDetails);
         if (collapseDetailsBtn) collapseDetailsBtn.addEventListener('click', hideRecipeDetails);
-        if (editRecipeBtn) {
-            editRecipeBtn.addEventListener('click', () => {
-                alert('La modification de plat arrive bientôt.');
-            });
-        }
-        if (duplicateRecipeBtn) {
-            duplicateRecipeBtn.addEventListener('click', () => {
-                alert('La duplication de plat arrive bientôt.');
-            });
-        }
-        if (deleteRecipeBtn) {
-            deleteRecipeBtn.addEventListener('click', () => {
-                alert('La suppression de plat arrive bientôt.');
-            });
-        }
-        if (editIngredientsBtn) {
-            editIngredientsBtn.addEventListener('click', () => {
-                alert('La gestion des ingrédients arrive bientôt.');
-            });
+        if (editRecipeBtn) editRecipeBtn.addEventListener('click', handleEditRecipe);
+        if (deleteRecipeBtn) deleteRecipeBtn.addEventListener('click', handleDeleteRecipe);
+        if (editIngredientsBtn) editIngredientsBtn.addEventListener('click', handleEditIngredients);
+        if (editForm) editForm.addEventListener('submit', handleSaveRecipe);
+        if (btnCancelEdit) btnCancelEdit.addEventListener('click', closeEditModal);
+
+        // Modal close button
+        const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
+        if (btnCloseEditModal) btnCloseEditModal.addEventListener('click', closeEditModal);
+
+        // Close modal on overlay click
+        const editModal = document.getElementById('recipe-edit-modal');
+        if (editModal) {
+            const overlay = editModal.querySelector('.recipe-edit-modal-overlay');
+            if (overlay) overlay.addEventListener('click', closeEditModal);
         }
 
         // Add ingredient button redirection
@@ -98,18 +105,17 @@
         if (btnAddIngredient) {
             btnAddIngredient.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Find and click the Stock Management link in the sidebar
                 const stockLink = document.querySelector('[data-purchasing-view="stock"]');
-                if (stockLink) {
-                    stockLink.click();
-                } else {
-                    console.warn('Lien vers la gestion des stocks introuvable');
-                    // Fallback: try to trigger via dashboard event or hash
-                    window.location.hash = '#purchasing';
-                    // We might need a way to switch tab if hash doesn't do it deep enough
-                }
+                if (stockLink) stockLink.click();
             });
         }
+
+        // Ingredient Manager Events
+        const btnAddIng = document.getElementById('btn-add-ingredient');
+        if (btnAddIng) btnAddIng.addEventListener('click', handleAddIngredientToRecipe);
+
+        const newIngSelect = document.getElementById('new-ingredient-select');
+        if (newIngSelect) newIngSelect.addEventListener('change', updateNewIngredientUnit);
 
     }
 
@@ -317,8 +323,27 @@
             detailsShell.setAttribute('aria-hidden', 'false');
         }
 
+        // Show loading screen
+        const loadingScreen = document.getElementById('recipe-loading-screen');
+        const detailsContent = document.getElementById('recipe-details-content');
+
+        if (loadingScreen) {
+            loadingScreen.removeAttribute('hidden');
+        }
+        if (detailsContent) {
+            detailsContent.setAttribute('hidden', '');
+        }
+
         // Load details
         await loadRecipeDetails(recipeId);
+
+        // Hide loading screen and show content
+        if (loadingScreen) {
+            loadingScreen.setAttribute('hidden', '');
+        }
+        if (detailsContent) {
+            detailsContent.removeAttribute('hidden');
+        }
     }
 
     /**
@@ -348,6 +373,9 @@
         if (!recipe || !detailsShell) {
             return;
         }
+
+        currentRecipeData = recipe;
+        setEditMode(false);
 
         const name = recipe.menu_item_name || recipe.name || 'Plat sans nom';
         const category = recipe.category || 'Non catégorisé';
@@ -380,12 +408,12 @@
         }
 
         if (detailInstructionsEl) {
-            if (recipe.instructions) {
-                detailInstructionsEl.textContent = recipe.instructions;
-            } else {
-                detailInstructionsEl.textContent = 'Aucune instruction renseignée pour ce plat.';
-            }
+            detailInstructionsEl.textContent = recipe.instructions || 'Aucune instruction renseignée pour ce plat.';
         }
+
+        if (editNameInput) editNameInput.value = name;
+        if (editPriceInput) editPriceInput.value = price ? price.toFixed(2) : '';
+        if (editInstructionsInput) editInstructionsInput.value = recipe.instructions || '';
     }
 
     /**
@@ -404,6 +432,8 @@
      */
     function hideRecipeDetails() {
         currentRecipeId = null;
+        currentRecipeData = null;
+        setEditMode(false);
         if (layout) {
             layout.classList.remove('has-selection');
         }
@@ -434,6 +464,487 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function populateEditFields() {
+        if (!currentRecipeData) {
+            return;
+        }
+        if (editNameInput) {
+            editNameInput.value = currentRecipeData.menu_item_name || currentRecipeData.name || '';
+        }
+        const categoryInput = document.getElementById('edit-recipe-category');
+        if (categoryInput) {
+            categoryInput.value = currentRecipeData.category || '';
+        }
+
+        // Cost is now calculated, but we set initial value
+        calculateTotalCost();
+
+        if (editPriceInput) {
+            const priceValue = currentRecipeData.menu_price ?? currentRecipeData.menuPrice;
+            const numericPrice = priceValue !== undefined && priceValue !== null ? Number(priceValue) : NaN;
+            editPriceInput.value = Number.isFinite(numericPrice) ? numericPrice.toFixed(2) : '';
+        }
+        if (editInstructionsInput) {
+            editInstructionsInput.value = currentRecipeData.instructions || '';
+        }
+    }
+
+    async function fetchAllIngredients() {
+        if (allIngredients.length > 0) return; // Use cached
+
+        try {
+            const token = window.supabaseToken || localStorage.getItem('supabase_token');
+            if (!token || !currentRestaurantId) return;
+
+            const response = await fetch('/api/purchasing/ingredients', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-Restaurant-Id': currentRestaurantId
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                allIngredients = data.map(ing => ({
+                    id: ing.id,
+                    name: ing.name,
+                    unit: ing.unit,
+                    unit_cost: ing.unit_cost || 0 // Assuming API returns this or we fetch separately
+                }));
+                // Note: The /ingredients endpoint returns recommendations, we might need /ingredients/catalog
+                // Let's check the API. The /ingredients endpoint returns recommendations. 
+                // We should use /ingredients/catalog or fetch stock to get costs.
+                // For now, let's assume we need to fetch catalog + stock to get costs.
+                // Actually, let's use the catalog endpoint and maybe stock for costs.
+                // Simplified: The recipe details already have costs. For new ingredients, we might need costs.
+                // Let's fetch catalog.
+            }
+        } catch (error) {
+            console.error('Error fetching ingredients:', error);
+        }
+    }
+
+    // Correcting fetchAllIngredients to use catalog and stock
+    async function loadIngredientsCatalog() {
+        if (allIngredients.length > 0) return;
+
+        try {
+            const token = window.supabaseToken || localStorage.getItem('supabase_token');
+            if (!token || !currentRestaurantId) return;
+
+            // Fetch catalog
+            const catalogResp = await fetch('/api/purchasing/ingredients/catalog', {
+                headers: { 'Authorization': `Bearer ${token}`, 'X-Restaurant-Id': currentRestaurantId }
+            });
+            const catalog = await catalogResp.json();
+
+            // Fetch stock for costs
+            // We don't have a direct "get all unit costs" endpoint easily accessible without stock data
+            // But we can fetch stock data
+            // For now, let's assume 0 cost for new ingredients if not found, or fetch stock
+            // Let's just use catalog for names/units.
+
+            allIngredients = catalog;
+            populateIngredientSelect();
+        } catch (e) {
+            console.error('Failed to load ingredients catalog', e);
+        }
+    }
+
+    function populateIngredientSelect() {
+        const select = document.getElementById('new-ingredient-select');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Ajouter un ingrédient...</option>';
+
+        // Sort alphabetically
+        const sorted = [...allIngredients].sort((a, b) => a.name.localeCompare(b.name));
+
+        sorted.forEach(ing => {
+            const option = document.createElement('option');
+            option.value = ing.id;
+            option.textContent = ing.name;
+            option.dataset.unit = ing.unit;
+            select.appendChild(option);
+        });
+    }
+
+    function updateNewIngredientUnit() {
+        const select = document.getElementById('new-ingredient-select');
+        const unitDisplay = document.getElementById('new-ingredient-unit');
+        if (!select || !unitDisplay) return;
+
+        const option = select.options[select.selectedIndex];
+        unitDisplay.textContent = option.dataset.unit || '-';
+    }
+
+    function handleAddIngredientToRecipe() {
+        const select = document.getElementById('new-ingredient-select');
+        const qtyInput = document.getElementById('new-ingredient-quantity');
+
+        if (!select || !qtyInput) return;
+
+        const ingredientId = select.value;
+        const quantity = parseFloat(qtyInput.value);
+
+        if (!ingredientId) {
+            alert('Veuillez sélectionner un ingrédient.');
+            return;
+        }
+        if (!quantity || quantity <= 0) {
+            alert('Veuillez saisir une quantité valide.');
+            return;
+        }
+
+        const ingredient = allIngredients.find(i => i.id === ingredientId);
+        if (!ingredient) return;
+
+        // Check if already exists
+        const existingIndex = currentRecipeIngredients.findIndex(i => i.ingredient_id === ingredientId);
+
+        if (existingIndex >= 0) {
+            // Update quantity
+            currentRecipeIngredients[existingIndex].quantity_per_unit += quantity;
+            // Update total cost (approximate if we don't have unit cost for new ones)
+            // We keep the unit_cost if it exists
+        } else {
+            // Add new
+            currentRecipeIngredients.push({
+                ingredient_id: ingredientId,
+                ingredient_name: ingredient.name,
+                unit: ingredient.unit,
+                quantity_per_unit: quantity,
+                unit_cost: ingredient.unit_cost || 0,
+                total_cost: 0
+            });
+        }
+
+        // Reset inputs
+        select.value = '';
+        qtyInput.value = '';
+        document.getElementById('new-ingredient-unit').textContent = '-';
+
+        renderIngredientList();
+    }
+
+    function removeRecipeIngredient(index) {
+        currentRecipeIngredients.splice(index, 1);
+        renderIngredientList();
+    }
+
+    function renderIngredientList() {
+        const listContainer = document.getElementById('edit-recipe-ingredients-list');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = '';
+
+        currentRecipeIngredients.forEach((ing, index) => {
+            const row = document.createElement('div');
+            row.className = 'ingredient-row';
+
+            // Calculate cost for this line
+            const lineCost = (ing.quantity_per_unit * (ing.unit_cost || 0));
+
+            row.innerHTML = `
+                <div class="ingredient-name" title="${escapeHTML(ing.ingredient_name)}">${escapeHTML(ing.ingredient_name)}</div>
+                <div>
+                    <input type="number" class="ing-qty-input" value="${ing.quantity_per_unit}" min="0" step="0.01" data-index="${index}">
+                </div>
+                <div class="unit-label">${escapeHTML(ing.unit)}</div>
+                <div class="cost-display">${lineCost.toFixed(2)} €</div>
+                <button type="button" class="icon-btn danger btn-remove-ing" data-index="${index}" title="Retirer">
+                    <span>×</span>
+                </button>
+            `;
+
+            listContainer.appendChild(row);
+        });
+
+        // Add event listeners for inputs and remove buttons
+        listContainer.querySelectorAll('.ing-qty-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.dataset.index);
+                const newQty = parseFloat(e.target.value);
+                if (newQty >= 0) {
+                    currentRecipeIngredients[idx].quantity_per_unit = newQty;
+                    renderIngredientList(); // Re-render to update costs
+                }
+            });
+        });
+
+        listContainer.querySelectorAll('.btn-remove-ing').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.currentTarget.dataset.index);
+                removeRecipeIngredient(idx);
+            });
+        });
+
+        calculateTotalCost();
+    }
+
+    function calculateTotalCost() {
+        let total = 0;
+        currentRecipeIngredients.forEach(ing => {
+            total += (ing.quantity_per_unit * (ing.unit_cost || 0));
+        });
+
+        if (editCostInput) {
+            editCostInput.value = total.toFixed(2);
+        }
+        return total;
+    }
+
+    async function openEditModal() {
+        const editModal = document.getElementById('recipe-edit-modal');
+        if (!editModal || !currentRecipeData) {
+            return;
+        }
+
+        // Initialize ingredients state
+        // Deep copy to avoid mutating original data until save
+        currentRecipeIngredients = JSON.parse(JSON.stringify(currentRecipeData.ingredients || []));
+        originalRecipeIngredients = JSON.parse(JSON.stringify(currentRecipeData.ingredients || []));
+
+        // Load catalog if needed
+        await loadIngredientsCatalog();
+
+        // Populate fields
+        populateEditFields();
+        renderIngredientList();
+
+        // Show modal
+        editModal.removeAttribute('hidden');
+
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditModal() {
+        const editModal = document.getElementById('recipe-edit-modal');
+        const modalContent = editModal?.querySelector('.recipe-edit-modal-content');
+
+        if (!editModal || !modalContent) {
+            return;
+        }
+
+        // Add closing animation
+        modalContent.classList.add('closing');
+
+        // Wait for animation to complete before hiding
+        setTimeout(() => {
+            // Hide modal
+            editModal.setAttribute('hidden', '');
+
+            // Remove closing class for next time
+            modalContent.classList.remove('closing');
+
+            // Restore body scroll
+            document.body.style.overflow = '';
+        }, 300); // Match the animation duration
+    }
+
+    function setEditMode(enabled) {
+        // This function is now deprecated but kept for compatibility
+        // The modal handles edit mode
+        if (enabled) {
+            openEditModal();
+        } else {
+            closeEditModal();
+        }
+    }
+
+    /**
+     * Handle edit recipe button
+     */
+    function handleEditRecipe() {
+        if (!currentRecipeId) {
+            console.warn('No recipe selected');
+            return;
+        }
+        openEditModal();
+    }
+
+    /**
+     * Handle delete recipe button
+     */
+    async function handleDeleteRecipe() {
+        if (!currentRecipeId || !currentRestaurantId || !deleteRecipeBtn) {
+            console.warn('No recipe selected');
+            return;
+        }
+        if (!confirm('Êtes-vous sûr de vouloir supprimer ce plat ? Cette action est irréversible.')) {
+            return;
+        }
+        const token = window.supabaseToken || localStorage.getItem('supabase_token');
+        if (!token) {
+            alert('Token d’authentification introuvable.');
+            return;
+        }
+        deleteRecipeBtn.disabled = true;
+        deleteRecipeBtn.textContent = 'Suppression…';
+        try {
+            const response = await fetch(`/api/purchasing/menu-items/${currentRecipeId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-Restaurant-Id': currentRestaurantId
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Impossible de supprimer ce plat.');
+            }
+            await loadRecipes(currentRestaurantId);
+            hideRecipeDetails();
+        } catch (error) {
+            console.error('Delete recipe failed:', error);
+            alert(error.message || 'Erreur lors de la suppression du plat.');
+        } finally {
+            deleteRecipeBtn.disabled = false;
+            deleteRecipeBtn.textContent = 'Supprimer ce plat';
+        }
+    }
+
+    /**
+     * Handle edit ingredients button - Navigate to Stock Management
+     */
+    function handleEditIngredients() {
+        if (!currentRecipeId) {
+            console.warn('No recipe selected');
+            return;
+        }
+
+        console.log('Navigating to Stock Management for recipe:', currentRecipeId);
+
+        // Find the Stock Management link in the purchasing section
+        const stockLink = document.querySelector('[data-purchasing-view="stock"]');
+
+        if (stockLink) {
+            // Click the link to switch to Stock Management view
+            stockLink.click();
+
+            // Optional: Show a toast notification
+            showNotification('Accédez à la gestion des stocks pour ajouter des ingrédients', 'info');
+        } else {
+            console.warn('Stock Management link not found');
+            // Fallback: try to navigate via event
+            const event = new CustomEvent('switchPurchasingView', {
+                detail: { view: 'stock' }
+            });
+            document.dispatchEvent(event);
+        }
+    }
+
+    /**
+     * Show notification helper
+     */
+    function showNotification(message, type = 'info') {
+        // Simple notification - can be enhanced with a toast library
+        const notification = document.createElement('div');
+        notification.className = `recipe-notification ${type}`;
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #3a75ff, #60a5fa);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(58, 117, 255, 0.3);
+            z-index: 10000;
+            font-weight: 600;
+            animation: slideInRight 0.3s ease;
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    async function handleSaveRecipe(event) {
+        event.preventDefault();
+        if (!currentRecipeId || !currentRestaurantId || !btnSaveRecipe) {
+            return;
+        }
+        const token = window.supabaseToken || localStorage.getItem('supabase_token');
+        if (!token) {
+            alert('Token d\'authentification introuvable.');
+            return;
+        }
+
+        const rawPrice = editPriceInput?.value ?? '';
+        const parsedPrice = rawPrice === '' ? null : parseFloat(rawPrice);
+        const calculatedCost = calculateTotalCost();
+
+        const payload = {
+            name: editNameInput?.value?.trim() || null,
+            category: document.getElementById('edit-recipe-category')?.value?.trim() || null,
+            production_cost: calculatedCost, // Use calculated cost
+            menu_price: Number.isFinite(parsedPrice) ? parsedPrice : null,
+            instructions: editInstructionsInput?.value || null
+        };
+
+        btnSaveRecipe.disabled = true;
+        btnSaveRecipe.textContent = 'Enregistrement…';
+
+        try {
+            // 1. Update Menu Item Details
+            const response = await fetch(`/api/purchasing/menu-items/${currentRecipeId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-Restaurant-Id': currentRestaurantId,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Impossible d\'enregistrer les détails du plat.');
+
+            // 2. Sync Ingredients
+            // Identify removed ingredients
+            const removedIngredients = originalRecipeIngredients.filter(orig =>
+                !currentRecipeIngredients.find(curr => curr.ingredient_id === orig.ingredient_id)
+            );
+
+            // Delete removed
+            for (const ing of removedIngredients) {
+                await fetch(`/api/purchasing/recipes/${currentRecipeId}/ingredients/${ing.ingredient_id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}`, 'X-Restaurant-Id': currentRestaurantId }
+                });
+            }
+
+            // Upsert current (new and updated)
+            for (const ing of currentRecipeIngredients) {
+                await fetch('/api/purchasing/recipes', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'X-Restaurant-Id': currentRestaurantId, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        menu_item_id: currentRecipeId,
+                        ingredient_id: ing.ingredient_id,
+                        quantity_per_unit: ing.quantity_per_unit
+                    })
+                });
+            }
+
+            await loadRecipes(currentRestaurantId);
+            await loadRecipeDetails(currentRecipeId);
+            closeEditModal();
+            showNotification('Recette mise à jour avec succès', 'success');
+
+        } catch (error) {
+            console.error('Save recipe failed:', error);
+            alert(error.message || 'Erreur lors de la sauvegarde du plat.');
+        } finally {
+            btnSaveRecipe.disabled = false;
+            btnSaveRecipe.innerHTML = '<span class="btn-icon">✓</span> Enregistrer les modifications';
+        }
     }
 
     // Initialize when DOM is ready

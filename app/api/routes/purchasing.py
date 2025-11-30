@@ -116,6 +116,7 @@ class IngredientCatalogItem(BaseModel):
     name: str
     unit: str
     default_supplier_id: Optional[UUID] = None
+    unit_cost: float = 0.0
 
 
 class MenuItemSummary(BaseModel):
@@ -260,7 +261,7 @@ class SupabasePurchasingDAO:
             with self._client() as client:
                 response = (
                     client.table("ingredient_stock")
-                    .select("ingredient_id,current_stock,safety_stock,last_manual_update_at")
+                    .select("ingredient_id,current_stock,safety_stock,last_manual_update_at,unit_cost")
                     .eq("restaurant_id", self.restaurant_id_str)
                     .execute()
                 )
@@ -274,6 +275,7 @@ class SupabasePurchasingDAO:
                         "current_stock": float(row.get("current_stock") or 0),
                         "safety_stock": float(row.get("safety_stock") or 0),
                         "last_manual_update_at": row.get("last_manual_update_at"),
+                        "unit_cost": float(row.get("unit_cost") or 0),
                     }
                 return stock
 
@@ -878,6 +880,26 @@ class SupabasePurchasingDAO:
         except HttpxError as exc:
             raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
 
+    async def delete_recipe_ingredient(self, menu_item_id: UUID, ingredient_id: UUID) -> None:
+        """Delete a specific ingredient from a recipe."""
+        def _request() -> None:
+            with self._client() as client:
+                (
+                    client.table("recipes")
+                    .delete()
+                    .eq("restaurant_id", self.restaurant_id_str)
+                    .eq("menu_item_id", str(menu_item_id))
+                    .eq("ingredient_id", str(ingredient_id))
+                    .execute()
+                )
+
+        try:
+            await asyncio.to_thread(_request)
+        except PostgrestAPIError as exc:
+            raise_postgrest_error(exc, context="delete recipe ingredient")
+        except HttpxError as exc:
+            raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
     async def record_manual_sale(self, payload: ManualSalePayload) -> Dict[str, Any]:
         def _request() -> Dict[str, Any]:
             with self._client(prefer="return=representation") as client:
@@ -900,6 +922,7 @@ class SupabasePurchasingDAO:
             raise_postgrest_error(exc, context="record sale")
         except HttpxError as exc:
             raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
 
     async def fetch_all_recipes_with_costs(self) -> List[Dict[str, Any]]:
         """Fetch all recipes with calculated costs and profit margins."""
@@ -1465,16 +1488,23 @@ async def purchasing_summary(
 
 @router.get("/ingredients/catalog", response_model=List[IngredientCatalogItem])
 async def ingredient_catalog(dao: SupabasePurchasingDAO = Depends(get_purchasing_dao)) -> List[IngredientCatalogItem]:
-    records = await dao.fetch_all_ingredients()
-    return [
-        IngredientCatalogItem(
-            id=UUID(str(record.get("id"))),
+    ingredients = await dao.fetch_all_ingredients()
+    stock_data = await dao.fetch_stock_data()
+    
+    results = []
+    for record in ingredients:
+        ing_id = str(record.get("id"))
+        stock = stock_data.get(ing_id, {})
+        unit_cost = stock.get("unit_cost", 0.0)
+        
+        results.append(IngredientCatalogItem(
+            id=UUID(ing_id),
             name=record.get("name") or "",
             unit=record.get("unit") or "",
             default_supplier_id=_coerce_uuid(record.get("default_supplier_id")) or None,
-        )
-        for record in records
-    ]
+            unit_cost=float(unit_cost)
+        ))
+    return results
 
 
 @router.get("/menu-items", response_model=List[MenuItemSummary])
@@ -1627,6 +1657,16 @@ async def delete_menu_item_endpoint(
 @router.post("/recipes", status_code=204)
 async def upsert_recipe(payload: RecipeUpsertPayload, dao: SupabasePurchasingDAO = Depends(get_purchasing_dao)) -> None:
     await dao.upsert_recipe(payload)
+
+
+@router.delete("/recipes/{menu_item_id}/ingredients/{ingredient_id}", status_code=204)
+async def delete_recipe_ingredient_endpoint(
+    menu_item_id: UUID,
+    ingredient_id: UUID,
+    dao: SupabasePurchasingDAO = Depends(get_purchasing_dao),
+) -> None:
+    """Remove an ingredient from a recipe."""
+    await dao.delete_recipe_ingredient(menu_item_id, ingredient_id)
 
 
 @router.post("/sales", status_code=201)

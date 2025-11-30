@@ -3,6 +3,12 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    /* Removed sticky positioning from container so content can scroll */
+    position: relative;
+    z-index: 60;
+    /* background: var(--bg); Removed background to allow transparency if needed, global-toolbar has its own bg */
+    padding-top: 0;
+    margin-bottom: 16px;
 }
 
 .topbar-main {
@@ -56,14 +62,15 @@
     gap: 16px;
     padding: 12px 24px;
     width: calc(100% + 64px);
+    /* Adjusted margin-top to -24px to counteract .main padding and sit flush at top */
     margin: -24px -32px 16px;
     background: #fff;
     border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 0;
-    box-shadow: var(--shadow-soft);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 70;
 }
 
 .global-toolbar-spacer {
@@ -177,12 +184,14 @@
     .topbar-main {
         align-items: flex-start;
     }
+
     .global-toolbar {
         flex-direction: column;
         align-items: stretch;
         width: calc(100% + 48px);
         margin: -32px -24px 16px;
     }
+
     .global-restaurant-picker {
         width: 100%;
     }

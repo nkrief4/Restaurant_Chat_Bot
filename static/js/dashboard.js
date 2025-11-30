@@ -547,6 +547,19 @@
         selectOverviewRestaurant(null, { manual: true });
       }
     });
+
+    // Listen for global changes to update the edit form if visible
+    document.addEventListener("activeRestaurantChange", (event) => {
+      const restaurantId = event.detail.id;
+      if (state.restaurantForms.activeTab === "edit") {
+        if (restaurantId) {
+          startEditRestaurant(restaurantId);
+        } else {
+          const form = document.getElementById("restaurant-edit-form");
+          resetRestaurantForm(form);
+        }
+      }
+    });
   }
 
   function setupRestaurantTabs() {
@@ -634,6 +647,18 @@
         moveRestaurantTabIndicator(button, options);
       }
     });
+
+    // Sync edit form with global selection if switching to edit tab
+    if (requested === "edit") {
+      const globalId = state.overview.restaurantId;
+      if (globalId) {
+        startEditRestaurant(globalId);
+      } else {
+        const form = document.getElementById("restaurant-edit-form");
+        resetRestaurantForm(form);
+      }
+    }
+
     return requested;
   }
 
@@ -3103,49 +3128,12 @@
       return;
     }
 
-    // Update the restaurant dropdown in the edit form
-    if (restaurantSelector) {
-      const currentValue = restaurantSelector.value;
-
-      // Clear existing options except the first one (placeholder)
-      while (restaurantSelector.options.length > 1) {
-        restaurantSelector.remove(1);
-      }
-
-      // Add restaurant options
-      const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
-      restaurants.forEach(restaurant => {
-        if (restaurant && restaurant.id) {
-          const optionValue = String(restaurant.id);
-          const isSelected = state.editingId && optionValue === state.editingId;
-          const option = new Option(
-            restaurant.display_name || restaurant.name || 'Sans nom',
-            optionValue,
-            false,
-            Boolean(isSelected)
-          );
-          restaurantSelector.add(option);
-        }
-      });
-
-      // If we're currently editing a restaurant, make sure it's selected
-      if (state.editingId) {
-        const optionToSelect = Array.from(restaurantSelector.options).find(
-          opt => opt.value === state.editingId
-        );
-        if (optionToSelect) {
-          optionToSelect.selected = true;
-        }
-      } else if (currentValue) {
-        // Try to restore previous selection if it still exists
-        const optionToSelect = Array.from(restaurantSelector.options).find(
-          opt => opt.value === currentValue
-        );
-        if (optionToSelect) {
-          optionToSelect.selected = true;
-        }
-      }
+    if (!container) {
+      return;
     }
+
+    // Note: Local restaurant selector logic removed as it is now handled globally.
+
 
     const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
     container.innerHTML = "";
@@ -3222,7 +3210,7 @@
       const shareBtn = document.createElement("button");
       shareBtn.type = "button";
       shareBtn.className = "ghost-btn";
-      shareBtn.textContent = "QR clients";
+      shareBtn.innerHTML = "<span>📱</span> QR clients";
       shareBtn.addEventListener("click", (event) => {
         event.preventDefault();
         openQrModal(restaurant, event.currentTarget);
@@ -5063,10 +5051,7 @@
 
     // Gestion spécifique au formulaire d'édition
     if (form.dataset.formType === "edit") {
-      const selector = document.getElementById("edit-restaurant-select");
-      if (selector) {
-        selector.value = "";
-      }
+      // Local selector removed
       state.editingId = null;
       form.classList.add("is-idle");
       form.classList.remove("restaurant-selected");
@@ -5429,6 +5414,7 @@
     updateQrVisualWithUrl(shareUrl);
 
     shareModalState.element.classList.add("open");
+    shareModalState.element.removeAttribute("hidden");
     shareModalState.element.setAttribute("aria-hidden", "false");
   }
 
@@ -5437,6 +5423,7 @@
       return;
     }
     shareModalState.element.classList.remove("open");
+    shareModalState.element.setAttribute("hidden", "");
     shareModalState.element.setAttribute("aria-hidden", "true");
     shareModalState.currentUrl = "";
     updateQrCopyStatus("");

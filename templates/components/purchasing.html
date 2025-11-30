@@ -202,7 +202,8 @@
                     <tbody id="stock-table-body">
                         <!-- Rows will be populated by JS -->
                         <tr>
-                            <td colspan="5" class="muted text-center">Utilisez le sélecteur global pour afficher le stock.
+                            <td colspan="5" class="muted text-center">Utilisez le sélecteur global pour afficher le
+                                stock.
                             </td>
                         </tr>
                     </tbody>
@@ -373,82 +374,208 @@
             </div>
 
             <aside class="recipe-details-shell" id="recipe-details-shell" aria-live="polite" aria-hidden="true" hidden>
-                <button type="button" class="close-panel-btn" id="btn-close-details">
-                    ← Retour à la liste
-                </button>
                 <div class="recipe-details-card" id="recipe-details-card">
-                    <div class="recipe-details-header">
-                        <div>
-                            <p class="recipe-detail-category" id="recipe-detail-category">Non catégorisé</p>
-                            <h2 id="recipe-detail-name">Sélectionnez un plat</h2>
+                    <!-- Loading Screen -->
+                    <div class="recipe-loading-screen" id="recipe-loading-screen" hidden>
+                        <div class="loading-spinner">
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-ring"></div>
                         </div>
-                        <div class="recipe-details-header-actions">
-                            <button type="button" class="ghost-btn icon-only" id="btn-collapse-details" aria-label="Fermer le panneau">
-                                <span aria-hidden="true">×</span>
-                            </button>
-                            <button type="button" class="ghost-btn icon-btn" id="btn-edit-recipe">
-                                <span class="icon-pencil" aria-hidden="true"></span>
-                                <span>Modifier</span>
-                            </button>
-                        </div>
+                        <p class="loading-text">Chargement des données...</p>
                     </div>
 
-                    <div class="recipe-stats-grid">
-                        <article class="recipe-stat-card">
-                            <p class="stat-label">Coût production</p>
-                            <strong id="recipe-detail-cost">—</strong>
-                        </article>
-                        <article class="recipe-stat-card">
-                            <p class="stat-label">Prix de vente</p>
-                            <strong id="recipe-detail-price">—</strong>
-                        </article>
-                        <article class="recipe-stat-card">
-                            <p class="stat-label">Marge</p>
-                            <strong id="recipe-detail-margin">—</strong>
-                        </article>
+                    <!-- Content (hidden during loading) -->
+                    <div class="recipe-details-content" id="recipe-details-content">
+                        <div class="recipe-details-header">
+                            <div>
+                                <p class="recipe-detail-category" id="recipe-detail-category">Non catégorisé</p>
+                                <h2 id="recipe-detail-name">Sélectionnez un plat</h2>
+                            </div>
+                            <div class="recipe-details-header-actions">
+                                <button type="button" class="ghost-btn icon-only" id="btn-collapse-details"
+                                    aria-label="Fermer le panneau">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                                <button type="button" class="recipe-edit-btn" id="btn-edit-recipe">
+                                    <span class="icon-pencil" aria-hidden="true"></span>
+                                    <span>Modifier</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="recipe-stats-grid">
+                            <article class="recipe-stat-card">
+                                <p class="stat-label">Coût production</p>
+                                <strong id="recipe-detail-cost">—</strong>
+                            </article>
+                            <article class="recipe-stat-card">
+                                <p class="stat-label">Prix de vente</p>
+                                <strong id="recipe-detail-price">—</strong>
+                            </article>
+                            <article class="recipe-stat-card">
+                                <p class="stat-label">Marge</p>
+                                <strong id="recipe-detail-margin">—</strong>
+                            </article>
+                        </div>
+
+                        <section class="recipe-section">
+                            <div class="recipe-section-header">
+                                <div>
+                                    <h3>Ingrédients</h3>
+                                    <p class="muted small">Inventaire utilisé pour ce plat</p>
+                                </div>
+                                <button type="button" class="ghost-btn small" id="btn-edit-ingredients">Ajouter /
+                                    retirer</button>
+                            </div>
+                            <div class="recipe-ingredients-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nom</th>
+                                            <th class="text-right">Quantité</th>
+                                            <th class="text-right">Coût</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recipe-ingredients-body">
+                                        <tr>
+                                            <td colspan="3" class="text-center muted">Sélectionnez un plat.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="recipe-section">
+                            <div class="recipe-section-header">
+                                <div>
+                                    <h3>Instructions</h3>
+                                    <p class="muted small">Fiche technique et étapes de préparation</p>
+                                </div>
+                            </div>
+                            <div class="recipe-instructions" id="recipe-instructions">
+                                Sélectionnez un plat pour afficher sa fiche.
+                            </div>
+                        </section>
+
+                        <div class="recipe-secondary-actions">
+                            <button type="button" class="ghost-btn danger" id="btn-delete-recipe">Supprimer ce
+                                plat</button>
+                        </div>
                     </div>
+                    <!-- End of recipe-details-content -->
 
-                    <section class="recipe-section">
-                        <div class="recipe-section-header">
-                            <div>
-                                <h3>Ingrédients</h3>
-                                <p class="muted small">Inventaire utilisé pour ce plat</p>
+                    <!-- Edit Modal -->
+                    <div class="recipe-edit-modal" id="recipe-edit-modal" hidden>
+                        <div class="recipe-edit-modal-overlay"></div>
+                        <div class="recipe-edit-modal-content">
+                            <div class="recipe-edit-modal-header">
+                                <div>
+                                    <p class="eyebrow">Modification</p>
+                                    <h3>Éditer le plat</h3>
+                                </div>
+                                <button type="button" class="modal-close-btn" id="btn-close-edit-modal"
+                                    aria-label="Fermer">
+                                    <span aria-hidden="true">×</span>
+                                </button>
                             </div>
-                            <button type="button" class="ghost-btn small" id="btn-edit-ingredients">Ajouter / retirer</button>
-                        </div>
-                        <div class="recipe-ingredients-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Nom</th>
-                                        <th class="text-right">Quantité</th>
-                                        <th class="text-right">Coût</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recipe-ingredients-body">
-                                    <tr>
-                                        <td colspan="3" class="text-center muted">Sélectionnez un plat.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                            <form class="recipe-edit-form-modal" id="recipe-edit-form">
+                                <div class="recipe-edit-grid">
+                                    <div class="form-group">
+                                        <label for="edit-recipe-name">
+                                            <span class="label-icon">📝</span>
+                                            Nom du plat
+                                        </label>
+                                        <input type="text" id="edit-recipe-name" placeholder="Nom du plat" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-recipe-category">
+                                            <span class="label-icon">🏷️</span>
+                                            Catégorie
+                                        </label>
+                                        <input type="text" id="edit-recipe-category"
+                                            placeholder="Entrée, Plat, Dessert...">
+                                    </div>
+                                </div>
 
-                    <section class="recipe-section">
-                        <div class="recipe-section-header">
-                            <div>
-                                <h3>Instructions</h3>
-                                <p class="muted small">Fiche technique et étapes de préparation</p>
-                            </div>
-                        </div>
-                        <div class="recipe-instructions" id="recipe-instructions">
-                            Sélectionnez un plat pour afficher sa fiche.
-                        </div>
-                    </section>
+                                <!-- Ingredients Section -->
+                                <div class="form-group full-width">
+                                    <label>
+                                        <span class="label-icon">🥕</span>
+                                        Ingrédients & Fiche Technique
+                                    </label>
 
-                    <div class="recipe-secondary-actions">
-                        <button type="button" class="ghost-btn" id="btn-duplicate-recipe">Dupliquer le plat</button>
-                        <button type="button" class="ghost-btn danger" id="btn-delete-recipe">Supprimer</button>
+                                    <div class="ingredients-manager">
+                                        <!-- Header Row -->
+                                        <div class="ingredients-header">
+                                            <span>Ingrédient</span>
+                                            <span>Quantité</span>
+                                            <span>Unité</span>
+                                            <span>Coût</span>
+                                            <span>Action</span>
+                                        </div>
+
+                                        <!-- Ingredients List -->
+                                        <div id="edit-recipe-ingredients-list" class="ingredients-list">
+                                            <!-- Dynamic content will be inserted here -->
+                                        </div>
+
+                                        <!-- Add New Ingredient Row -->
+                                        <div class="add-ingredient-row">
+                                            <select id="new-ingredient-select" class="ingredient-select">
+                                                <option value="">Ajouter un ingrédient...</option>
+                                                <!-- Options populated via JS -->
+                                            </select>
+                                            <input type="number" id="new-ingredient-quantity" placeholder="Qté"
+                                                step="0.01" min="0">
+                                            <span class="unit-display" id="new-ingredient-unit">-</span>
+                                            <button type="button" id="btn-add-ingredient" class="icon-btn success"
+                                                title="Ajouter">
+                                                <span>+</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="recipe-edit-grid">
+                                    <div class="form-group">
+                                        <label for="edit-recipe-cost">
+                                            <span class="label-icon">💰</span>
+                                            Coût de production (€)
+                                        </label>
+                                        <div class="input-with-hint">
+                                            <input type="number" step="0.01" id="edit-recipe-cost" placeholder="0.00"
+                                                readonly>
+                                            <span class="input-hint">Calculé auto.</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-recipe-price">
+                                            <span class="label-icon">💵</span>
+                                            Prix de vente (€)
+                                        </label>
+                                        <input type="number" step="0.01" id="edit-recipe-price" placeholder="0.00">
+                                    </div>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label for="edit-recipe-instructions">
+                                        <span class="label-icon">📋</span>
+                                        Instructions de préparation
+                                    </label>
+                                    <textarea id="edit-recipe-instructions" rows="6"
+                                        placeholder="Saisissez les étapes de préparation..."></textarea>
+                                </div>
+
+                                <div class="recipe-edit-modal-actions">
+                                    <button type="button" class="ghost-btn" id="btn-cancel-edit">Annuler</button>
+                                    <button type="submit" class="primary-btn" id="btn-save-recipe">
+                                        <span class="btn-icon">✓</span>
+                                        Enregistrer les modifications
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </aside>
