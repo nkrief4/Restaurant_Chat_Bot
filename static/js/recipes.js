@@ -728,11 +728,17 @@
         const instructionsInput = document.getElementById('edit-recipe-instructions');
 
         // Cost input is handled by calculateTotalCost
-        editCostInput = document.getElementById('edit-recipe-cost');
+        const costInput = document.getElementById('edit-recipe-cost');
 
-        if (nameInput) nameInput.value = currentRecipeData.name || '';
+        if (nameInput) nameInput.value = currentRecipeData.menu_item_name || currentRecipeData.name || '';
         if (categoryInput) categoryInput.value = currentRecipeData.category || '';
-        if (priceInput) priceInput.value = currentRecipeData.price || '';
+
+        // Handle price properly
+        const priceValue = currentRecipeData.menu_price ?? currentRecipeData.menuPrice;
+        if (priceInput) {
+            priceInput.value = priceValue ? Number(priceValue).toFixed(2) : '';
+        }
+
         if (instructionsInput) instructionsInput.value = currentRecipeData.instructions || '';
 
         calculateTotalCost();

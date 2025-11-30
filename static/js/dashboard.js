@@ -5001,7 +5001,16 @@
 
     if (nameInput) nameInput.value = record.display_name || "";
     if (slugInput) slugInput.value = record.slug || "";
-    if (menuInput) menuInput.value = stringifyMenu(record.menu_document);
+    if (menuInput) {
+      menuInput.value = stringifyMenu(record.menu_document);
+
+      // Refresh the visual editor
+      const editorWrapper = form.querySelector("[data-role='menu-editor-wrapper']");
+      if (editorWrapper && editorWrapper.menuEditorInstance) {
+        editorWrapper.menuEditorInstance.syncFromJSON();
+        editorWrapper.menuEditorInstance.render();
+      }
+    }
     if (submitBtn) submitBtn.textContent = "Mettre à jour le restaurant";
     if (modeLabel) modeLabel.textContent = `Édition — ${record.display_name || "Restaurant"}`;
     if (messageEl) messageEl.textContent = "";
@@ -5062,6 +5071,16 @@
       state.editingId = null;
       form.classList.add("is-idle");
       form.classList.remove("restaurant-selected");
+    }
+
+    // Refresh the visual editor
+    const editorWrapper = form.querySelector("[data-role='menu-editor-wrapper']");
+    if (editorWrapper && editorWrapper.menuEditorInstance) {
+      // Small delay to ensure form reset has propagated
+      setTimeout(() => {
+        editorWrapper.menuEditorInstance.syncFromJSON();
+        editorWrapper.menuEditorInstance.render();
+      }, 0);
     }
   }
 
@@ -5595,7 +5614,7 @@
       if (kpiActive) kpiActive.textContent = '-';
 
       const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
-      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Sélectionnez un restaurant via la barre supérieure.</td></tr>';
+      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Sélectionnez un restaurant via la barre supérieure.</td></tr>';
 
       const ordersList = document.getElementById('dashboard-recent-orders-list');
       if (ordersList) ordersList.innerHTML = '<p class="text-center muted">Sélectionnez un restaurant via la barre supérieure.</p>';
@@ -5619,9 +5638,24 @@
         })
       ]);
 
+      // Process recommendations to ensure status is calculated
+      const processedRecommendations = recommendations.map(item => {
+        let status = item.status || 'OK';
+        if (status === 'NO_DATA' || !item.status) {
+          if (item.current_stock <= item.safety_stock) {
+            status = 'CRITICAL';
+          } else if (item.current_stock <= item.safety_stock * 1.2) {
+            status = 'LOW';
+          } else {
+            status = 'OK';
+          }
+        }
+        return { ...item, status };
+      });
+
       // Update KPIs
-      const totalStock = recommendations.length;
-      const criticalStock = recommendations.filter(r => r.status === 'CRITICAL').length;
+      const totalStock = processedRecommendations.length;
+      const criticalStock = processedRecommendations.filter(r => r.status === 'CRITICAL').length;
       const activeOrders = orders.filter(o => o.status === 'sent' || o.status === 'pending').length;
       const totalSales = Number(summary && typeof summary.total_dishes_sold !== 'undefined'
         ? summary.total_dishes_sold
@@ -5646,16 +5680,15 @@
       // 4. Update Critical Ingredients Table
       const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
       if (criticalBody) {
-        const criticalItems = recommendations.filter(r => r.status === 'CRITICAL' || r.status === 'LOW').slice(0, 5);
+        const criticalItems = processedRecommendations.filter(r => r.status === 'CRITICAL' || r.status === 'LOW').slice(0, 5);
 
         if (criticalItems.length === 0) {
-          criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Aucun ingrédient critique.</td></tr>';
+          criticalBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Aucun ingrédient critique.</td></tr>';
         } else {
           criticalBody.innerHTML = criticalItems.map(item => `
             <tr>
               <td><strong>${item.ingredient_name}</strong></td>
               <td>${item.current_stock} ${item.unit}</td>
-              <td>${item.safety_stock} ${item.unit}</td>
               <td><span class="stock-status is-${item.status.toLowerCase()}">${item.status}</span></td>
               <td>${item.default_supplier ? item.default_supplier.name : '-'}</td>
               <td><strong>${item.recommended_order_quantity.toFixed(1)} ${item.unit}</strong></td>
@@ -5688,7 +5721,7 @@
     } catch (error) {
       console.error("Error refreshing purchasing dashboard:", error);
       const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
-      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Erreur lors du chargement des données.</td></tr>';
+      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Erreur lors du chargement des données.</td></tr>';
     }
   }
 
@@ -5821,43 +5854,43 @@
 
 // Ajouter les data-labels pour la responsivité des tableaux
 function addTableDataLabels() {
-    const tables = document.querySelectorAll('.dashboard-table');
-    
-    tables.forEach(table => {
-        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-        const rows = table.querySelectorAll('tbody tr');
-        
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            cells.forEach((cell, index) => {
-                if (headers[index] && !cell.hasAttribute('data-label')) {
-                    cell.setAttribute('data-label', headers[index]);
-                }
-            });
-        });
+  const tables = document.querySelectorAll('.dashboard-table');
+
+  tables.forEach(table => {
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    const rows = table.querySelectorAll('tbody tr');
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      cells.forEach((cell, index) => {
+        if (headers[index] && !cell.hasAttribute('data-label')) {
+          cell.setAttribute('data-label', headers[index]);
+        }
+      });
     });
+  });
 }
 
 // Exécuter au chargement et lors des mises à jour du tableau
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addTableDataLabels);
+  document.addEventListener('DOMContentLoaded', addTableDataLabels);
 } else {
-    addTableDataLabels();
+  addTableDataLabels();
 }
 
 // Observer les changements dans le tbody pour ajouter les labels aux nouvelles lignes
 const observeTableChanges = () => {
-    const tbody = document.getElementById('dashboard-critical-ingredients-body');
-    if (tbody) {
-        const observer = new MutationObserver(() => {
-            addTableDataLabels();
-        });
-        
-        observer.observe(tbody, {
-            childList: true,
-            subtree: true
-        });
-    }
+  const tbody = document.getElementById('dashboard-critical-ingredients-body');
+  if (tbody) {
+    const observer = new MutationObserver(() => {
+      addTableDataLabels();
+    });
+
+    observer.observe(tbody, {
+      childList: true,
+      subtree: true
+    });
+  }
 };
 
 observeTableChanges();
