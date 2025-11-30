@@ -28,6 +28,13 @@
       <p>Chargement des données du dashboard…</p>
     </div>
   </div>
+  <div class="dashboard-loading-overlay is-hidden" id="selection-loading-overlay" role="status" aria-live="polite" hidden
+    aria-busy="false">
+    <div class="loading-indicator">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <p>Mise à jour des données du restaurant…</p>
+    </div>
+  </div>
   <div class="dashboard">
     {% include "components/sidebar.html" %}
     <div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>

@@ -1,6 +1,12 @@
 /* Topbar */
 .topbar {
     display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.topbar-main {
+    display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 24px;
@@ -44,14 +50,153 @@
     font-size: 0.85rem;
 }
 
+.global-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    width: calc(100% + 64px);
+    margin: -24px -32px 16px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0;
+    box-shadow: var(--shadow-soft);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.global-toolbar-spacer {
+    flex: 1;
+}
+
+.global-restaurant-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 260px;
+}
+
+.global-restaurant-picker label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.global-restaurant-select {
+    position: relative;
+}
+
+.global-restaurant-select select {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #f8fafc;
+    color: var(--text);
+    font-weight: 500;
+    appearance: none;
+}
+
+.global-select-icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    border-left: 2px solid var(--text-muted);
+    border-bottom: 2px solid var(--text-muted);
+    transform: translateY(-50%) rotate(-45deg);
+    pointer-events: none;
+}
+
+.global-restaurant-picker .form-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.profile-action-btn {
+    border: none;
+    background: #f4f6fb;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 999px;
+    padding: 8px 10px 8px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.profile-action-btn:hover,
+.profile-action-btn:focus-visible {
+    background: #e8ecfb;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.profile-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbeab2, #f7c28d);
+    position: relative;
+}
+
+.profile-icon::before,
+.profile-icon::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 999px;
+}
+
+.profile-icon::before {
+    top: 8px;
+    width: 12px;
+    height: 12px;
+}
+
+.profile-icon::after {
+    bottom: 6px;
+    width: 20px;
+    height: 10px;
+}
+
+@media (max-width: 1280px) {
+    .global-toolbar {
+        width: calc(100% + 80px);
+        margin: -32px -40px 16px;
+    }
+}
+
 @media (max-width: 1023px) {
-    .topbar {
+    .topbar-main {
         align-items: flex-start;
+    }
+    .global-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        width: calc(100% + 48px);
+        margin: -32px -24px 16px;
+    }
+    .global-restaurant-picker {
+        width: 100%;
     }
 }
 
 @media (max-width: 768px) {
-    .topbar {
+    .topbar-main {
         flex-direction: column;
+    }
+}
+
+@media (max-width: 560px) {
+    .global-toolbar {
+        width: calc(100% + 28px);
+        margin: -20px -14px 16px;
     }
 }

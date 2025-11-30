@@ -12,24 +12,19 @@
         </div>
 
         <div class="chatbot-toolbar" aria-describedby="chatbot-selection-hint">
-            <div class="chatbot-select">
-                <label for="chatbot-restaurant-select">Restaurant</label>
-                <div class="chatbot-select-wrapper">
-                    <select id="chatbot-restaurant-select" aria-label="Sélectionner le restaurant pour le chatbot">
-                        <option value="">Sélectionnez un restaurant</option>
-                    </select>
-                    <span class="chatbot-select-icon" aria-hidden="true"></span>
-                </div>
+            <div class="chatbot-selected-pill">
+                <p class="muted">Restaurant actif</p>
+                <strong id="chatbot-active-restaurant">Aucun</strong>
             </div>
             <p class="chatbot-status-text" id="chatbot-selection-hint" role="status" aria-live="polite">
-                Ajoutez un restaurant pour activer le chatbot.
+                Utilisez le sélecteur global pour charger un restaurant.
             </p>
         </div>
 
         <div class="chatbot-surface" aria-live="polite">
             <div id="chatbot-thread" class="chatbot-thread" aria-label="Historique de la conversation"></div>
             <div id="chatbot-empty-state" class="chatbot-empty">
-                <p>Sélectionnez un restaurant puis dites bonjour à votre assistant.</p>
+                <p>Choisissez un restaurant via la barre supérieure puis dites bonjour à votre assistant.</p>
             </div>
             <div id="chatbot-typing" class="chatbot-typing" role="status" aria-live="polite" hidden>
                 <span class="typing-dot"></span>

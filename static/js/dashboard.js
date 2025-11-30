@@ -105,6 +105,10 @@
     activeView: "dashboard",
   };
 
+  const selectionLoadingState = {
+    pending: 0,
+  };
+
   function forEachNode(list, handler) {
     if (!list || typeof handler !== "function") {
       return;
@@ -130,6 +134,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     navigateToSection = setupNavigation();
     setupActionHandlers();
+    setupGlobalRestaurantPicker();
     setupQrModal();
     bindGlobalButtons();
     bindOverviewUI();
@@ -151,16 +156,8 @@
       };
       const includeRestaurantId = options.includeRestaurantId !== false;
 
-      // Use the selected restaurant ID from the stock selector, purchasing selector, or state.overview.restaurantId
-      const stockSelect = document.getElementById("stock-restaurant-select");
-      const purchasingSelect = document.getElementById("purchasing-section-restaurant-select");
-
-      let restaurantId = null;
-      if (stockSelect && stockSelect.value) {
-        restaurantId = stockSelect.value;
-      } else if (purchasingSelect && purchasingSelect.value) {
-        restaurantId = purchasingSelect.value;
-      }
+      // Use the globally selected restaurant ID
+      const restaurantId = state.overview?.restaurantId ? String(state.overview.restaurantId) : null;
 
       if (includeRestaurantId && restaurantId) {
         finalHeaders["X-Restaurant-Id"] = restaurantId;
@@ -535,6 +532,21 @@
 
     syncFromHash();
     return (sectionId) => showSection(sectionId);
+  }
+
+  function setupGlobalRestaurantPicker() {
+    const select = document.getElementById("global-restaurant-select");
+    if (!select) {
+      return;
+    }
+    select.addEventListener("change", (event) => {
+      const restaurantId = event.target.value || null;
+      if (restaurantId) {
+        selectOverviewRestaurant(restaurantId, { manual: true });
+      } else {
+        selectOverviewRestaurant(null, { manual: true });
+      }
+    });
   }
 
   function setupRestaurantTabs() {
@@ -1003,9 +1015,8 @@
       closeIngredientFormModal();
       showToast(mode === "create" ? "Ingrédient ajouté avec succès." : "Ingrédient mis à jour.");
 
-      const select = document.getElementById("stock-restaurant-select");
-      if (select && select.value) {
-        loadStockData(select.value);
+      if (state.overview.restaurantId) {
+        loadStockData(state.overview.restaurantId);
       }
     } catch (error) {
       console.error("Erreur lors de l'enregistrement de l'ingrédient:", error);
@@ -1018,7 +1029,7 @@
 
   async function deleteIngredientById(id, name) {
     try {
-      const restaurantId = document.getElementById('stock-restaurant-select')?.value;
+      const restaurantId = state.overview?.restaurantId || null;
       if (!restaurantId) return;
 
       await purchasingApi.deleteIngredient(id);
@@ -1032,11 +1043,6 @@
   }
 
   function bindOverviewUI() {
-    const select = document.getElementById("overview-restaurant-select");
-    if (select) {
-      select.addEventListener("change", handleOverviewSelectChange);
-    }
-
     const form = document.getElementById("overview-chat-form");
     if (form) {
       form.addEventListener("submit", handleOverviewChatSubmit);
@@ -1049,11 +1055,6 @@
   }
 
   function bindChatbotUI() {
-    const select = document.getElementById("chatbot-restaurant-select");
-    if (select) {
-      select.addEventListener("change", handleChatbotSelectChange);
-    }
-
     const form = document.getElementById("chatbot-form");
     if (form) {
       form.addEventListener("submit", handleChatbotSubmit);
@@ -1077,39 +1078,15 @@
   }
 
   function bindPurchasingSectionUI() {
-    const select = document.getElementById("purchasing-section-restaurant-select");
-    if (!select) {
-      setupPurchasingEmbed();
-      setupPurchasingViewSwitcher();
-      return;
-    }
-    select.addEventListener("change", (event) => {
-      const value = event.target.value || null;
-      selectOverviewRestaurant(value || null, { manual: true });
-      syncPurchasingSectionSelectValue();
-      updatePurchasingIframeSrc(value || null);
-      refreshPurchasingDashboard();
-    });
-    syncPurchasingSectionSelectValue();
     setupPurchasingEmbed();
     setupPurchasingViewSwitcher();
     refreshPurchasingDashboard();
   }
 
   function bindStockManagementUI() {
-    const restaurantSelect = document.getElementById("stock-restaurant-select");
     const searchInput = document.getElementById("stock-search");
     const statusFilter = document.getElementById("stock-filter-status");
     const categoryFilter = document.getElementById("stock-filter-category");
-
-    // Note: Restaurant select population is handled in refreshDashboardData
-
-    if (restaurantSelect) {
-      restaurantSelect.addEventListener("change", (event) => {
-        const restaurantId = event.target.value;
-        loadStockData(restaurantId);
-      });
-    }
 
     const filterHandler = () => {
       // We can filter client-side since we have the data
@@ -1123,7 +1100,7 @@
     const addBtn = document.getElementById("btn-add-ingredient");
     if (addBtn) {
       addBtn.addEventListener("click", () => {
-        if (!restaurantSelect || !restaurantSelect.value) {
+        if (!state.overview.restaurantId) {
           alert("Veuillez sélectionner un restaurant avant d'ajouter un ingrédient.");
           return;
         }
@@ -1134,18 +1111,19 @@
     setupStockRowActions();
   }
 
-  async function loadStockData(restaurantId) {
+  async function loadStockData(restaurantId = null) {
     const tableBody = document.getElementById("stock-table-body");
     if (!tableBody) return;
 
-    state.activeStockRestaurantId = restaurantId || null;
-    if (!restaurantId) {
-      tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">Sélectionnez un restaurant pour afficher le stock.</td></tr>';
+    const targetRestaurantId = restaurantId || state.overview?.restaurantId || null;
+    state.activeStockRestaurantId = targetRestaurantId;
+    if (!targetRestaurantId) {
+      tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">Utilisez le sélecteur global pour afficher le stock.</td></tr>';
       state.stockData = [];
       return;
     }
 
-    ensureCategoryStore(restaurantId);
+    ensureCategoryStore(targetRestaurantId);
 
     // Skeleton loader
     tableBody.innerHTML = Array(5).fill(0).map(() => `
@@ -1166,7 +1144,7 @@
       past.setDate(today.getDate() - 30); // Look back 30 days for consumption avg
 
       const params = {
-        restaurant_id: restaurantId,
+        restaurant_id: targetRestaurantId,
         date_from: past.toISOString().split('T')[0],
         date_to: today.toISOString().split('T')[0],
         reorder_cycle_days: 7, // Default
@@ -1304,7 +1282,7 @@
   }
 
   function getActiveStockRestaurantId() {
-    return state.activeStockRestaurantId || (document.getElementById("stock-restaurant-select")?.value || null);
+    return state.activeStockRestaurantId || (state.overview?.restaurantId || null);
   }
 
   function loadCategoryStoreFromStorage(restaurantId) {
@@ -2340,7 +2318,6 @@
       console.warn("Impossible de mémoriser le restaurant actif", error);
     }
     updatePurchasingIframeSrc(restaurantId);
-    syncPurchasingSectionSelectValue();
   }
 
   function setDashboardLoading(isLoading, options = {}) {
@@ -2381,6 +2358,39 @@
         document.body.classList.remove("dashboard-loading");
       }
     }
+  }
+
+  function showSelectionLoadingOverlay() {
+    const overlay = document.getElementById("selection-loading-overlay");
+    if (!overlay) {
+      return;
+    }
+    selectionLoadingState.pending += 1;
+    if (selectionLoadingState.pending > 1) {
+      return;
+    }
+    overlay.removeAttribute("hidden");
+    overlay.classList.remove("is-hidden");
+    overlay.setAttribute("aria-busy", "true");
+    document.body.classList.add("dashboard-loading");
+  }
+
+  function hideSelectionLoadingOverlay() {
+    if (selectionLoadingState.pending === 0) {
+      return;
+    }
+    selectionLoadingState.pending -= 1;
+    if (selectionLoadingState.pending > 0) {
+      return;
+    }
+    const overlay = document.getElementById("selection-loading-overlay");
+    if (!overlay) {
+      return;
+    }
+    overlay.classList.add("is-hidden");
+    overlay.setAttribute("aria-busy", "false");
+    overlay.setAttribute("hidden", "");
+    document.body.classList.remove("dashboard-loading");
   }
 
   async function refreshDashboardData(options = {}) {
@@ -2433,8 +2443,6 @@
       }));
       syncStatsRestaurantsFromSnapshot(state.restaurants);
       syncStatsRestaurantsFromSnapshot(state.restaurants);
-      populatePurchasingSectionSelect();
-      populateStockRestaurantSelect();
 
       updateUIWithUserData(snapshot.user);
       updateProfileFormFields(snapshot.profile);
@@ -3087,45 +3095,6 @@
   // For now, we'll add it here to satisfy the instruction.
   // bindAddIngredientUI(); // This call would be inside bindStockManagementUI
 
-  // The following function `populateStockRestaurantSelect` is from the original content.
-  // The diff provided a snippet that seemed to indicate `loadStockData` was here,
-  // but the original content has `populateStockRestaurantSelect`.
-  // We will keep `populateStockRestaurantSelect` as it was.
-
-  function populateStockRestaurantSelect() {
-    const select = document.getElementById("stock-restaurant-select");
-    if (!select) {
-      return;
-    }
-    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
-    const placeholder = '<option value="">Select a restaurant</option>';
-
-    if (!restaurants.length) {
-      select.innerHTML = placeholder;
-      select.disabled = true;
-      return;
-    }
-
-    const options = restaurants
-      .map((restaurant) => {
-        const label = restaurant.display_name || restaurant.name || "Restaurant";
-        return `<option value="${restaurant.id}">${label}</option>`;
-      })
-      .join("\n");
-
-    select.innerHTML = `${placeholder}${options}`;
-    select.disabled = false;
-
-    // If we have a selected restaurant in overview, try to select it here too
-    if (state.overview.restaurantId) {
-      select.value = state.overview.restaurantId;
-      // Trigger change event to load data if a restaurant is selected
-      if (select.value) {
-        select.dispatchEvent(new Event('change'));
-      }
-    }
-  }
-
   function renderRestaurants() {
     const container = document.getElementById("restaurants-card-list");
     const restaurantSelector = document.getElementById("edit-restaurant-select");
@@ -3270,7 +3239,7 @@
 
   function syncOverviewStateWithRestaurants() {
     renderOverviewRestaurantCards();
-    populateOverviewRestaurantSelect();
+    populateGlobalRestaurantSelect();
     const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
 
     if (!restaurants.length) {
@@ -3409,8 +3378,8 @@
     });
   }
 
-  function populateOverviewRestaurantSelect() {
-    const select = document.getElementById("overview-restaurant-select");
+  function populateGlobalRestaurantSelect() {
+    const select = document.getElementById("global-restaurant-select");
     if (!select) {
       return;
     }
@@ -3427,141 +3396,90 @@
 
     restaurants.forEach((restaurant) => {
       const option = document.createElement("option");
-      option.value = restaurant.id || "";
+      option.value = restaurant.id ? String(restaurant.id) : "";
       option.textContent = restaurant.display_name || restaurant.name || "Sans nom";
       select.appendChild(option);
     });
 
     if (state.overview.restaurantId) {
-      select.value = state.overview.restaurantId;
-    }
-    select.disabled = !restaurants.length || state.overview.isSending;
-  }
-
-  function populateChatbotSelect() {
-    const select = document.getElementById("chatbot-restaurant-select");
-    if (!select) {
-      return;
-    }
-
-    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = restaurants.length
-      ? "Sélectionnez un restaurant"
-      : "Aucun restaurant disponible";
-
-    select.innerHTML = "";
-    select.appendChild(placeholder);
-
-    restaurants.forEach((restaurant) => {
-      const option = document.createElement("option");
-      option.value = restaurant && restaurant.id ? String(restaurant.id) : "";
-      option.textContent = restaurant.display_name || restaurant.name || "Sans nom";
-      select.appendChild(option);
-    });
-
-    if (state.chatbot.restaurantId) {
-      const match = restaurants.some((restaurant) => String(restaurant.id) === state.chatbot.restaurantId);
-      if (match) {
-        select.value = state.chatbot.restaurantId;
-      } else {
-        select.value = "";
-      }
+      select.value = String(state.overview.restaurantId);
     } else {
       select.value = "";
     }
-
     select.disabled = !restaurants.length;
-  }
-
-  function populatePurchasingSectionSelect() {
-    const select = document.getElementById("purchasing-section-restaurant-select");
-    if (!select) {
-      return;
-    }
-    const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
-    const placeholder = '<option value="">Sélectionnez un restaurant</option>';
-    if (!restaurants.length) {
-      select.innerHTML = placeholder;
-      select.disabled = true;
-      return;
-    }
-    const options = restaurants
-      .map((restaurant) => {
-        const label = restaurant.display_name || restaurant.name || "Restaurant";
-        return `<option value="${restaurant.id}">${label}</option>`;
-      })
-      .join("\n");
-    select.innerHTML = `${placeholder}${options}`;
-    select.disabled = false;
-    syncPurchasingSectionSelectValue();
-  }
-
-  function syncPurchasingSectionSelectValue() {
-    const select = document.getElementById("purchasing-section-restaurant-select");
-    if (!select) {
-      return;
-    }
-    const activeId = state.overview.restaurantId ? String(state.overview.restaurantId) : "";
-    if (select.value !== activeId) {
-      select.value = activeId;
-    }
-    select.disabled = !Array.isArray(state.restaurants) || !state.restaurants.length;
   }
 
   function selectOverviewRestaurant(restaurantId, options = {}) {
     const { manual = false } = options;
-    const select = document.getElementById("overview-restaurant-select");
+    const select = document.getElementById("global-restaurant-select");
+    const normalizedId = restaurantId ? String(restaurantId) : null;
 
-    if (!restaurantId) {
+    if (!normalizedId) {
       if (select) {
         select.value = "";
       }
-      const reset = Boolean(state.overview.restaurantId);
+      const hadSelection = Boolean(state.overview.restaurantId);
       state.overview.restaurantId = null;
       state.overview.restaurantName = "";
       persistActiveRestaurantId(null);
-      if (manual) {
-        state.overview.hasManualSelection = true;
-      } else {
-        state.overview.hasManualSelection = false;
-      }
-      if (reset) {
+      state.overview.hasManualSelection = manual ? true : false;
+      if (hadSelection) {
         state.overview.history = [];
         clearOverviewChatStatus();
         renderOverviewChatMessages();
       }
       updateOverviewChatState();
       highlightOverviewSelection();
+      updateActiveRestaurantIndicators();
+      applyChatbotSelectionFromGlobal(null, { changed: hadSelection });
+      showSelectionLoadingOverlay();
+      Promise.allSettled([
+        loadStockData(null),
+        refreshPurchasingDashboard()
+      ]).finally(() => {
+        hideSelectionLoadingOverlay();
+      });
+      emitActiveRestaurantChange();
       return;
     }
 
-    const record = state.restaurants.find((restaurant) => restaurant.id === restaurantId);
+    const record = state.restaurants.find((restaurant) => restaurant && String(restaurant.id) === normalizedId);
     if (!record) {
-      if (manual) {
-        state.overview.hasManualSelection = true;
-      } else {
-        state.overview.hasManualSelection = false;
-      }
       if (select) {
         select.value = "";
       }
+      const hadSelection = Boolean(state.overview.restaurantId);
       state.overview.restaurantId = null;
       state.overview.restaurantName = "";
       persistActiveRestaurantId(null);
-      state.overview.history = [];
-      clearOverviewChatStatus();
-      renderOverviewChatMessages();
+      state.overview.hasManualSelection = manual ? true : false;
+      if (hadSelection) {
+        state.overview.history = [];
+        clearOverviewChatStatus();
+        renderOverviewChatMessages();
+      }
       updateOverviewChatState();
       highlightOverviewSelection();
+      updateActiveRestaurantIndicators();
+      applyChatbotSelectionFromGlobal(null, { changed: hadSelection });
+      showSelectionLoadingOverlay();
+      Promise.allSettled([
+        loadStockData(null),
+        refreshPurchasingDashboard()
+      ]).finally(() => {
+        hideSelectionLoadingOverlay();
+      });
+      emitActiveRestaurantChange();
       return;
     }
 
-    const changed = state.overview.restaurantId !== record.id;
+    const previousId = state.overview.restaurantId ? String(state.overview.restaurantId) : null;
+    const currentId = record.id ? String(record.id) : null;
+    const changed = previousId !== currentId;
+
     state.overview.restaurantId = record.id;
-    persistActiveRestaurantId(record.id);
     state.overview.restaurantName = record.display_name || record.name || "";
+    persistActiveRestaurantId(record.id);
     if (manual) {
       state.overview.hasManualSelection = true;
     }
@@ -3571,51 +3489,77 @@
       renderOverviewChatMessages();
     }
     if (select) {
-      select.value = record.id || "";
+      select.value = currentId || "";
     }
     updateOverviewChatState();
     highlightOverviewSelection();
+    updateActiveRestaurantIndicators();
+    applyChatbotSelectionFromGlobal(record, { changed });
+    if (changed) {
+      showSelectionLoadingOverlay();
+      Promise.allSettled([
+        loadStockData(record.id),
+        refreshPurchasingDashboard()
+      ]).finally(() => {
+        hideSelectionLoadingOverlay();
+      });
+      emitActiveRestaurantChange(record);
+    }
   }
 
-  function handleOverviewSelectChange(event) {
-    const target = event.target;
-    if (!target) {
-      return;
-    }
-    const restaurantId = target.value || null;
-    if (restaurantId) {
-      selectOverviewRestaurant(restaurantId, { manual: true });
-    } else {
-      selectOverviewRestaurant(null, { manual: true });
-    }
+  function updateActiveRestaurantIndicators() {
+    const activeName = state.overview.restaurantId
+      ? (state.overview.restaurantName || "Restaurant sélectionné")
+      : "Aucun";
+    const targets = [
+      "overview-active-restaurant",
+      "chatbot-active-restaurant",
+      "purchasing-active-restaurant",
+      "stock-active-restaurant",
+      "recipes-active-restaurant",
+    ];
+    targets.forEach((id) => {
+      const node = document.getElementById(id);
+      if (node) {
+        node.textContent = activeName;
+      }
+    });
   }
 
-  function handleChatbotSelectChange(event) {
-    const target = event.target;
-    if (!target) {
-      return;
+  function emitActiveRestaurantChange(record = null) {
+    const detail = {
+      id: record?.id ? String(record.id) : null,
+      name: record?.display_name || record?.name || "",
+    };
+    if (typeof window !== "undefined") {
+      window.activeRestaurant = detail;
     }
-    const selectedValue = target.value || null;
-    if (!selectedValue) {
-      const hadSelection = Boolean(state.chatbot.restaurantId);
+    document.dispatchEvent(new CustomEvent("activeRestaurantChange", { detail }));
+  }
+
+  function applyChatbotSelectionFromGlobal(record, options = {}) {
+    const { changed = false } = options;
+    const previousId = state.chatbot.restaurantId ? String(state.chatbot.restaurantId) : null;
+    const nextId = record?.id ? String(record.id) : null;
+
+    if (!nextId) {
+      const hadSelection = Boolean(previousId);
       state.chatbot.restaurantId = null;
       state.chatbot.restaurantName = "";
-      state.chatbot.hasManualSelection = true;
-      if (hadSelection) {
+      state.chatbot.hasManualSelection = false;
+      if (hadSelection || changed) {
         resetChatbotConversation();
+        setChatbotFeedback("Utilisez le sélecteur global pour lancer la discussion.");
       }
       syncChatbotControls();
-      setChatbotFeedback("Sélectionnez un restaurant pour lancer la discussion.");
       return;
     }
 
-    const normalizedId = String(selectedValue);
-    const record = state.restaurants.find((restaurant) => String(restaurant.id) === normalizedId);
-    const previousId = state.chatbot.restaurantId;
-    state.chatbot.restaurantId = normalizedId;
-    state.chatbot.restaurantName = record?.display_name || record?.name || "";
+    state.chatbot.restaurantId = nextId;
+    state.chatbot.restaurantName = record.display_name || record.name || "";
     state.chatbot.hasManualSelection = true;
-    if (previousId !== normalizedId) {
+
+    if (previousId !== nextId || changed) {
       resetChatbotConversation();
       if (state.chatbot.restaurantName) {
         setChatbotFeedback(`Contexte chargé pour ${state.chatbot.restaurantName}.`);
@@ -3628,21 +3572,9 @@
   }
 
   function syncChatbotControls() {
-    const select = document.getElementById("chatbot-restaurant-select");
     const launchBtn = document.getElementById("chatbot-fullscreen-btn");
     const hasRestaurants = Array.isArray(state.restaurants) && state.restaurants.length > 0;
     const hasSelection = Boolean(state.chatbot.restaurantId);
-
-    if (select) {
-      select.disabled = !hasRestaurants;
-      if (!hasRestaurants) {
-        select.value = "";
-      } else if (hasSelection && select.value !== state.chatbot.restaurantId) {
-        select.value = state.chatbot.restaurantId;
-      } else if (!hasSelection) {
-        select.value = "";
-      }
-    }
 
     if (launchBtn) {
       launchBtn.disabled = !hasSelection;
@@ -3661,7 +3593,7 @@
       statusMessage = "Ajoutez un restaurant pour activer le chatbot.";
       isError = true;
     } else if (!hasSelection) {
-      statusMessage = "Sélectionnez un restaurant pour charger son contexte.";
+      statusMessage = "Utilisez le sélecteur global pour charger son contexte.";
     } else {
       statusMessage = `${state.chatbot.restaurantName || "Votre restaurant"} est prêt à répondre.`;
     }
@@ -3694,53 +3626,27 @@
 
   function syncChatbotStateWithRestaurants() {
     const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
-    const previousId = state.chatbot.restaurantId ? String(state.chatbot.restaurantId) : null;
     if (!restaurants.length) {
-      state.chatbot.restaurantId = null;
-      state.chatbot.restaurantName = "";
-      state.chatbot.hasManualSelection = false;
-      populateChatbotSelect();
-      resetChatbotConversation();
-      syncChatbotControls();
+      const hadSelection = Boolean(state.chatbot.restaurantId);
+      applyChatbotSelectionFromGlobal(null, { changed: hadSelection });
       setChatbotFeedback("Ajoutez un restaurant pour tester le chatbot.");
       return;
     }
 
-    const normalizedSelection = state.chatbot.restaurantId ? String(state.chatbot.restaurantId) : "";
-    const matchingRecord = normalizedSelection
-      ? restaurants.find((restaurant) => String(restaurant.id) === normalizedSelection)
-      : null;
-
-    if (matchingRecord) {
-      state.chatbot.restaurantId = matchingRecord.id ? String(matchingRecord.id) : null;
-      state.chatbot.restaurantName = matchingRecord.display_name || matchingRecord.name || "";
-    } else if (state.chatbot.hasManualSelection) {
-      state.chatbot.restaurantId = null;
-      state.chatbot.restaurantName = "";
-    } else if (restaurants.length === 1) {
-      const fallback = restaurants[0];
-      state.chatbot.restaurantId = fallback?.id ? String(fallback.id) : null;
-      state.chatbot.restaurantName = fallback?.display_name || fallback?.name || "";
-    } else {
-      state.chatbot.restaurantId = null;
-      state.chatbot.restaurantName = "";
+    if (!state.overview.restaurantId) {
+      const hadSelection = Boolean(state.chatbot.restaurantId);
+      applyChatbotSelectionFromGlobal(null, { changed: hadSelection });
+      return;
     }
 
-    populateChatbotSelect();
-    syncChatbotControls();
-
-    const nextId = state.chatbot.restaurantId ? String(state.chatbot.restaurantId) : null;
-    if (previousId !== nextId) {
-      resetChatbotConversation();
-      if (nextId) {
-        if (state.chatbot.restaurantName) {
-          setChatbotFeedback(`Contexte chargé pour ${state.chatbot.restaurantName}.`);
-        } else {
-          setChatbotFeedback("Contexte chargé pour le restaurant sélectionné.");
-        }
-      } else if (previousId) {
-        setChatbotFeedback("Sélectionnez un restaurant pour lancer la discussion.");
-      }
+    const match = restaurants.find(
+      (restaurant) => restaurant && String(restaurant.id) === String(state.overview.restaurantId)
+    );
+    if (match) {
+      applyChatbotSelectionFromGlobal(match, { changed: false });
+    } else {
+      const hadSelection = Boolean(state.chatbot.restaurantId);
+      applyChatbotSelectionFromGlobal(null, { changed: hadSelection });
     }
   }
 
@@ -3750,7 +3656,7 @@
       return;
     }
     if (!state.chatbot.restaurantId) {
-      setChatbotFeedback("Sélectionnez un restaurant avant de discuter.", true);
+      setChatbotFeedback("Utilisez le sélecteur global avant de discuter.", true);
       return;
     }
 
@@ -3830,7 +3736,7 @@
       input.disabled = disabled;
       input.placeholder = hasSelection
         ? `Message pour ${state.chatbot.restaurantName || "votre restaurant"}…`
-        : "Sélectionnez un restaurant pour commencer.";
+        : "Utilisez le sélecteur global pour commencer.";
     }
     if (sendBtn) {
       sendBtn.disabled = disabled;
@@ -3861,7 +3767,7 @@
     if (!hasMessages) {
       const baseMessage = state.chatbot.restaurantId
         ? `Discutez avec ${state.chatbot.restaurantName || "votre restaurant"}.`
-        : "Sélectionnez un restaurant puis dites bonjour à votre assistant.";
+        : "Utilisez le sélecteur global puis dites bonjour à votre assistant.";
       empty.innerHTML = `<p>${escapeHtml(baseMessage)}</p>`;
     }
   }
@@ -3998,7 +3904,7 @@
     if (!hint) {
       return;
     }
-    const resolved = message || "Sélectionnez un restaurant pour activer le chatbot.";
+    const resolved = message || "Utilisez le sélecteur global pour activer le chatbot.";
     hint.textContent = resolved;
     hint.classList.toggle("error", Boolean(isError));
   }
@@ -4146,16 +4052,6 @@
   function updateOverviewChatState() {
     const hasRestaurant = Boolean(state.overview.restaurantId);
     const hasOptions = Array.isArray(state.restaurants) && state.restaurants.length > 0;
-    const select = document.getElementById("overview-restaurant-select");
-    if (select) {
-      select.disabled = !hasOptions || state.overview.isSending;
-      if (hasRestaurant && select.value !== state.overview.restaurantId) {
-        select.value = state.overview.restaurantId || "";
-      }
-      if (!hasRestaurant && !state.overview.isSending) {
-        select.value = "";
-      }
-    }
     const input = document.getElementById("overview-chat-input");
     if (input) {
       input.disabled = !hasRestaurant || state.overview.isSending;
@@ -4168,7 +4064,9 @@
     if (hint) {
       hint.textContent = hasRestaurant
         ? `Testez RestauBot pour ${state.overview.restaurantName || "votre restaurant"}.`
-        : "Sélectionnez un restaurant pour activer l'aperçu.";
+        : hasOptions
+          ? "Utilisez le sélecteur global pour activer l'aperçu."
+          : "Ajoutez un restaurant pour activer l'aperçu.";
     }
     if (!hasRestaurant) {
       clearOverviewChatStatus();
@@ -4183,7 +4081,7 @@
     if (!state.overview.restaurantId) {
       const statusEl = document.getElementById("overview-chat-status");
       if (statusEl) {
-        statusEl.textContent = "Sélectionnez un restaurant avant d'envoyer un message.";
+        statusEl.textContent = "Utilisez le sélecteur global avant d'envoyer un message.";
       }
       return;
     }
@@ -5686,9 +5584,7 @@
   }
 
   async function refreshPurchasingDashboard() {
-    // Try to get restaurant ID from the specific purchasing selector first, then fallback to global state
-    const select = document.getElementById("purchasing-section-restaurant-select");
-    const restaurantId = select && select.value ? select.value : null;
+    const restaurantId = state.overview?.restaurantId || null;
 
     if (!restaurantId) {
       // Clear data if no restaurant selected
@@ -5705,10 +5601,10 @@
       if (kpiActive) kpiActive.textContent = '-';
 
       const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
-      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Veuillez sélectionner un restaurant.</td></tr>';
+      if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="6" class="text-center muted">Sélectionnez un restaurant via la barre supérieure.</td></tr>';
 
       const ordersList = document.getElementById('dashboard-recent-orders-list');
-      if (ordersList) ordersList.innerHTML = '<p class="text-center muted">Veuillez sélectionner un restaurant.</p>';
+      if (ordersList) ordersList.innerHTML = '<p class="text-center muted">Sélectionnez un restaurant via la barre supérieure.</p>';
       return;
     }
 

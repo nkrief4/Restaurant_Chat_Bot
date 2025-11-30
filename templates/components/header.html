@@ -1,20 +1,38 @@
 <header class="topbar">
-    <button type="button" class="ghost-btn icon-btn sidebar-toggle" id="sidebar-toggle"
-        aria-controls="dashboard-sidebar" aria-expanded="false">
-        <span class="sr-only">Ouvrir le menu</span>
-        <span class="sidebar-toggle-icon" aria-hidden="true"></span>
-    </button>
-    <div class="topbar-content">
-        <p class="eyebrow">RestauBot</p>
-        <h1 id="welcome-title">Bonjour</h1>
-        <p class="subtitle" id="welcome-subtitle">Gérez vos restaurants, vos conversations IA et votre abonnement en
-            toute
-            simplicité.</p>
-    </div>
-    <div class="topbar-actions">
-        <div class="user-pill">
-            <span class="user-name" id="user-pill-name">—</span>
-            <span class="user-plan" id="user-plan-label">—</span>
+    <nav class="global-toolbar" aria-label="Navigation principale">
+        <div class="global-restaurant-picker">
+            <div class="global-restaurant-select">
+                <select id="global-restaurant-select" aria-label="Choisir le restaurant actif">
+                    <option value="">Sélectionnez un restaurant</option>
+                </select>
+                <span class="global-select-icon" aria-hidden="true"></span>
+            </div>
+        </div>
+        <div class="global-toolbar-spacer" aria-hidden="true"></div>
+        <button type="button" class="profile-action-btn" data-open-section="profile">
+            <span class="profile-icon" aria-hidden="true"></span>
+            <span class="sr-only">Aller aux paramètres</span>
+        </button>
+    </nav>
+
+    <div class="topbar-main">
+        <button type="button" class="ghost-btn icon-btn sidebar-toggle" id="sidebar-toggle"
+            aria-controls="dashboard-sidebar" aria-expanded="false">
+            <span class="sr-only">Ouvrir le menu</span>
+            <span class="sidebar-toggle-icon" aria-hidden="true"></span>
+        </button>
+        <div class="topbar-content">
+            <p class="eyebrow">RestauBot</p>
+            <h1 id="welcome-title">Bonjour</h1>
+            <p class="subtitle" id="welcome-subtitle">Gérez vos restaurants, vos conversations IA et votre abonnement en
+                toute
+                simplicité.</p>
+        </div>
+        <div class="topbar-actions">
+            <div class="user-pill">
+                <span class="user-name" id="user-pill-name">—</span>
+                <span class="user-plan" id="user-plan-label">—</span>
+            </div>
         </div>
     </div>
 </header>

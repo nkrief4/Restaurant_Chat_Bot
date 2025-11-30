@@ -14,26 +14,26 @@
     let filteredRecipes = [];
 
     // DOM Elements
-    const restaurantSelect = document.getElementById('recipes-restaurant-select');
     const searchInput = document.getElementById('recipes-search');
     const categoryFilter = document.getElementById('recipes-category-filter');
     const sortSelect = document.getElementById('recipes-sort');
     const tableBody = document.getElementById('recipes-table-body');
 
     // Details Panel Elements
-    const detailsPanel = document.getElementById('recipe-details-panel');
-    const detailsContent = document.getElementById('recipe-details-content');
+    const layout = document.getElementById('recipes-layout');
+    const detailsShell = document.getElementById('recipe-details-shell');
     const btnCloseDetails = document.getElementById('btn-close-details');
-
-    // Edit Form Elements
-    const editNameInput = document.getElementById('edit-recipe-name');
-    const editCostInput = document.getElementById('edit-recipe-cost');
-    const editPriceInput = document.getElementById('edit-recipe-price');
-    const calcCostDisplay = document.getElementById('calc-cost-display');
-    const btnUseCalcCost = document.getElementById('btn-use-calc-cost');
-    const marginValueDisplay = document.getElementById('edit-margin-value');
-    const marginBox = document.getElementById('margin-display-box');
-    const btnSaveRecipe = document.getElementById('btn-save-recipe');
+    const detailNameEl = document.getElementById('recipe-detail-name');
+    const detailCategoryEl = document.getElementById('recipe-detail-category');
+    const detailCostEl = document.getElementById('recipe-detail-cost');
+    const detailPriceEl = document.getElementById('recipe-detail-price');
+    const detailMarginEl = document.getElementById('recipe-detail-margin');
+    const detailInstructionsEl = document.getElementById('recipe-instructions');
+    const editRecipeBtn = document.getElementById('btn-edit-recipe');
+    const collapseDetailsBtn = document.getElementById('btn-collapse-details');
+    const duplicateRecipeBtn = document.getElementById('btn-duplicate-recipe');
+    const deleteRecipeBtn = document.getElementById('btn-delete-recipe');
+    const editIngredientsBtn = document.getElementById('btn-edit-ingredients');
 
     /**
      * Initialize the recipes module
@@ -50,47 +50,20 @@
             }
         });
 
-        // Load restaurants into dropdown
-        loadRestaurants();
-
-        // Listen for restaurants loaded event from dashboard.js
-        document.addEventListener('restaurantsLoaded', function (e) {
-            loadRestaurants();
-        });
+        // Listen for global restaurant selection changes
+        document.addEventListener('activeRestaurantChange', handleActiveRestaurantUpdate);
 
         // Set up event listeners
         setupEventListeners();
-    }
 
-    /**
-     * Load restaurants into the dropdown
-     */
-    function loadRestaurants() {
-        console.log('Loading restaurants...', window.restaurantData);
-
-        if (window.restaurantData && window.restaurantData.length > 0) {
-            restaurantSelect.innerHTML = '<option value="">Sélectionner un restaurant</option>';
-
-            window.restaurantData.forEach(restaurant => {
-                const option = document.createElement('option');
-                option.value = restaurant.id;
-                option.textContent = restaurant.name;
-                restaurantSelect.appendChild(option);
-            });
-
-            console.log('Restaurant select populated with ' + window.restaurantData.length + ' options');
-
-        } else {
-            console.warn('No restaurant data found in window.restaurantData');
-            restaurantSelect.innerHTML = '<option value="">Aucun restaurant trouvé</option>';
-        }
+        // Initialize from the current global selection if available
+        initializeFromActiveRestaurant();
     }
 
     /**
      * Set up event listeners
      */
     function setupEventListeners() {
-        if (restaurantSelect) restaurantSelect.addEventListener('change', handleRestaurantChange);
         if (searchInput) searchInput.addEventListener('input', handleSearch);
         if (categoryFilter) categoryFilter.addEventListener('change', handleFilter);
         if (sortSelect) sortSelect.addEventListener('change', handleSort);
@@ -98,11 +71,27 @@
 
         // Panel controls
         if (btnCloseDetails) btnCloseDetails.addEventListener('click', hideRecipeDetails);
-
-        // Edit form controls
-        if (editCostInput) editCostInput.addEventListener('input', updateMarginDisplay);
-        if (editPriceInput) editPriceInput.addEventListener('input', updateMarginDisplay);
-        if (btnUseCalcCost) btnUseCalcCost.addEventListener('click', useCalculatedCost);
+        if (collapseDetailsBtn) collapseDetailsBtn.addEventListener('click', hideRecipeDetails);
+        if (editRecipeBtn) {
+            editRecipeBtn.addEventListener('click', () => {
+                alert('La modification de plat arrive bientôt.');
+            });
+        }
+        if (duplicateRecipeBtn) {
+            duplicateRecipeBtn.addEventListener('click', () => {
+                alert('La duplication de plat arrive bientôt.');
+            });
+        }
+        if (deleteRecipeBtn) {
+            deleteRecipeBtn.addEventListener('click', () => {
+                alert('La suppression de plat arrive bientôt.');
+            });
+        }
+        if (editIngredientsBtn) {
+            editIngredientsBtn.addEventListener('click', () => {
+                alert('La gestion des ingrédients arrive bientôt.');
+            });
+        }
 
         // Add ingredient button redirection
         const btnAddIngredient = document.getElementById('btn-add-recipe-ingredient');
@@ -122,25 +111,37 @@
             });
         }
 
-        if (btnSaveRecipe) btnSaveRecipe.addEventListener('click', saveRecipeChanges);
     }
 
-    /**
-     * Handle restaurant selection change
-     */
-    async function handleRestaurantChange(e) {
-        currentRestaurantId = e.target.value;
-
-        if (currentRestaurantId) {
-            localStorage.setItem('current_restaurant_id', currentRestaurantId);
-            await loadRecipes(currentRestaurantId);
+    function initializeFromActiveRestaurant() {
+        const active = window.activeRestaurant;
+        if (active && active.id) {
+            currentRestaurantId = active.id;
+            loadRecipes(currentRestaurantId);
         } else {
-            // Clear table if no restaurant selected
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center muted">Sélectionnez un restaurant pour voir les recettes.</td></tr>';
-            hideRecipeDetails();
-            allRecipes = [];
-            filteredRecipes = [];
+            showEmptyRecipesState();
         }
+    }
+
+    function handleActiveRestaurantUpdate(event) {
+        const detail = event.detail || {};
+        if (detail.id) {
+            currentRestaurantId = detail.id;
+            loadRecipes(currentRestaurantId);
+        } else {
+            currentRestaurantId = null;
+            showEmptyRecipesState();
+        }
+    }
+
+    function showEmptyRecipesState(message) {
+        const text = message || 'Utilisez le sélecteur global pour voir les recettes.';
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="text-center muted">${text}</td></tr>`;
+        }
+        allRecipes = [];
+        filteredRecipes = [];
+        hideRecipeDetails();
     }
 
     /**
@@ -298,6 +299,9 @@
      * Select a recipe and show its details
      */
     async function selectRecipe(recipeId) {
+        if (!recipeId) {
+            return;
+        }
         currentRecipeId = recipeId;
 
         // Update active state in table
@@ -306,8 +310,12 @@
         });
         document.querySelector(`[data-recipe-id="${recipeId}"]`)?.classList.add('active');
 
-        // Open panel
-        if (detailsPanel) detailsPanel.classList.add('is-open');
+        // Prepare panel state
+        if (layout && detailsShell) {
+            layout.classList.add('has-selection');
+            detailsShell.removeAttribute('hidden');
+            detailsShell.setAttribute('aria-hidden', 'false');
+        }
 
         // Load details
         await loadRecipeDetails(recipeId);
@@ -337,40 +345,22 @@
      * Show recipe details in the right panel
      */
     function showRecipeDetails(recipe) {
-        if (!detailsContent) return;
-
-        // Populate Edit Form
-        if (editNameInput) editNameInput.value = recipe.menu_item_name || '';
-        if (editPriceInput) editPriceInput.value = recipe.menu_price || '';
-
-        // Populate Instructions
-        const instructionsInput = document.getElementById('edit-recipe-instructions');
-        if (instructionsInput) {
-            instructionsInput.value = recipe.instructions || '';
+        if (!recipe || !detailsShell) {
+            return;
         }
 
-        // Cost handling
-        let calculatedCost = 0;
-        if (recipe.ingredients) {
-            calculatedCost = recipe.ingredients.reduce((sum, ing) => sum + (ing.total_cost || 0), 0);
-        }
+        const name = recipe.menu_item_name || recipe.name || 'Plat sans nom';
+        const category = recipe.category || 'Non catégorisé';
+        const productionCost = recipe.production_cost ?? recipe.total_cost ?? 0;
+        const price = recipe.menu_price ?? recipe.menuPrice ?? 0;
+        const margin = price > 0 ? ((price - productionCost) / price) * 100 : null;
 
-        // Store calculated cost for "Use Calculated" button
-        if (btnUseCalcCost) btnUseCalcCost.dataset.cost = calculatedCost.toFixed(2);
-        if (calcCostDisplay) calcCostDisplay.textContent = `${calculatedCost.toFixed(2)} €`;
+        if (detailNameEl) detailNameEl.textContent = name;
+        if (detailCategoryEl) detailCategoryEl.textContent = category;
+        if (detailCostEl) detailCostEl.textContent = productionCost ? `${productionCost.toFixed(2)} €` : '—';
+        if (detailPriceEl) detailPriceEl.textContent = price ? `${price.toFixed(2)} €` : '—';
+        if (detailMarginEl) detailMarginEl.textContent = margin !== null ? `${margin.toFixed(1)} %` : '—';
 
-        if (editCostInput) {
-            // Check if production_cost is strictly not null (it can be 0)
-            if (recipe.production_cost !== null && recipe.production_cost !== undefined) {
-                editCostInput.value = recipe.production_cost;
-            } else {
-                editCostInput.value = calculatedCost.toFixed(2);
-            }
-        }
-
-        updateMarginDisplay();
-
-        // Update ingredients table  
         const ingredientsBody = document.getElementById('recipe-ingredients-body');
         if (ingredientsBody) {
             if (recipe.ingredients && recipe.ingredients.length > 0) {
@@ -378,89 +368,23 @@
                     <tr>
                         <td>
                             <div class="ingredient-name">${escapeHTML(ing.ingredient_name)}</div>
-                            <small class="muted">${ing.quantity_per_unit} ${escapeHTML(ing.unit || '')}</small>
+                            <small>${escapeHTML(ing.quantity_per_unit || '')} ${escapeHTML(ing.unit || '')}</small>
                         </td>
-                        <td class="text-right">${ing.quantity_per_unit}</td>
-                        <td class="text-right font-medium">$${(ing.total_cost || 0).toFixed(2)}</td>
-                        <td class="text-right">
-                            <button type="button" class="ghost-btn tiny text-danger" 
-                                onclick="window.RecipesModule.removeIngredient('${ing.ingredient_id}')"
-                                title="Supprimer">×</button>
-                        </td>
+                        <td class="text-right">${ing.quantity_per_unit || '—'}</td>
+                        <td class="text-right font-medium">${(ing.total_cost || 0).toFixed(2)} €</td>
                     </tr>
                 `).join('');
             } else {
-                ingredientsBody.innerHTML = '<tr><td colspan="4" class="text-center muted">Aucun ingrédient défini</td></tr>';
+                ingredientsBody.innerHTML = '<tr><td colspan="3" class="text-center muted">Aucun ingrédient défini.</td></tr>';
             }
         }
-    }
 
-    /**
-     * Save recipe changes
-     */
-    async function saveRecipeChanges(e) {
-        e.preventDefault();
-
-        if (!currentRecipeId) {
-            console.error('No recipe selected');
-            return;
-        }
-
-        try {
-            const token = window.supabaseToken || localStorage.getItem('supabase_token');
-            const instructionsInput = document.getElementById('edit-recipe-instructions');
-
-            // Helper to parse float safely
-            const parseCost = (val) => {
-                if (!val || val === '') return null;
-                const parsed = parseFloat(val);
-                return isNaN(parsed) ? null : parsed;
-            };
-
-            const payload = {
-                name: editNameInput?.value,
-                production_cost: parseCost(editCostInput?.value),
-                menu_price: parseCost(editPriceInput?.value),
-                instructions: instructionsInput?.value || null
-            };
-
-            console.log('Saving recipe:', currentRecipeId, payload);
-
-            const response = await fetch(`/api/purchasing/menu-items/${currentRecipeId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'X-Restaurant-Id': currentRestaurantId,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error('Erreur lors de la sauvegarde');
+        if (detailInstructionsEl) {
+            if (recipe.instructions) {
+                detailInstructionsEl.textContent = recipe.instructions;
+            } else {
+                detailInstructionsEl.textContent = 'Aucune instruction renseignée pour ce plat.';
             }
-
-            // Reload recipes to reflect changes
-            await loadRecipes(currentRestaurantId);
-            // Reload details to confirm saved data
-            await loadRecipeDetails(currentRecipeId);
-
-            // Show success feedback
-            if (btnSaveRecipe) {
-                const originalText = btnSaveRecipe.textContent;
-                btnSaveRecipe.textContent = '✓ Enregistré !';
-                btnSaveRecipe.style.background = '#10b981';
-                btnSaveRecipe.style.color = 'white';
-                setTimeout(() => {
-                    btnSaveRecipe.textContent = originalText;
-                    btnSaveRecipe.style.background = '';
-                    btnSaveRecipe.style.color = '';
-                }, 2000);
-            }
-
-        } catch (error) {
-            console.error('Error saving recipe:', error);
-            alert('Erreur lors de la sauvegarde : ' + error.message);
         }
     }
 
@@ -480,107 +404,16 @@
      */
     function hideRecipeDetails() {
         currentRecipeId = null;
-        if (detailsPanel) detailsPanel.classList.remove('is-open');
+        if (layout) {
+            layout.classList.remove('has-selection');
+        }
+        if (detailsShell) {
+            detailsShell.setAttribute('aria-hidden', 'true');
+            detailsShell.setAttribute('hidden', '');
+        }
         document.querySelectorAll('.recipe-card-row').forEach(row => {
             row.classList.remove('active');
         });
-    }
-
-    /**
-     * Update the margin display based on current cost and price inputs
-     */
-    function updateMarginDisplay() {
-        const cost = parseFloat(editCostInput?.value) || 0;
-        const price = parseFloat(editPriceInput?.value) || 0;
-
-        if (!marginValueDisplay || !marginBox) return;
-
-        if (price > 0 && cost >= 0) {
-            const margin = ((price - cost) / price) * 100;
-            marginValueDisplay.textContent = margin.toFixed(1) + '%';
-
-            // Update box styling based on margin
-            marginBox.classList.remove('high', 'medium', 'low');
-            if (margin >= 70) {
-                marginBox.classList.add('high');
-            } else if (margin >= 50) {
-                marginBox.classList.add('medium');
-            } else {
-                marginBox.classList.add('low');
-            }
-        } else {
-            marginValueDisplay.textContent = '- %';
-            marginBox.classList.remove('high', 'medium', 'low');
-        }
-    }
-
-    /**
-     * Use the calculated cost from ingredients
-     */
-    function useCalculatedCost() {
-        if (!btnUseCalcCost || !editCostInput) return;
-
-        const calculatedCost = btnUseCalcCost.dataset.cost;
-        if (calculatedCost) {
-            editCostInput.value = calculatedCost;
-            updateMarginDisplay();
-        }
-    }
-
-    /**
-     * Save recipe changes
-     */
-    async function saveRecipeChanges(e) {
-        e.preventDefault();
-
-        if (!currentRecipeId) {
-            console.error('No recipe selected');
-            return;
-        }
-
-        try {
-            const token = window.supabaseToken || localStorage.getItem('supabase_token');
-
-            const payload = {
-                name: editNameInput?.value,
-                production_cost: parseFloat(editCostInput?.value) || null,
-                menu_price: parseFloat(editPriceInput?.value) || null
-            };
-
-            console.log('Saving recipe:', currentRecipeId, payload);
-
-            const response = await fetch(`/api/purchasing/menu-items/${currentRecipeId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'X-Restaurant-Id': currentRestaurantId,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error('Erreur lors de la sauvegarde');
-            }
-
-            // Reload recipes to reflect changes
-            await loadRecipes(currentRestaurantId);
-
-            // Show success feedback
-            if (btnSaveRecipe) {
-                const originalText = btnSaveRecipe.textContent;
-                btnSaveRecipe.textContent = '✓ Enregistré !';
-                btnSaveRecipe.style.background = '#10b981';
-                setTimeout(() => {
-                    btnSaveRecipe.textContent = originalText;
-                    btnSaveRecipe.style.background = '';
-                }, 2000);
-            }
-
-        } catch (error) {
-            console.error('Error saving recipe:', error);
-            alert('Erreur lors de la sauvegarde : ' + error.message);
-        }
     }
 
     /**
