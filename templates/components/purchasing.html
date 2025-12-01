@@ -356,6 +356,7 @@
                         <thead>
                             <tr>
                                 <th>Plat</th>
+                                <th>Description</th>
                                 <th class="text-right">Coût</th>
                                 <th class="text-right">Prix</th>
                                 <th class="text-right">Marge</th>
@@ -363,7 +364,7 @@
                         </thead>
                         <tbody id="recipes-table-body">
                             <tr>
-                                <td colspan="4" class="text-center muted">
+                                <td colspan="5" class="text-center muted">
                                     Utilisez le sélecteur global pour voir les recettes.
                                 </td>
                             </tr>
@@ -432,6 +433,18 @@
                                 <strong id="recipe-detail-margin">—</strong>
                             </article>
                         </div>
+
+                        <section class="recipe-section recipe-description-section">
+                            <div class="recipe-section-header">
+                                <div>
+                                    <h3>Description</h3>
+                                    <p class="muted small">Ingrédients clés et storytelling du plat.</p>
+                                </div>
+                            </div>
+                            <div class="recipe-description display-view" id="recipe-detail-description">
+                                Ajoutez la description du plat depuis votre carte numérique.
+                            </div>
+                        </section>
 
                         <div class="recipe-edit-layout">
                             <section class="recipe-section recipe-ingredients-section">

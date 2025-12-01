@@ -37,6 +37,7 @@
     const detailPriceEl = document.getElementById('recipe-detail-price');
     const detailMarginEl = document.getElementById('recipe-detail-margin');
     const detailInstructionsEl = document.getElementById('recipe-instructions');
+    const detailDescriptionEl = document.getElementById('recipe-detail-description');
     const editRecipeBtn = document.getElementById('btn-edit-recipe');
     const collapseDetailsBtn = document.getElementById('btn-collapse-details');
     const deleteRecipeBtn = document.getElementById('btn-delete-recipe');
@@ -150,7 +151,7 @@
     function showEmptyRecipesState(message) {
         const text = message || 'Utilisez le sélecteur global pour voir les recettes.';
         if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="text-center muted">${text}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center muted">${text}</td></tr>`;
         }
         allRecipes = [];
         filteredRecipes = [];
@@ -163,7 +164,7 @@
     async function loadRecipes(restaurantId) {
         try {
             // Show loading state
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center muted">Chargement des recettes...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Chargement des recettes...</td></tr>';
             hideRecipeDetails(); // Hide details when switching restaurants
 
             // Get token from window global or localStorage fallback
@@ -171,7 +172,7 @@
 
             if (!token) {
                 console.warn('No auth token available yet. Waiting for tokenReady event.');
-                tableBody.innerHTML = '<tr><td colspan="4" class="text-center muted">Authentification en cours...</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Authentification en cours...</td></tr>';
                 return;
             }
 
@@ -197,6 +198,7 @@
                     menu_item_id: item.menu_item_id,
                     name: item.menu_item_name || item.name || 'Sans nom',
                     category: item.category || 'Non catégorisé',
+                    description: item.description || '',
                     totalCost: item.total_cost || 0,
                     menuPrice: item.menu_price || 0,
                     profitMargin: item.profit_margin || 0,
@@ -214,7 +216,7 @@
 
         } catch (error) {
             console.error('Error loading recipes:', error);
-            tableBody.innerHTML = `<tr><td colspan="4" class="text-center muted">Erreur: ${error.message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center muted">Erreur: ${error.message}</td></tr>`;
         }
     }
 
@@ -359,7 +361,7 @@
      */
     function renderRecipesTable(recipesToRender) {
         if (!recipesToRender || recipesToRender.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center muted">Aucune recette trouvée.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Aucune recette trouvée.</td></tr>';
             return;
         }
 
@@ -369,8 +371,9 @@
             const marginClass = getMarginClass(recipe.profitMargin);
             const recipeName = recipe.name || recipe.menu_item_name || 'Sans nom';
             const recipeCategory = recipe.category || 'Non catégorisé';
+            const descriptionPreview = formatDescriptionPreview(recipe.description);
 
-            return `<tr class="recipe-card-row ${recipe.menu_item_id === currentRecipeId ? 'active' : ''}" data-recipe-id="${recipe.menu_item_id}" style="--row-index: ${index}"><td><div class="recipe-info"><span class="recipe-name">${escapeHTML(recipeName)}</span><span class="recipe-category">${escapeHTML(recipeCategory)}</span></div></td><td class="text-right font-medium">$${(recipe.totalCost || 0).toFixed(2)}</td><td class="text-right font-medium">$${recipe.menuPrice ? recipe.menuPrice.toFixed(2) : '0.00'}</td><td class="text-right"><span class="margin-badge ${marginClass}">${recipe.profitMargin ? recipe.profitMargin.toFixed(0) + '%' : 'N/A'}</span></td></tr>`;
+            return `<tr class="recipe-card-row ${recipe.menu_item_id === currentRecipeId ? 'active' : ''}" data-recipe-id="${recipe.menu_item_id}" style="--row-index: ${index}"><td><div class="recipe-info"><span class="recipe-name">${escapeHTML(recipeName)}</span><span class="recipe-category">${escapeHTML(recipeCategory)}</span></div></td><td class="recipe-description-cell">${descriptionPreview}</td><td class="text-right font-medium">$${(recipe.totalCost || 0).toFixed(2)}</td><td class="text-right font-medium">$${recipe.menuPrice ? recipe.menuPrice.toFixed(2) : '0.00'}</td><td class="text-right"><span class="margin-badge ${marginClass}">${recipe.profitMargin ? recipe.profitMargin.toFixed(0) + '%' : 'N/A'}</span></td></tr>`;
         }).join('');
     }
 
@@ -417,6 +420,10 @@
 
         if (detailInstructionsEl) {
             detailInstructionsEl.textContent = recipe.instructions || 'Aucune instruction renseignée pour ce plat.';
+        }
+
+        if (detailDescriptionEl) {
+            detailDescriptionEl.textContent = recipe.description || 'Ajoutez la description du plat depuis votre carte numérique.';
         }
 
         if (editNameInput) editNameInput.value = name;
@@ -496,6 +503,16 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function formatDescriptionPreview(text) {
+        if (!text) {
+            return '<span class="muted">—</span>';
+        }
+        const clean = text.trim();
+        const limit = 110;
+        const snippet = clean.length > limit ? `${clean.slice(0, limit - 1).trim()}…` : clean;
+        return escapeHTML(snippet);
     }
 
     async function fetchAllIngredients() {

@@ -167,6 +167,7 @@ class RecipeWithCostResponse(BaseModel):
     total_cost: float = Field(default=0.0)
     menu_price: Optional[float] = None
     profit_margin: Optional[float] = None
+    description: Optional[str] = None
     ingredients: List[RecipeIngredientWithCost] = Field(default_factory=list)
     instructions: Optional[str] = None
 
@@ -203,6 +204,7 @@ class SupabasePurchasingDAO:
         self.access_token = access_token
         self.api_key = api_key
         self._menu_items_supports_display_name: Optional[bool] = None
+        self._menu_items_supports_description: Optional[bool] = None
 
     def _client(self, *, prefer: Optional[str] = None):
         return create_postgrest_client(self.access_token, prefer=prefer, api_key=self.api_key)
@@ -218,6 +220,14 @@ class SupabasePurchasingDAO:
         message_parts = [exc.message or "", getattr(exc, "details", "") or "", getattr(exc, "hint", "") or ""]
         combined = " ".join(part for part in message_parts if part).lower()
         return "display_name" in combined
+
+    @staticmethod
+    def _is_missing_column_error(exc: PostgrestAPIError, column: str) -> bool:
+        if str(getattr(exc, "code", "")) != "42703":
+            return False
+        message_parts = [exc.message or "", getattr(exc, "details", "") or "", getattr(exc, "hint", "") or ""]
+        combined = " ".join(part for part in message_parts if part).lower()
+        return column.lower() in combined
 
     async def fetch_all_ingredients(self) -> List[Dict[str, Any]]:
         """Return the catalog of ingredients for the restaurant."""
@@ -930,13 +940,27 @@ class SupabasePurchasingDAO:
         def _request() -> List[Dict[str, Any]]:
             with self._client() as client:
                 # Fetch all menu items for the restaurant
-                menu_items_response = (
-                    client.table("menu_items")
-                    .select("id,name,category,menu_price,production_cost,instructions")
-                    .eq("restaurant_id", self.restaurant_id_str)
-                    .order("name")
-                    .execute()
-                )
+                base_fields = "id,name,category,menu_price,production_cost,instructions"
+                include_description = self._menu_items_supports_description is not False
+                while True:
+                    select_clause = base_fields + (",description" if include_description else "")
+                    try:
+                        menu_items_response = (
+                            client.table("menu_items")
+                            .select(select_clause)
+                            .eq("restaurant_id", self.restaurant_id_str)
+                            .order("name")
+                            .execute()
+                        )
+                        if include_description and self._menu_items_supports_description is None:
+                            self._menu_items_supports_description = True
+                        break
+                    except PostgrestAPIError as exc:
+                        if include_description and self._is_missing_column_error(exc, "description"):
+                            self._menu_items_supports_description = False
+                            include_description = False
+                            continue
+                        raise
                 menu_items = menu_items_response.data or []
                 
                 if not menu_items:
@@ -1020,6 +1044,7 @@ class SupabasePurchasingDAO:
                         "menu_item_id": item_id,
                         "menu_item_name": item.get("name", ""),
                         "category": item.get("category"),
+                        "description": item.get("description"),
                         "total_cost": round(final_cost, 2),
                         "menu_price": menu_price,
                         "profit_margin": round(profit_margin, 1) if profit_margin is not None else None,
@@ -1042,14 +1067,28 @@ class SupabasePurchasingDAO:
         def _request() -> Optional[Dict[str, Any]]:
             with self._client() as client:
                 # Fetch menu item
-                menu_item_response = (
-                    client.table("menu_items")
-                    .select("id,name,category,menu_price,production_cost,instructions")
-                    .eq("restaurant_id", self.restaurant_id_str)
-                    .eq("id", str(menu_item_id))
-                    .limit(1)
-                    .execute()
-                )
+                base_fields = "id,name,category,menu_price,production_cost,instructions"
+                include_description = self._menu_items_supports_description is not False
+                while True:
+                    select_clause = base_fields + (",description" if include_description else "")
+                    try:
+                        menu_item_response = (
+                            client.table("menu_items")
+                            .select(select_clause)
+                            .eq("restaurant_id", self.restaurant_id_str)
+                            .eq("id", str(menu_item_id))
+                            .limit(1)
+                            .execute()
+                        )
+                        if include_description and self._menu_items_supports_description is None:
+                            self._menu_items_supports_description = True
+                        break
+                    except PostgrestAPIError as exc:
+                        if include_description and self._is_missing_column_error(exc, "description"):
+                            self._menu_items_supports_description = False
+                            include_description = False
+                            continue
+                        raise
                 
                 if not menu_item_response.data:
                     return None
@@ -1135,6 +1174,7 @@ class SupabasePurchasingDAO:
                     "menu_item_id": menu_item["id"],
                     "menu_item_name": menu_item.get("name", ""),
                     "category": menu_item.get("category"),
+                    "description": menu_item.get("description"),
                     "total_cost": round(final_cost, 2),
                     "menu_price": menu_price,
                     "profit_margin": round(profit_margin, 1) if profit_margin is not None else None,
