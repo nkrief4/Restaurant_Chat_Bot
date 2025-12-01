@@ -14,6 +14,8 @@
     let filteredRecipes = [];
     let currentRecipeData = null;
     let isEditingRecipe = false;
+    let isManualCostOverride = false;
+    let manualCostOverride = null;
 
     // Ingredient Management State
     let currentRecipeIngredients = [];
@@ -109,6 +111,10 @@
                 e.preventDefault();
                 toggleEditMode(false);
             });
+        }
+
+        if (editCostInput) {
+            editCostInput.addEventListener('input', handleManualCostInput);
         }
 
         // Ingredient Manager Events
@@ -322,6 +328,7 @@
             layout.classList.add('has-selection');
             detailsShell.removeAttribute('hidden');
             detailsShell.setAttribute('aria-hidden', 'false');
+            detailsShell.classList.add('is-visible');
         }
 
         // Show loading screen
@@ -415,6 +422,29 @@
         if (editNameInput) editNameInput.value = name;
         if (editPriceInput) editPriceInput.value = price ? price.toFixed(2) : '';
         if (editInstructionsInput) editInstructionsInput.value = recipe.instructions || '';
+
+        animateRecipeDetailsCard();
+    }
+
+    function animateRecipeDetailsCard() {
+        const card = document.getElementById('recipe-details-card');
+        if (!card) return;
+
+        card.classList.remove('reveal');
+        // Force reflow to restart animation
+        void card.offsetWidth;
+        card.classList.add('reveal');
+        card.addEventListener('animationend', () => {
+            card.classList.remove('reveal');
+        }, { once: true });
+    }
+
+    /**
+     * Backwards compatibility helper.
+     * Some flows still call renderRecipeDetails after a save.
+     */
+    function renderRecipeDetails(recipe) {
+        showRecipeDetails(recipe);
     }
 
     /**
@@ -441,6 +471,7 @@
         if (detailsShell) {
             detailsShell.setAttribute('aria-hidden', 'true');
             detailsShell.setAttribute('hidden', '');
+            detailsShell.classList.remove('is-visible');
         }
         document.querySelectorAll('.recipe-card-row').forEach(row => {
             row.classList.remove('active');
@@ -465,31 +496,6 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
-    }
-
-    function populateEditFields() {
-        if (!currentRecipeData) {
-            return;
-        }
-        if (editNameInput) {
-            editNameInput.value = currentRecipeData.menu_item_name || currentRecipeData.name || '';
-        }
-        const categoryInput = document.getElementById('edit-recipe-category');
-        if (categoryInput) {
-            categoryInput.value = currentRecipeData.category || '';
-        }
-
-        // Cost is now calculated, but we set initial value
-        calculateTotalCost();
-
-        if (editPriceInput) {
-            const priceValue = currentRecipeData.menu_price ?? currentRecipeData.menuPrice;
-            const numericPrice = priceValue !== undefined && priceValue !== null ? Number(priceValue) : NaN;
-            editPriceInput.value = Number.isFinite(numericPrice) ? numericPrice.toFixed(2) : '';
-        }
-        if (editInstructionsInput) {
-            editInstructionsInput.value = currentRecipeData.instructions || '';
-        }
     }
 
     async function fetchAllIngredients() {
@@ -685,7 +691,16 @@
         calculateTotalCost();
     }
 
-    function calculateTotalCost() {
+    function calculateTotalCost(forceRecalculate = false) {
+        if (isManualCostOverride && !forceRecalculate) {
+            const manualValue = manualCostOverride ?? (parseFloat(editCostInput?.value) || 0);
+            if (editCostInput) {
+                editCostInput.value = manualValue.toFixed(2);
+                editCostInput.classList.add('is-manual');
+            }
+            return manualValue;
+        }
+
         let total = 0;
         currentRecipeIngredients.forEach(ing => {
             total += (ing.quantity_per_unit * (ing.unit_cost || 0));
@@ -693,8 +708,27 @@
 
         if (editCostInput) {
             editCostInput.value = total.toFixed(2);
+            editCostInput.classList.remove('is-manual');
         }
+
+        if (!isManualCostOverride) {
+            manualCostOverride = null;
+        }
+
         return total;
+    }
+
+    function handleManualCostInput() {
+        if (!editCostInput) return;
+
+        const value = parseFloat(editCostInput.value);
+        if (Number.isFinite(value)) {
+            manualCostOverride = value;
+            isManualCostOverride = true;
+            editCostInput.classList.add('is-manual');
+        } else {
+            manualCostOverride = 0;
+        }
     }
 
     async function toggleEditMode(enable) {
@@ -706,6 +740,13 @@
             currentRecipeIngredients = JSON.parse(JSON.stringify(currentRecipeData.ingredients || []));
             originalRecipeIngredients = JSON.parse(JSON.stringify(currentRecipeData.ingredients || []));
 
+            const manualCost = currentRecipeData.production_cost;
+            isManualCostOverride = manualCost !== null && manualCost !== undefined;
+            manualCostOverride = isManualCostOverride ? Number(manualCost) : null;
+            if (editCostInput) {
+                editCostInput.classList.toggle('is-manual', isManualCostOverride);
+            }
+
             // Load catalog if needed
             await loadIngredientsCatalog();
 
@@ -716,6 +757,11 @@
             card.classList.add('is-editing');
         } else {
             card.classList.remove('is-editing');
+            isManualCostOverride = false;
+            manualCostOverride = null;
+            if (editCostInput) {
+                editCostInput.classList.remove('is-manual');
+            }
         }
     }
 
@@ -726,9 +772,6 @@
         const categoryInput = document.getElementById('edit-recipe-category');
         const priceInput = document.getElementById('edit-recipe-price');
         const instructionsInput = document.getElementById('edit-recipe-instructions');
-
-        // Cost input is handled by calculateTotalCost
-        const costInput = document.getElementById('edit-recipe-cost');
 
         if (nameInput) nameInput.value = currentRecipeData.menu_item_name || currentRecipeData.name || '';
         if (categoryInput) categoryInput.value = currentRecipeData.category || '';
@@ -741,7 +784,16 @@
 
         if (instructionsInput) instructionsInput.value = currentRecipeData.instructions || '';
 
-        calculateTotalCost();
+        if (editCostInput) {
+            if (isManualCostOverride && manualCostOverride !== null) {
+                editCostInput.value = Number(manualCostOverride).toFixed(2);
+                editCostInput.classList.add('is-manual');
+            } else {
+                calculateTotalCost(true);
+            }
+        } else {
+            calculateTotalCost(true);
+        }
     }
 
     async function handleSaveRecipe(e) {
@@ -759,6 +811,18 @@
         const newCategory = categoryInput.value.trim();
         const newPrice = parseFloat(priceInput.value) || 0;
         const newInstructions = instructionsInput.value.trim();
+        let finalCost;
+
+        if (isManualCostOverride) {
+            const manualValue = Number.isFinite(manualCostOverride)
+                ? manualCostOverride
+                : parseFloat(editCostInput?.value);
+            finalCost = Number.isFinite(manualValue) ? manualValue : 0;
+        } else {
+            finalCost = calculateTotalCost(true);
+        }
+
+        const updatedMargin = newPrice > 0 ? ((newPrice - finalCost) / newPrice) * 100 : 0;
 
         if (!newName) {
             alert('Le nom du plat est requis.');
@@ -778,6 +842,10 @@
                 price: newPrice,
                 instructions: newInstructions
             };
+
+            if (isManualCostOverride) {
+                recipePayload.production_cost = finalCost;
+            }
 
             const response = await fetch(`/api/purchasing/menu-items/${currentRecipeId}`, {
                 method: 'PUT',
@@ -838,12 +906,46 @@
             }
 
             // Success!
-            // Update local data
+            // Update local data using freshest cost/margin
             currentRecipeData.name = newName;
+            currentRecipeData.menu_item_name = newName;
             currentRecipeData.category = newCategory;
             currentRecipeData.price = newPrice;
+            currentRecipeData.menu_price = newPrice;
+            currentRecipeData.menuPrice = newPrice;
             currentRecipeData.instructions = newInstructions;
             currentRecipeData.ingredients = JSON.parse(JSON.stringify(currentRecipeIngredients));
+            currentRecipeData.production_cost = isManualCostOverride ? finalCost : null;
+            currentRecipeData.total_cost = finalCost;
+            currentRecipeData.totalCost = finalCost;
+            currentRecipeData.profit_margin = updatedMargin;
+            currentRecipeData.profitMargin = updatedMargin;
+            currentRecipeData.is_manual_cost = isManualCostOverride;
+            manualCostOverride = isManualCostOverride ? finalCost : null;
+
+            const propagateSummary = (collections) => {
+                collections.forEach(collection => {
+                    if (!Array.isArray(collection)) return;
+                    const target = collection.find(item => item.menu_item_id === currentRecipeId);
+                    if (!target) return;
+                    Object.assign(target, {
+                        name: newName,
+                        menu_item_name: newName,
+                        category: newCategory,
+                        menu_price: newPrice,
+                        menuPrice: newPrice,
+                        totalCost: finalCost,
+                        total_cost: finalCost,
+                        production_cost: isManualCostOverride ? finalCost : null,
+                        is_manual_cost: isManualCostOverride,
+                        profitMargin: updatedMargin,
+                        profit_margin: updatedMargin
+                    });
+                });
+            };
+
+            propagateSummary([allRecipes, filteredRecipes]);
+            renderRecipesTable(filteredRecipes);
 
             // Refresh UI
             renderRecipeDetails(currentRecipeData);

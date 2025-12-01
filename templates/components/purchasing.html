@@ -412,9 +412,13 @@
                             <article class="recipe-stat-card">
                                 <p class="stat-label">Coût production</p>
                                 <strong id="recipe-detail-cost" class="display-view">—</strong>
-                                <div class="edit-view input-with-hint">
-                                    <input type="number" step="0.01" id="edit-recipe-cost" class="premium-input"
-                                        readonly placeholder="0.00">
+                                <div class="edit-view cost-edit-stack">
+                                    <div class="input-with-hint">
+                                        <input type="number" step="0.01" id="edit-recipe-cost" class="premium-input"
+                                            placeholder="0.00">
+                                        <span class="input-hint">€</span>
+                                    </div>
+                                    <p class="cost-helper-text">Modifiez ce montant pour forcer un coût manuel.</p>
                                 </div>
                             </article>
                             <article class="recipe-stat-card editable-field" data-field="price">
@@ -429,70 +433,74 @@
                             </article>
                         </div>
 
-                        <section class="recipe-section">
-                            <div class="recipe-section-header">
-                                <div>
-                                    <h3>Ingrédients</h3>
+                        <div class="recipe-edit-layout">
+                            <section class="recipe-section recipe-ingredients-section">
+                                <div class="recipe-section-header">
+                                    <div>
+                                        <h3>Ingrédients</h3>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Display View: Read-only Table -->
-                            <div class="recipe-ingredients-table display-view">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Nom</th>
-                                            <th class="text-right">Quantité</th>
-                                            <th class="text-right">Coût</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="recipe-ingredients-body">
-                                        <tr>
-                                            <td colspan="3" class="text-center muted">Sélectionnez un plat.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                                <!-- Display View: Read-only Table -->
+                                <div class="recipe-ingredients-table display-view">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Nom</th>
+                                                <th class="text-right">Quantité</th>
+                                                <th class="text-right">Coût</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recipe-ingredients-body">
+                                            <tr>
+                                                <td colspan="3" class="text-center muted">Sélectionnez un plat.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
 
-                            <!-- Edit View: Ingredient Manager -->
-                            <div class="ingredients-manager edit-view">
-                                <div class="ingredients-header">
-                                    <span>Ingrédient</span>
-                                    <span>Quantité</span>
-                                    <span>Unité</span>
-                                    <span>Coût</span>
-                                    <span>Action</span>
+                                <!-- Edit View: Ingredient Manager -->
+                                <div class="ingredients-manager edit-view">
+                                    <div class="ingredients-header">
+                                        <span>Ingrédient</span>
+                                        <span>Quantité</span>
+                                        <span>Unité</span>
+                                        <span>Coût</span>
+                                        <span>Action</span>
+                                    </div>
+                                    <div id="edit-recipe-ingredients-list" class="ingredients-list">
+                                        <!-- Dynamic content -->
+                                    </div>
+                                    <div class="add-ingredient-row">
+                                        <select id="new-ingredient-select" class="ingredient-select">
+                                            <option value="">Ajouter un ingrédient...</option>
+                                        </select>
+                                        <input type="number" id="new-ingredient-quantity" placeholder="Qté" step="0.01"
+                                            min="0">
+                                        <span class="unit-display" id="new-ingredient-unit">-</span>
+                                        <button type="button" id="btn-add-ingredient" class="icon-btn success"
+                                            title="Ajouter">
+                                            <span>+</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div id="edit-recipe-ingredients-list" class="ingredients-list">
-                                    <!-- Dynamic content -->
-                                </div>
-                                <div class="add-ingredient-row">
-                                    <select id="new-ingredient-select" class="ingredient-select">
-                                        <option value="">Ajouter un ingrédient...</option>
-                                    </select>
-                                    <input type="number" id="new-ingredient-quantity" placeholder="Qté" step="0.01"
-                                        min="0">
-                                    <span class="unit-display" id="new-ingredient-unit">-</span>
-                                    <button type="button" id="btn-add-ingredient" class="icon-btn success"
-                                        title="Ajouter">
-                                        <span>+</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </section>
+                            </section>
 
-                        <section class="recipe-section editable-field" data-field="instructions">
-                            <div class="recipe-section-header">
-                                <div>
-                                    <h3>Instructions</h3>
+                            <section class="recipe-section recipe-instructions-section editable-field"
+                                data-field="instructions">
+                                <div class="recipe-section-header">
+                                    <div>
+                                        <h3>Instructions</h3>
+                                        <p class="muted small">Gardez vos étapes, variantes et dressages bien rangés.</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="recipe-instructions display-view" id="recipe-instructions">
-                                Sélectionnez un plat pour afficher sa fiche.
-                            </div>
-                            <textarea id="edit-recipe-instructions" class="edit-view premium-input" rows="6"
-                                placeholder="Saisissez les étapes de préparation..."></textarea>
-                        </section>
+                                <div class="recipe-instructions display-view" id="recipe-instructions">
+                                    Sélectionnez un plat pour afficher sa fiche.
+                                </div>
+                                <textarea id="edit-recipe-instructions" class="edit-view premium-input" rows="6"
+                                    placeholder="Saisissez les étapes de préparation..."></textarea>
+                            </section>
+                        </div>
 
                         <div class="recipe-secondary-actions">
                             <button type="button" class="ghost-btn" id="btn-cancel-edit">Annuler</button>
