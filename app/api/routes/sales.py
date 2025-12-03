@@ -93,6 +93,7 @@ class SalesInsightsResponse(BaseModel):
     range_days: int = 7
     generated_at: datetime
     weekly_total: float
+    revenue_total: float = 0.0
     trend: List[SalesTrendPoint]
     top_items: List[SalesLeaderboardRow]
     table: List[SalesLeaderboardRow]
@@ -168,12 +169,14 @@ async def confirm_sales_import(
 
 @router.get("/insights", response_model=SalesInsightsResponse)
 async def fetch_sales_insights(
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     restaurant_id: UUID = Depends(get_current_restaurant_id),
     access_token: str = Depends(get_access_token),
 ) -> SalesInsightsResponse:
     await ensure_restaurant_access(restaurant_id, access_token)
     service = SalesService(restaurant_id, access_token)
-    return await service.get_insights()
+    return await service.get_insights(date_from, date_to)
 
 
 class ParsedSaleRow(BaseModel):
@@ -259,20 +262,39 @@ class SalesService:
 
         return await self.get_insights()
 
-    async def get_insights(self) -> SalesInsightsResponse:
-        range_days = 7
+    async def get_insights(
+        self, date_from: Optional[date] = None, date_to: Optional[date] = None
+    ) -> SalesInsightsResponse:
         now = datetime.now(timezone.utc)
-        start_current = (now - timedelta(days=range_days - 1)).date()
-        start_previous = start_current - timedelta(days=range_days)
+        
+        if date_from and date_to:
+            start_current = date_from
+            # Ensure date_to is inclusive by setting it to end of day if we were using datetime, 
+            # but here we use it for date comparison logic or constructing datetime bounds.
+            # The original code used `now` (datetime) for lte.
+            # If date_to is passed, we should probably use end of that day.
+            end_current_dt = datetime.combine(date_to, datetime.max.time(), tzinfo=timezone.utc)
+            
+            # Calculate range days
+            range_days = (date_to - date_from).days + 1
+            if range_days < 1:
+                range_days = 1
+                
+            start_previous = start_current - timedelta(days=range_days)
+        else:
+            range_days = 7
+            start_current = (now - timedelta(days=range_days - 1)).date()
+            end_current_dt = now
+            start_previous = start_current - timedelta(days=range_days)
 
         def _request() -> List[Dict[str, Any]]:
             with create_postgrest_client(self.db_token, api_key=self.api_key) as client:
                 response = (
                     client.table("orders")
-                    .select("menu_item_id,quantity,ordered_at,menu_items(name)")
+                    .select("menu_item_id,quantity,ordered_at,menu_items(name,menu_price)")
                     .eq("restaurant_id", self.restaurant_id)
                     .gte("ordered_at", f"{start_previous.isoformat()}T00:00:00Z")
-                    .lte("ordered_at", now.isoformat())
+                    .lte("ordered_at", end_current_dt.isoformat())
                     .execute()
                 )
                 return response.data or []
@@ -288,6 +310,7 @@ class SalesService:
         previous_totals: Dict[str, float] = defaultdict(float)
         timeline: Dict[date, float] = {start_current + timedelta(days=i): 0.0 for i in range(range_days)}
         names: Dict[str, str] = {}
+        revenue_total = 0.0
 
         for record in records:
             menu_item_id = record.get("menu_item_id")
@@ -300,9 +323,14 @@ class SalesService:
             if not ordered_at:
                 continue
             ordered_date = ordered_at.date()
-            names[str(menu_item_id)] = (
-                ((record.get("menu_items") or {}).get("name")) or "Plat"
-            )
+            menu_payload = record.get("menu_items") or {}
+            names[str(menu_item_id)] = menu_payload.get("name") or "Plat"
+            price = _safe_float(menu_payload.get("menu_price"), default=0.0)
+            
+            # Only count revenue for current period
+            if start_current <= ordered_date <= (date_to if date_to else now.date()):
+                revenue_total += quantity * price
+
             if ordered_date in timeline:
                 timeline[ordered_date] += quantity
                 current_totals[str(menu_item_id)] += quantity
@@ -325,6 +353,7 @@ class SalesService:
             range_days=range_days,
             generated_at=now,
             weekly_total=weekly_total,
+            revenue_total=revenue_total,
             trend=trend_points,
             top_items=leaderboard[:5],
             table=leaderboard[:8],

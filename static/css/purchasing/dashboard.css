@@ -94,24 +94,51 @@
 
 .purchasing-header-controls {
     display: flex;
-    align-items: flex-end;
-    gap: 20px;
+    align-items: center;
+    gap: 18px;
     flex-wrap: wrap;
 }
 
-.purchasing-date-filter {
+.purchasing-range-inline {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 999px;
+    padding: 8px 16px;
+}
+
+.purchasing-range-inline label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
     gap: 6px;
-    min-width: 260px;
 }
 
-.purchasing-range-filter .filter-inputs label {
-    color: #64748b;
+.purchasing-range-inline input[type="date"] {
+    border: none;
+    background: transparent;
+    font-size: 0.95rem;
+    color: #0f172a;
+    padding: 4px;
 }
 
-.purchasing-date-filter .range-label {
+.purchasing-range-inline input[type="date"]:focus {
+    outline: none;
+}
+
+.range-separator {
+    color: #cbd5f5;
+    font-weight: 600;
+}
+
+.purchasing-range-message {
     margin: 0;
+    min-width: 200px;
 }
 
 .purchasing-charts-grid {
@@ -170,6 +197,34 @@
 
 .small {
     font-size: 0.85rem;
+}
+
+.kpi-sales-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-sales-card.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0.4;
+    }
 }
 /* ========================================
    RESPONSIVE DESIGN - Dashboard Achats & Stock

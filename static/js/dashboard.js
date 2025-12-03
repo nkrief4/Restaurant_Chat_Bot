@@ -210,8 +210,10 @@
           headers: buildHeaders(),
         });
       },
-      async fetchSalesInsights() {
-        return request(`/api/sales/insights`, {
+      async fetchSalesInsights(params = {}) {
+        const query = new URLSearchParams(params).toString();
+        const suffix = query ? `?${query}` : "";
+        return request(`/api/sales/insights${suffix}`, {
           headers: buildHeaders(),
         });
       },
@@ -1122,6 +1124,7 @@
     setupPurchasingViewSwitcher();
     setupPurchasingDateFilters();
     refreshPurchasingDashboard();
+    document.addEventListener('salesDataChanged', refreshPurchasingDashboard);
   }
 
   function ensurePurchasingRangeDefaults() {
@@ -5761,9 +5764,11 @@
 
       const ordersList = document.getElementById('dashboard-recent-orders-list');
       if (ordersList) ordersList.innerHTML = '<p class="text-center muted">Sélectionnez un restaurant via la barre supérieure.</p>';
+      setSalesKpiLoading(false);
       return;
     }
 
+    setSalesKpiLoading(true);
     try {
       const dateFrom = formatInputDate(start);
       const dateTo = formatInputDate(end);
@@ -5779,7 +5784,10 @@
           date_from: dateFrom,
           date_to: dateTo
         }),
-        purchasingApi.fetchSalesInsights(rangeDays).catch((error) => {
+        purchasingApi.fetchSalesInsights({
+          date_from: dateFrom,
+          date_to: dateTo
+        }).catch((error) => {
           console.warn("Sales insights unavailable", error);
           return null;
         })
@@ -5804,21 +5812,17 @@
       const totalStock = processedRecommendations.length;
       const criticalStock = processedRecommendations.filter(r => r.status === 'CRITICAL').length;
       const activeOrders = orders.filter(o => o.status === 'sent' || o.status === 'pending').length;
-      const totalSales = Number(
-        salesInsights && typeof salesInsights.weekly_total === 'number'
-          ? salesInsights.weekly_total
-          : summary && typeof summary.total_dishes_sold !== 'undefined'
-            ? summary.total_dishes_sold
-            : 0
-      );
+      const revenueTotal = salesInsights && typeof salesInsights.revenue_total === 'number'
+        ? salesInsights.revenue_total
+        : null;
 
       const kpiTotal = document.getElementById('kpi-total-stock');
       if (kpiTotal) kpiTotal.textContent = totalStock;
 
       const kpiSales = document.getElementById('kpi-total-sales');
       if (kpiSales) {
-        kpiSales.textContent = Number.isFinite(totalSales)
-          ? Math.round(totalSales).toLocaleString('fr-FR')
+        kpiSales.textContent = revenueTotal !== null
+          ? formatCurrency(revenueTotal)
           : '-';
       }
 
@@ -5868,11 +5872,13 @@
 
       // 6. Render Charts
       renderPurchasingCharts(recommendations, orders, salesInsights);
+      setSalesKpiLoading(false);
 
     } catch (error) {
       console.error("Error refreshing purchasing dashboard:", error);
       const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
       if (criticalBody) criticalBody.innerHTML = '<tr><td colspan="5" class="text-center muted">Erreur lors du chargement des données.</td></tr>';
+      setSalesKpiLoading(false);
     }
   }
 
@@ -5978,6 +5984,14 @@
         }
       });
     }
+  }
+
+  function setSalesKpiLoading(isLoading) {
+    const card = document.getElementById('kpi-sales-card');
+    if (!card) {
+      return;
+    }
+    card.classList.toggle('is-loading', Boolean(isLoading));
   }
 
   // Enhanced modal close handlers for better UX

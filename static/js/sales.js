@@ -603,6 +603,7 @@
       showToast('Import confirmé et synchronisé.');
       resetPreview();
       renderInsights(insights);
+      document.dispatchEvent(new CustomEvent('salesDataChanged'));
     } catch (error) {
       console.error('sales::confirm', error);
       showToast(error.message || 'Impossible de sauvegarder ces ventes.');
@@ -704,6 +705,7 @@
       resetManualForm();
       showToast('Vente enregistrée.');
       await fetchInsights();
+      document.dispatchEvent(new CustomEvent('salesDataChanged'));
     } catch (error) {
       console.error('sales::manual-sale', error);
       if (dom.manualStatus) {
