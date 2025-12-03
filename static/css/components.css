@@ -335,7 +335,9 @@ textarea {
 .modal {
     position: fixed;
     inset: 0;
-    background: rgba(17, 24, 39, 0.45);
+    background: rgb(255, 255, 255);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -344,6 +346,10 @@ textarea {
     pointer-events: none;
     transition: opacity 0.2s ease;
     z-index: 200;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    border-radius: 12px;
 }
 
 .modal.open,
@@ -369,31 +375,7 @@ textarea {
 
 @media (max-height: 700px) {
     .modal {
-        align-items: flex-start;
         padding: 8px;
-    }
-
-    .modal.open,
-    .modal.is-active,
-    .modal[aria-hidden='false'] {
-        align-items: flex-start;
-        padding-top: 20px;
-    }
-}
-
-/* Prevent body scroll when modal is open */
-body.modal-open {
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-}
-
-@media (max-width: 640px) {
-    body.modal-open {
-        position: fixed;
-        /* Prevent iOS rubber banding */
-        height: 100vh;
-        -webkit-overflow-scrolling: touch;
     }
 }
 

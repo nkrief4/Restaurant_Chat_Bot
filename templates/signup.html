@@ -1,42 +1,46 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Créer un compte | RestauBot</title>
-    <meta name="description" content="Créez votre espace RestauBot, configurez votre restaurant et accédez à un dashboard IA complet en quelques étapes." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/static/auth.css" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="/static/js/supabaseClient.js" defer></script>
-    <script src="/static/js/signup.js" defer></script>
-  </head>
-  <body class="auth-body">
-    <div class="auth-shell">
-      <header class="auth-header">
-        <a class="auth-logo" href="/">RestauBot</a>
-        <a class="header-link" href="/login">Déjà client ? Connexion</a>
-      </header>
-      <main class="auth-card signup-card">
-        <section class="signup-hero">
-          <p class="eyebrow">Onboarding restaurateur</p>
-          <h1>Créez votre compte en 3 étapes</h1>
-          <p class="intro-text">
-            Nous configurons pour vous un tenant Supabase sécurisé et un premier restaurant prêt à être
-            personnalisé. Comptez moins de deux minutes avec votre adresse professionnelle et un mot de passe
-            robuste.
-          </p>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Créer un compte | RestauBot</title>
+  <meta name="description"
+    content="Créez votre espace RestauBot, configurez votre restaurant et accédez à un dashboard IA complet en quelques étapes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/auth.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="/static/js/supabaseClient.js" defer></script>
+  <script src="/static/js/signup.js" defer></script>
+</head>
+
+<body class="auth-body">
+  <div class="auth-shell">
+    <header class="auth-header">
+      <a class="auth-logo" href="/">RestauBot</a>
+      <a class="header-link" href="/login">Déjà client ? Connexion</a>
+    </header>
+    <main class="auth-card signup-card">
+      <section class="signup-hero">
+        <p class="eyebrow">Onboarding restaurateur</p>
+        <h1>Créez votre compte en 3 étapes</h1>
+        <p class="intro-text">
+          Nous configurons pour vous un tenant Supabase sécurisé et un premier restaurant prêt à être
+          personnalisé. Comptez moins de deux minutes avec votre adresse professionnelle et un mot de passe
+          robuste.
+        </p>
         <ul class="hero-checklist">
           <li>Tenant Supabase isolé pour votre équipe</li>
           <li>Restaurant démo prêt à éditer</li>
           <li>Accès immédiat au tableau de bord</li>
         </ul>
-        </section>
+      </section>
 
-        <div class="signup-progress" role="list" aria-label="Étapes de l'inscription">
-          <button type="button" class="progress-chip active" data-progress="0">1. Identité</button>
+      <div class="signup-progress" role="list" aria-label="Étapes de l'inscription">
+        <button type="button" class="progress-chip active" data-progress="0">1. Identité</button>
         <button type="button" class="progress-chip" data-progress="1">2. Restaurant</button>
         <button type="button" class="progress-chip" data-progress="2">3. Validation</button>
       </div>
@@ -65,7 +69,8 @@
           <div class="form-grid">
             <div class="form-field">
               <label for="phone_number">Téléphone professionnel</label>
-              <input type="tel" id="phone_number" name="phone_number" placeholder="+33 1 23 45 67 89" required minlength="6" maxlength="32" autocomplete="tel" />
+              <input type="tel" id="phone_number" name="phone_number" placeholder="+33 1 23 45 67 89" required
+                minlength="6" maxlength="32" autocomplete="tel" />
               <p class="field-error" data-error-for="phone_number"></p>
             </div>
             <div class="form-field">
@@ -83,16 +88,19 @@
           <div class="form-grid">
             <div class="form-field">
               <label for="password">Mot de passe</label>
-              <input type="password" id="password" name="password" placeholder="Minimum 12 caractères" required minlength="12" autocomplete="new-password" />
+              <input type="password" id="password" name="password" placeholder="Minimum 12 caractères" required
+                minlength="12" autocomplete="new-password" />
               <div class="password-meter" id="password-meter" aria-live="polite">
                 <div class="password-meter-bar" data-strength="0"></div>
-                <p class="password-meter-label">Utilisez 12+ caractères avec majuscules, minuscules, chiffres et symboles.</p>
+                <p class="password-meter-label">Utilisez 12+ caractères avec majuscules, minuscules, chiffres et
+                  symboles.</p>
               </div>
               <p class="field-error" data-error-for="password"></p>
             </div>
             <div class="form-field">
               <label for="password_confirm">Confirmation</label>
-              <input type="password" id="password_confirm" name="password_confirm" placeholder="Répétez le mot de passe" required autocomplete="new-password" />
+              <input type="password" id="password_confirm" name="password_confirm" placeholder="Répétez le mot de passe"
+                required autocomplete="new-password" />
               <p class="field-error" data-error-for="password_confirm"></p>
             </div>
           </div>
@@ -112,7 +120,8 @@
         <section class="form-step" data-step="1" hidden aria-live="polite">
           <header>
             <h2>Votre restaurant</h2>
-            <p class="muted">Nous créons automatiquement le tenant et un premier établissement à partir de ces données.</p>
+            <p class="muted">Nous créons automatiquement le tenant et un premier établissement à partir de ces données.
+            </p>
           </header>
           <div class="form-field">
             <label for="restaurant_name">Nom public</label>
@@ -125,7 +134,8 @@
               <input type="text" id="restaurant_slug" name="restaurant_slug" placeholder="maison-sesame" required />
               <button type="button" id="slug-refresh" class="ghost-btn small">Regénérer</button>
             </div>
-            <p class="field-hint">Lettre minuscules, chiffres et tirets uniquement. Utilisé pour préremplir vos URLs.</p>
+            <p class="field-hint">Lettre minuscules, chiffres et tirets uniquement. Utilisé pour préremplir vos URLs.
+            </p>
             <p class="field-error" data-error-for="restaurant_slug"></p>
           </div>
           <div class="form-field">
@@ -139,16 +149,12 @@
           </div>
           <div class="form-field">
             <label for="restaurant_menu_document">Menu structuré</label>
-            <textarea
-              id="restaurant_menu_document"
-              name="restaurant_menu_document"
-              class="json-input"
-              rows="8"
-              placeholder='{"categories": []}'
-            ></textarea>
+            <textarea id="restaurant_menu_document" name="restaurant_menu_document" class="json-input" rows="8"
+              placeholder='{"categories": []}'></textarea>
             <div class="input-with-btn menu-actions">
               <p class="field-hint">
-                Utilisez le format JSON de notre chatbot (catégories → plats). Vous pourrez l'éditer ensuite dans le dashboard.
+                Utilisez le format JSON de notre chatbot (catégories → plats). Vous pourrez l'éditer ensuite dans le
+                dashboard.
               </p>
               <button type="button" id="menu-example-btn" class="ghost-btn small">Charger un exemple</button>
             </div>
@@ -226,10 +232,11 @@
         <p id="signup-feedback" class="form-message" role="alert"></p>
         <p class="muted small">Déjà un compte ? <a href="/login">Connectez-vous ici</a>.</p>
       </form>
-      </main>
-      <footer class="auth-footer">
-        Besoin d’aide lors de l’onboarding ? <a href="mailto:contact@restaubot.ai">contact@restaubot.ai</a>
-      </footer>
-    </div>
-  </body>
+    </main>
+    <footer class="auth-footer">
+      Besoin d’aide lors de l’onboarding ? <a href="mailto:contact@restaubot.ai">contact@restaubot.ai</a>
+    </footer>
+  </div>
+</body>
+
 </html>

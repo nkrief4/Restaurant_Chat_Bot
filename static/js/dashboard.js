@@ -1,6 +1,7 @@
 (function () {
   const OVERVIEW_HISTORY_LIMIT = 6;
   const CHATBOT_HISTORY_LIMIT = 12;
+  const PURCHASING_RANGE_DEFAULT_DAYS = 7;
 
   const CATEGORY_STORAGE_KEY = "restaubot-ingredient-categories";
 
@@ -50,6 +51,10 @@
     stockData: [],
     activeStockRestaurantId: null,
     categoryStore: {},
+    purchasingRange: {
+      startDate: null,
+      endDate: null,
+    },
   };
 
   let overviewConversationChart = null;
@@ -205,6 +210,11 @@
           headers: buildHeaders(),
         });
       },
+      async fetchSalesInsights() {
+        return request(`/api/sales/insights`, {
+          headers: buildHeaders(),
+        });
+      },
       async updateSafetyStock(ingredientId, safetyStock) {
         return request(`/api/purchasing/ingredients/${ingredientId}/stock`, {
           method: "PUT",
@@ -270,6 +280,7 @@
     const sections = document.querySelectorAll(".section");
     const navLinks = document.querySelectorAll(".nav-link");
     const navSubLinks = document.querySelectorAll("[data-purchasing-nav-link]");
+    console.log(`[Dashboard] Found ${navSubLinks.length} navSubLinks with [data-purchasing-nav-link]`);
     const quickLinks = document.querySelectorAll("[data-open-section]");
     const dashboardContainer = document.querySelector(".dashboard");
     const sidebarElement = document.getElementById("dashboard-sidebar");
@@ -504,11 +515,13 @@
       });
     });
 
-    forEachNode(navSubLinks, (link) => {
-      link.addEventListener("click", (event) => {
+    // Use event delegation for purchasing nav links (more reliable)
+    document.addEventListener("click", (event) => {
+      const navSubLink = event.target.closest("[data-purchasing-nav-link]");
+      if (navSubLink) {
         event.preventDefault();
-        const sectionId = link.dataset ? link.dataset.section : null;
-        const targetView = link.dataset ? link.dataset.purchasingView : null;
+        const sectionId = navSubLink.dataset ? navSubLink.dataset.section : null;
+        const targetView = navSubLink.dataset ? navSubLink.dataset.purchasingView : null;
         if (sectionId) {
           const activeId = showSection(sectionId);
           if (activeId === "purchasing" && targetView) {
@@ -516,7 +529,7 @@
           }
         }
         closeNavDropdowns();
-      });
+      }
     });
 
     forEachNode(quickLinks, (link) => {
@@ -897,9 +910,6 @@
     runtime.modal.setAttribute("aria-hidden", "false");
     runtime.modal.classList.add("open");
 
-    // Prevent body scroll on mobile
-    document.body.classList.add("modal-open");
-
     requestAnimationFrame(() => {
       inputs.name.focus();
       inputs.name.select();
@@ -921,8 +931,6 @@
     runtime.modal.setAttribute("aria-hidden", "true");
     runtime.modal.classList.remove("open");
 
-    // Restore body scroll
-    document.body.classList.remove("modal-open");
   }
 
   function handleCategorySelectChange(event) {
@@ -1112,7 +1120,102 @@
   function bindPurchasingSectionUI() {
     setupPurchasingEmbed();
     setupPurchasingViewSwitcher();
+    setupPurchasingDateFilters();
     refreshPurchasingDashboard();
+  }
+
+  function ensurePurchasingRangeDefaults() {
+    if (!state.purchasingRange) {
+      state.purchasingRange = { startDate: null, endDate: null };
+    }
+    if (!state.purchasingRange.startDate || !state.purchasingRange.endDate) {
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(today.getDate() - (PURCHASING_RANGE_DEFAULT_DAYS - 1));
+      state.purchasingRange.startDate = formatInputDate(start);
+      state.purchasingRange.endDate = formatInputDate(today);
+    }
+  }
+
+  function setupPurchasingDateFilters() {
+    const form = document.getElementById("purchasing-range-form");
+    const startInput = document.getElementById("purchasing-start-date");
+    const endInput = document.getElementById("purchasing-end-date");
+    const messageEl = document.getElementById("purchasing-range-message");
+    if (!form || !startInput || !endInput) {
+      return;
+    }
+
+    ensurePurchasingRangeDefaults();
+    startInput.value = state.purchasingRange.startDate;
+    endInput.value = state.purchasingRange.endDate;
+    updatePurchasingRangeDisplay(new Date(startInput.value), new Date(endInput.value));
+
+    const handleRangeChange = async () => {
+      const startValue = startInput.value;
+      const endValue = endInput.value;
+      const error = validateRange(startValue, endValue);
+      if (messageEl) {
+        messageEl.textContent = error ? error.message : "";
+      }
+      if (error) {
+        return;
+      }
+      if (
+        state.purchasingRange.startDate === startValue &&
+        state.purchasingRange.endDate === endValue
+      ) {
+        return;
+      }
+      state.purchasingRange.startDate = startValue;
+      state.purchasingRange.endDate = endValue;
+      refreshPurchasingDashboard();
+    };
+
+    startInput.addEventListener("change", handleRangeChange);
+    endInput.addEventListener("change", handleRangeChange);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      handleRangeChange();
+    });
+  }
+
+  function resolvePurchasingDateRange() {
+    ensurePurchasingRangeDefaults();
+    const { startDate, endDate } = state.purchasingRange;
+    let start = startDate ? new Date(startDate) : null;
+    let end = endDate ? new Date(endDate) : null;
+    if (!start || Number.isNaN(start.getTime())) {
+      start = new Date();
+      start.setDate(start.getDate() - (PURCHASING_RANGE_DEFAULT_DAYS - 1));
+    }
+    if (!end || Number.isNaN(end.getTime())) {
+      end = new Date();
+    }
+    if (start > end) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
+    const diffDays = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1
+    );
+    return { start, end, rangeDays: diffDays };
+  }
+
+  function updatePurchasingRangeDisplay(start, end) {
+    const node = document.getElementById("purchasing-range-display");
+    if (!node) {
+      return;
+    }
+    const safeStart = start && !Number.isNaN(start.getTime()) ? start : new Date();
+    const safeEnd = end && !Number.isNaN(end.getTime()) ? end : safeStart;
+    const formatter = new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "short",
+    });
+    node.textContent = `${formatter.format(safeStart)} → ${formatter.format(safeEnd)}`;
   }
 
   function bindStockManagementUI() {
@@ -1129,10 +1232,11 @@
     if (statusFilter) statusFilter.addEventListener("change", filterHandler);
     if (categoryFilter) categoryFilter.addEventListener("change", filterHandler);
 
-    const addBtn = document.getElementById("btn-add-ingredient");
+    const addBtn = document.getElementById("stock-add-ingredient-btn");
     if (addBtn) {
       addBtn.addEventListener("click", () => {
-        if (!state.overview.restaurantId) {
+        const restaurantId = getActiveStockRestaurantId();
+        if (!restaurantId) {
           alert("Veuillez sélectionner un restaurant avant d'ajouter un ingrédient.");
           return;
         }
@@ -1746,10 +1850,8 @@
   }
 
   function setPurchasingPanel(viewId) {
-    // Ensure panels are loaded
-    if (!purchasingViewRuntime.panels || purchasingViewRuntime.panels.length === 0) {
-      purchasingViewRuntime.panels = document.querySelectorAll("[data-purchasing-panel]");
-    }
+    // Always refresh panels to ensure we have the latest DOM state
+    purchasingViewRuntime.panels = document.querySelectorAll("[data-purchasing-panel]");
 
     const targetView = viewId || "dashboard";
     let hasMatch = false;
@@ -1758,9 +1860,11 @@
       const panelId = panel.getAttribute("data-purchasing-panel");
       const isActive = panelId === targetView;
       panel.classList.toggle("is-active", isActive);
-      panel.toggleAttribute("hidden", !isActive);
       if (isActive) {
+        panel.removeAttribute("hidden");
         hasMatch = true;
+      } else {
+        panel.setAttribute("hidden", "");
       }
     });
 
@@ -3159,6 +3263,16 @@
       const card = document.createElement("article");
       card.className = "restaurant-card";
 
+      // Track mouse position for spotlight effect
+      card.addEventListener("mousemove", (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty("--mouse-x", `${x}px`);
+        card.style.setProperty("--mouse-y", `${y}px`);
+      });
+
+      // Header
       const header = document.createElement("div");
       header.className = "restaurant-card-header";
 
@@ -3168,37 +3282,72 @@
       const status = document.createElement("span");
       status.className = "status-badge";
       status.textContent = restaurant.slug ? "Connecté" : "À configurer";
+      if (!restaurant.slug) {
+        status.classList.add("inactive");
+      }
 
       header.append(title, status);
 
-      const identifier = document.createElement("p");
-      identifier.className = "muted small";
-      identifier.textContent = restaurant.id || "Identifiant non disponible";
+      // Restaurant info section
+      const infoSection = document.createElement("div");
+      infoSection.className = "restaurant-info";
 
-      const meta = document.createElement("div");
-      meta.className = "restaurant-meta";
+      // Slug info
+      const slugInfo = document.createElement("div");
+      slugInfo.className = "info-item";
+      slugInfo.innerHTML = `
+        <div class="info-icon">🔗</div>
+        <div class="info-content">
+          <div class="info-label">Identifiant</div>
+          <div class="info-value">${restaurant.slug || "Non défini"}</div>
+        </div>
+      `;
+
+      // Menu sections count
       const categoriesCount = countCategories(restaurant.menu_document);
-      const lastUpdate = formatTimestamp(restaurant);
-      const lastUpdateLabel = lastUpdate && lastUpdate !== "—" ? `Maj : ${lastUpdate}` : "Maj inconnue";
-      meta.append(
-        buildMetaChip(restaurant.slug ? `${restaurant.slug}` : "Slug non défini"),
-        buildMetaChip(
-          categoriesCount
-            ? `${categoriesCount} section${categoriesCount > 1 ? "s" : ""} de menu`
-            : "Menu non importé"
-        ),
-        buildMetaChip(lastUpdateLabel)
-      );
+      const menuInfo = document.createElement("div");
+      menuInfo.className = "info-item";
+      menuInfo.innerHTML = `
+        <div class="info-icon">📋</div>
+        <div class="info-content">
+          <div class="info-label">Menu</div>
+          <div class="info-value">${categoriesCount ? `${categoriesCount} section${categoriesCount > 1 ? 's' : ''}` : "Non importé"}</div>
+        </div>
+      `;
 
+      // Last update
+      const lastUpdate = formatTimestamp(restaurant);
+      const updateInfo = document.createElement("div");
+      updateInfo.className = "info-item";
+      updateInfo.innerHTML = `
+        <div class="info-icon">📅</div>
+        <div class="info-content">
+          <div class="info-label">Dernière mise à jour</div>
+          <div class="info-value">${lastUpdate && lastUpdate !== "—" ? lastUpdate : "Inconnue"}</div>
+        </div>
+      `;
+
+      infoSection.append(slugInfo, menuInfo, updateInfo);
+
+      // Actions
       const actions = document.createElement("div");
       actions.className = "restaurant-card-actions";
 
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.className = "ghost-btn configure-restaurant";
-      editBtn.dataset.restaurantId = restaurant.id || "";
-      editBtn.textContent = "Configurer";
-      editBtn.addEventListener("click", (event) => {
+      const qrBtn = document.createElement("button");
+      qrBtn.type = "button";
+      qrBtn.className = "ghost-btn";
+      qrBtn.innerHTML = "📱 QR Code";
+      qrBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        openQrModal(restaurant, event.currentTarget);
+      });
+
+      const configBtn = document.createElement("button");
+      configBtn.type = "button";
+      configBtn.className = "ghost-btn configure-restaurant";
+      configBtn.dataset.restaurantId = restaurant.id || "";
+      configBtn.innerHTML = "⚙️ Configurer";
+      configBtn.addEventListener("click", (event) => {
         event.preventDefault();
         if (restaurant.id) {
           startEditRestaurant(restaurant.id);
@@ -3206,26 +3355,17 @@
         }
       });
 
-      const testerBtn = document.createElement("button");
-      testerBtn.type = "button";
-      testerBtn.className = "secondary-btn";
-      testerBtn.dataset.openChat = "true";
-      testerBtn.dataset.restaurantId = restaurant.id ? String(restaurant.id) : "";
-      testerBtn.dataset.restaurantName = restaurant.display_name || restaurant.name || "";
-      testerBtn.textContent = "Tester le chatbot";
+      const chatBtn = document.createElement("button");
+      chatBtn.type = "button";
+      chatBtn.className = "secondary-btn";
+      chatBtn.dataset.openChat = "true";
+      chatBtn.dataset.restaurantId = restaurant.id ? String(restaurant.id) : "";
+      chatBtn.dataset.restaurantName = restaurant.display_name || restaurant.name || "";
+      chatBtn.innerHTML = "🤖 Tester";
 
-      const shareBtn = document.createElement("button");
-      shareBtn.type = "button";
-      shareBtn.className = "ghost-btn";
-      shareBtn.innerHTML = "<span>📱</span> QR clients";
-      shareBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        openQrModal(restaurant, event.currentTarget);
-      });
+      actions.append(qrBtn, configBtn, chatBtn);
 
-      actions.append(editBtn, testerBtn, shareBtn);
-
-      card.append(header, identifier, meta, actions);
+      card.append(header, infoSection, actions);
       fragment.appendChild(card);
     });
 
@@ -3512,6 +3652,7 @@
       "purchasing-active-restaurant",
       "stock-active-restaurant",
       "recipes-active-restaurant",
+      "sales-active-restaurant",
     ];
     targets.forEach((id) => {
       const node = document.getElementById(id);
@@ -5598,6 +5739,8 @@
 
   async function refreshPurchasingDashboard() {
     const restaurantId = state.overview?.restaurantId || null;
+    const { start, end, rangeDays } = resolvePurchasingDateRange();
+    updatePurchasingRangeDisplay(start, end);
 
     if (!restaurantId) {
       // Clear data if no restaurant selected
@@ -5622,11 +5765,11 @@
     }
 
     try {
-      const dateFrom = new Date().toISOString().split('T')[0];
-      const dateTo = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dateFrom = formatInputDate(start);
+      const dateTo = formatInputDate(end);
 
       // 1. Fetch Recommendations (for KPIs & Critical List)
-      const [recommendations, orders, summary] = await Promise.all([
+      const [recommendations, orders, summary, salesInsights] = await Promise.all([
         purchasingApi.fetchRecommendations({
           date_from: dateFrom,
           date_to: dateTo
@@ -5635,6 +5778,10 @@
         purchasingApi.fetchSummary({
           date_from: dateFrom,
           date_to: dateTo
+        }),
+        purchasingApi.fetchSalesInsights(rangeDays).catch((error) => {
+          console.warn("Sales insights unavailable", error);
+          return null;
         })
       ]);
 
@@ -5657,9 +5804,13 @@
       const totalStock = processedRecommendations.length;
       const criticalStock = processedRecommendations.filter(r => r.status === 'CRITICAL').length;
       const activeOrders = orders.filter(o => o.status === 'sent' || o.status === 'pending').length;
-      const totalSales = Number(summary && typeof summary.total_dishes_sold !== 'undefined'
-        ? summary.total_dishes_sold
-        : 0);
+      const totalSales = Number(
+        salesInsights && typeof salesInsights.weekly_total === 'number'
+          ? salesInsights.weekly_total
+          : summary && typeof summary.total_dishes_sold !== 'undefined'
+            ? summary.total_dishes_sold
+            : 0
+      );
 
       const kpiTotal = document.getElementById('kpi-total-stock');
       if (kpiTotal) kpiTotal.textContent = totalStock;
@@ -5716,7 +5867,7 @@
       }
 
       // 6. Render Charts
-      renderPurchasingCharts(recommendations, orders);
+      renderPurchasingCharts(recommendations, orders, salesInsights);
 
     } catch (error) {
       console.error("Error refreshing purchasing dashboard:", error);
@@ -5727,7 +5878,7 @@
 
   let purchasingCharts = {};
 
-  function renderPurchasingCharts(recommendations, orders) {
+  function renderPurchasingCharts(recommendations, orders, salesInsights) {
     if (typeof Chart === 'undefined') return;
 
     // Destroy existing charts if they exist
@@ -5797,24 +5948,33 @@
     // 3. Top Sales (Placeholder)
     const ctxSales = document.getElementById('chart-top-sales');
     if (ctxSales) {
+      const topSales = (salesInsights && Array.isArray(salesInsights.top_items) ? salesInsights.top_items : [])
+        .slice(0, 5);
+      const hasSalesData = topSales.length > 0;
+      const labels = hasSalesData ? topSales.map(item => item.menu_item_name || 'Plat') : ['Aucune donnée'];
+      const dataPoints = hasSalesData ? topSales.map(item => item.quantity || 0) : [1];
+      const colors = hasSalesData
+        ? ['#3b82f6', '#10b981', '#f59e0b', '#818cf8', '#ec4899']
+        : ['#cbd5e1'];
+
       purchasingCharts['chart-top-sales'] = new Chart(ctxSales, {
         type: 'doughnut',
         data: {
-          labels: ['Plat A', 'Plat B', 'Plat C', 'Autres'],
+          labels,
           datasets: [{
-            data: [35, 25, 20, 20],
-            backgroundColor: [
-              '#3b82f6',
-              '#10b981',
-              '#f59e0b',
-              '#cbd5e1'
-            ]
+            data: dataPoints,
+            backgroundColor: colors.slice(0, labels.length)
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'right' } }
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              enabled: hasSalesData
+            }
+          }
         }
       });
     }
@@ -5894,4 +6054,3 @@ const observeTableChanges = () => {
 };
 
 observeTableChanges();
-

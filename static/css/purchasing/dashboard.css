@@ -84,6 +84,36 @@
     color: #b91c1c;
 }
 
+.purchasing-dashboard-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.purchasing-header-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.purchasing-date-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 260px;
+}
+
+.purchasing-range-filter .filter-inputs label {
+    color: #64748b;
+}
+
+.purchasing-date-filter .range-label {
+    margin: 0;
+}
+
 .purchasing-charts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

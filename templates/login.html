@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion | RestauBot</title>
+  <meta name="description"
+    content="Connectez-vous à RestauBot pour piloter votre chatbot IA, éditer votre menu et suivre vos statistiques en temps réel." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/auth.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="/static/js/supabaseClient.js" defer></script>
+</head>
+
+<body class="auth-body">
+  <div class="auth-shell">
+    <header class="auth-header">
+      <a class="auth-logo" href="/">RestauBot</a>
+      <a class="header-link" href="/signup">Créer un compte</a>
+    </header>
+    <main class="auth-card login-card">
+      <section class="auth-intro">
+        <p class="eyebrow">Espace restaurateur</p>
+        <h1>Connectez-vous à votre dashboard</h1>
+        <p class="intro-text">
+          Accédez à vos menus, optimisez les réponses du chatbot et consultez vos statistiques en temps réel. Utilisez
+          l'adresse et le mot de passe associés à votre compte RestauBot.
+        </p>
+        <ul class="hero-checklist">
+          <li>Gestion intégrale de vos restaurants</li>
+          <li>Statistiques IA mises à jour en direct</li>
+          <li>Contrôle total sur les menus et allergènes</li>
+        </ul>
+      </section>
+
+      <form id="login-form" class="auth-form" novalidate>
+        <div class="form-field">
+          <label for="email">Email professionnel</label>
+          <input type="email" name="email" id="email" placeholder="vous@restaurant.com" required
+            autocomplete="username" />
+        </div>
+        <div class="form-field">
+          <label for="password">Mot de passe</label>
+          <input type="password" name="password" id="password" placeholder="••••••••" minlength="8" required
+            autocomplete="current-password" />
+        </div>
+        <button type="submit" class="primary-btn">Se connecter</button>
+        <p class="muted">Pas encore de compte ? <a href="/signup">Créez votre espace RestauBot</a>.</p>
+        <p id="login-error" class="form-message" role="alert"></p>
+      </form>
+    </main>
+    <footer class="auth-footer">
+      Besoin d'aide ? <a href="mailto:contact@restaubot.ai">contact@restaubot.ai</a>
+    </footer>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("login-form");
+      const errorBox = document.getElementById("login-error");
+      const submitBtn = form.querySelector("button[type=\"submit\"]");
+      let isSubmitting = false;
+
+      async function redirectIfAuthenticated() {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const { data } = await supabase.auth.getUser();
+          if (data?.user) {
+            window.location.href = "/dashboard";
+          }
+        } catch (error) {
+          console.error("Auth check failed", error);
+        }
+      }
+
+      redirectIfAuthenticated();
+
+      function setSubmitting(state) {
+        if (!submitBtn) {
+          return;
+        }
+        isSubmitting = state;
+        submitBtn.disabled = state;
+        submitBtn.textContent = state ? "Connexion…" : "Se connecter";
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (isSubmitting) {
+          return;
+        }
+        errorBox.textContent = "";
+
+        const formData = new FormData(form);
+        const email = String(formData.get("email") || "").trim();
+        const password = String(formData.get("password") || "").trim();
+
+        if (!email || !password) {
+          errorBox.textContent = "Email et mot de passe requis.";
+          return;
+        }
+
+        setSubmitting(true);
+        try {
+          if (typeof window.secureSupabaseLogin !== "function") {
+            throw new Error("Module d'authentification indisponible.");
+          }
+          await window.secureSupabaseLogin(email, password);
+          window.location.href = "/dashboard";
+        } catch (err) {
+          console.error(err);
+          const message = err?.message || "Connexion impossible pour le moment.";
+          errorBox.textContent = message;
+          setSubmitting(false);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -19,6 +19,23 @@
                     <p class="muted">Restaurant actif</p>
                     <strong id="purchasing-active-restaurant">Aucun</strong>
                 </div>
+                <div class="purchasing-date-filter">
+                    <form id="purchasing-range-form" class="range-filter purchasing-range-filter"
+                        aria-label="Filtrer les ventes">
+                        <div class="filter-inputs">
+                            <label>
+                                <span>Du</span>
+                                <input type="date" id="purchasing-start-date" required>
+                            </label>
+                            <label>
+                                <span>Au</span>
+                                <input type="date" id="purchasing-end-date" required>
+                            </label>
+                        </div>
+                    </form>
+                    <p class="form-error" id="purchasing-range-message" role="status" aria-live="polite"></p>
+                    <p class="muted small range-label" id="purchasing-range-display"></p>
+                </div>
             </div>
         </header>
 
@@ -132,6 +149,216 @@
         </div>
     </div>
 
+    <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
+        <section id="sales-analytics" class="sales-section" aria-label="Analyse des ventes par plat">
+            <header class="sales-header">
+                <div>
+                    <p class="eyebrow">Intelligence Ventes</p>
+                    <h1>Ventes par plat</h1>
+                    <p class="sales-subtitle">Importez vos exports de caisse pour identifier en quelques secondes les
+                        plats qui performent, ceux qui décrochent et cartographier vos ventes.</p>
+                </div>
+                <div class="sales-header-meta">
+                    <div class="sales-active-restaurant">
+                        <span>Restaurant actif</span>
+                        <strong id="sales-active-restaurant">Aucun</strong>
+                    </div>
+                    <button type="button" class="ghost-btn small" id="sales-refresh-btn">
+                        Rafraîchir les données
+                    </button>
+                </div>
+            </header>
+
+            <div class="sales-upload-grid">
+                <article class="sales-card sales-import-card" aria-live="polite">
+                    <div class="sales-dropzone" id="sales-dropzone" role="button" tabindex="0">
+                        <div class="sales-drop-icon" aria-hidden="true">
+                            <span class="icon-cloud">☁️</span>
+                            <span class="icon-arrow">⬆︎</span>
+                        </div>
+                        <div class="sales-drop-content">
+                            <h3>Glissez &amp; déposez vos ventes</h3>
+                            <p>Fichiers supportés : Excel, CSV, PDF, Word.</p>
+                            <p class="muted small">L'IA détecte automatiquement les colonnes (plat, quantités, dates) et
+                                applique une reconnaissance floue sur vos plats existants.</p>
+                        </div>
+                        <div class="sales-drop-actions">
+                            <button type="button" class="ghost-btn small" id="sales-browse-btn">Choisir un fichier</button>
+                            <p class="sales-drop-hint">ou déposez-le directement</p>
+                        </div>
+                        <div class="sales-drop-progress" id="sales-drop-progress" hidden>
+                            <span class="progress-spinner" aria-hidden="true"></span>
+                            <p>Analyse en cours…</p>
+                        </div>
+                        <input type="file" id="sales-file-input" accept=".csv,.xlsx,.xls,.pdf,.docx" hidden>
+                        <p class="sales-upload-feedback" id="sales-upload-feedback">Prêt à analyser vos ventes.</p>
+                    </div>
+
+                    <div class="sales-analysis-pane" id="sales-analysis-pane" hidden>
+                        <div class="sales-analysis-head">
+                            <div>
+                                <p class="muted">Statut de l'analyse</p>
+                                <strong id="sales-analysis-status">En attente d'un import</strong>
+                            </div>
+                            <div class="sales-analysis-actions">
+                                <span class="sales-chip" id="sales-file-chip" hidden></span>
+                                <button type="button" class="sales-analysis-close" id="sales-analysis-close"
+                                    aria-label="Annuler l'import">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="sales-metric-grid">
+                            <div class="sales-metric recognized">
+                                <p>Plats reconnus</p>
+                                <strong id="sales-recognized-count">0</strong>
+                                <span id="sales-recognized-percentage" class="muted small">-</span>
+                            </div>
+                            <div class="sales-metric unmatched">
+                                <p>À mapper</p>
+                                <strong id="sales-unmatched-count">0</strong>
+                                <span id="sales-unmatched-percentage" class="muted small">-</span>
+                            </div>
+                            <div class="sales-metric total">
+                                <p>Total lignes</p>
+                                <strong id="sales-total-rows">0</strong>
+                                <span class="muted small">Dernier import</span>
+                            </div>
+                        </div>
+                        <ul class="sales-guided-actions">
+                            <li>1. Importez vos ventes.</li>
+                            <li>2. Ajustez les correspondances si nécessaire.</li>
+                            <li>3. Confirmez pour alimenter automatiquement vos tendances.</li>
+                        </ul>
+                    </div>
+                </article>
+
+                <article class="sales-card sales-manual-card">
+                    <div class="sales-manual-head">
+                        <div>
+                            <h3>Ajouter une vente manuellement</h3>
+                            <p class="muted small">Idéal pour consigner une vente téléphonique ou un ticket oublié.</p>
+                        </div>
+                    </div>
+                    <form id="sales-manual-form" class="sales-manual-form">
+                        <label>
+                            <span>Plat</span>
+                            <select id="sales-manual-item" required>
+                                <option value="">Sélectionnez un plat…</option>
+                            </select>
+                        </label>
+                        <div class="sales-manual-inline">
+                            <label>
+                                <span>Quantité</span>
+                                <input type="number" id="sales-manual-qty" min="1" step="1" value="1" required>
+                            </label>
+                            <label>
+                                <span>Date</span>
+                                <input type="date" id="sales-manual-date" required>
+                            </label>
+                        </div>
+                        <div class="sales-manual-actions">
+                            <button type="submit" class="primary-btn" id="sales-manual-submit">Enregistrer</button>
+                            <p class="form-error" id="sales-manual-status" role="status" aria-live="polite"></p>
+                        </div>
+                    </form>
+                </article>
+            </div>
+
+            <article class="sales-card sales-preview-card" aria-live="polite">
+                <div class="sales-preview-header">
+                    <div>
+                        <h3>Prévisualisation &amp; mapping</h3>
+                        <p class="muted small">Corrigez les noms ou assignez vos plats existants avant sauvegarde.</p>
+                    </div>
+                    <div class="sales-preview-actions">
+                        <span class="sales-upload-status" id="sales-upload-status">En attente d'analyse.</span>
+                        <button type="button" class="ghost-btn small" id="sales-clear-btn">Réinitialiser</button>
+                        <button type="button" class="primary-btn" id="sales-confirm-btn" disabled>Confirmer l'import</button>
+                    </div>
+                </div>
+                <div class="sales-preview-table">
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Plat détecté</th>
+                                    <th>Correspondance</th>
+                                    <th>Quantité</th>
+                                    <th>Date</th>
+                                    <th>Confiance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-preview-body">
+                                <tr>
+                                    <td colspan="5" class="text-center muted">Importez un fichier pour afficher la
+                                        prévisualisation.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </article>
+
+            <div class="sales-charts-grid">
+                <article class="sales-card sales-chart-card">
+                    <div class="sales-chart-header">
+                        <div>
+                            <h3>Tendance hebdomadaire</h3>
+                            <p class="muted small">Volumes sur 7 jours • dernière mise à jour <span
+                                    id="sales-insights-updated">-</span></p>
+                        </div>
+                        <div class="sales-weekly-total">
+                            <span>Ventes</span>
+                            <strong id="sales-weekly-total">-</strong>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="sales-trend-chart" height="220" aria-label="Graphique des ventes hebdomadaires"></canvas>
+                    </div>
+                </article>
+
+                <article class="sales-card sales-chart-card">
+                    <div class="sales-chart-header">
+                        <div>
+                            <h3>Top 5 des plats</h3>
+                            <p class="muted small">Basé sur le volume confirmé</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="sales-top-chart" height="220" aria-label="Top 5 plats vendus"></canvas>
+                    </div>
+                </article>
+
+                <article class="sales-card sales-table-card">
+                    <div class="sales-table-header">
+                        <div>
+                            <h3>Tableau des ventes</h3>
+                            <p class="muted small">Comparatif vs semaine précédente</p>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="sales-leaderboard">
+                            <thead>
+                                <tr>
+                                    <th>Plat</th>
+                                    <th>Quantité</th>
+                                    <th>Évolution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-table-body">
+                                <tr>
+                                    <td colspan="3" class="text-center muted">Aucune donnée disponible. Importez ou
+                                        confirmez des ventes pour afficher les tendances.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </div>
+
     <div class="purchasing-panel" data-purchasing-panel="stock" hidden>
         <div class="stock-management-header">
             <div class="stock-header-left">
@@ -139,7 +366,7 @@
                 <p class="muted">Track and manage ingredient inventory in real-time.</p>
             </div>
             <div class="stock-header-actions">
-                <button type="button" class="secondary-btn" id="btn-add-ingredient">
+                <button type="button" class="secondary-btn" id="stock-add-ingredient-btn">
                     <span class="icon">＋</span>
                     Add New Ingredient
                 </button>
@@ -303,7 +530,7 @@
                     </div>
                 </form>
             </div>
-        </div> -->
+        </div>
     </div>
 
     <div class="purchasing-panel" data-purchasing-panel="dishes" hidden>
@@ -491,7 +718,7 @@
                                         <input type="number" id="new-ingredient-quantity" placeholder="Qté" step="0.01"
                                             min="0">
                                         <span class="unit-display" id="new-ingredient-unit">-</span>
-                                        <button type="button" id="btn-add-ingredient" class="icon-btn success"
+                                        <button type="button" id="recipe-add-ingredient-btn" class="icon-btn success"
                                             title="Ajouter">
                                             <span>+</span>
                                         </button>
@@ -504,7 +731,8 @@
                                 <div class="recipe-section-header">
                                     <div>
                                         <h3>Instructions</h3>
-                                        <p class="muted small">Gardez vos étapes, variantes et dressages bien rangés.</p>
+                                        <p class="muted small">Gardez vos étapes, variantes et dressages bien rangés.
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="recipe-instructions display-view" id="recipe-instructions">
@@ -522,85 +750,5 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="purchasing-panel" data-purchasing-panel="sales" hidden>
-                    <header class="purchasing-panel-head">
-                        <div>
-                            <p class="eyebrow">Ventes par plat</p>
-                            <h3>Quel plat tire les revenus ?</h3>
-                        </div>
-                        <p class="muted">Suivez les volumes, le panier moyen et la dynamique des best-sellers.</p>
-                    </header>
-                    <div class="sales-summary-grid">
-                        <article class="sales-card">
-                            <p class="sales-label">Ventes 7 derniers jours</p>
-                            <strong>192 plats</strong>
-                            <span class="trend-positive">+14 %</span>
-                        </article>
-                        <article class="sales-card">
-                            <p class="sales-label">Panier moyen</p>
-                            <strong>52,80 €</strong>
-                            <span class="trend-neutral">=</span>
-                        </article>
-                        <article class="sales-card">
-                            <p class="sales-label">Meilleure journée</p>
-                            <strong>Samedi</strong>
-                            <span class="muted">74 couverts</span>
-                        </article>
-                    </div>
-                    <div class="sales-detail">
-                        <div class="sales-chart">
-                            <h4>Tendance hebdomadaire</h4>
-                            <div class="sales-chart-bars" aria-hidden="true">
-                                <span style="height: 45%" title="Lun"></span>
-                                <span style="height: 52%" title="Mar"></span>
-                                <span style="height: 61%" title="Mer"></span>
-                                <span style="height: 70%" title="Jeu"></span>
-                                <span style="height: 88%" title="Ven"></span>
-                                <span style="height: 100%" title="Sam"></span>
-                                <span style="height: 60%" title="Dim"></span>
-                            </div>
-                            <p class="muted small">Les volumes cumulés sont calculés via les ventes saisies dans
-                                RestauBot.</p>
-                        </div>
-                        <div class="sales-table-wrapper">
-                            <table class="sales-table">
-                                <thead>
-                                    <tr>
-                                        <th>Plat</th>
-                                        <th>Volumes</th>
-                                        <th>Ticket moyen</th>
-                                        <th>Conversion</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Raviole de homard</td>
-                                        <td>54</td>
-                                        <td>42 €</td>
-                                        <td><span class="trend-positive">+9 %</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Risotto champignons anciens</td>
-                                        <td>68</td>
-                                        <td>36 €</td>
-                                        <td><span class="trend-neutral">=</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Crumble de poire Safran</td>
-                                        <td>34</td>
-                                        <td>18 €</td>
-                                        <td><span class="trend-positive">+4 %</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Tartare de maigre</td>
-                                        <td>36</td>
-                                        <td>38 €</td>
-                                        <td><span class="trend-negative">-6 %</span></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+    </div>
 </section>
