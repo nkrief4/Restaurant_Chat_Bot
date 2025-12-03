@@ -9,6 +9,10 @@
     analyzing: false,
     activeUploadId: null,
     uploadCanceled: false,
+    quickSales: {},
+    quickSearchIndex: -1,
+    quickSearchMode: false,
+    lastSelectedItemId: null,
     charts: {
       trend: null,
       top: null,
@@ -55,17 +59,21 @@
     dom.weeklyTotal = document.getElementById('sales-weekly-total');
     dom.updatedLabel = document.getElementById('sales-insights-updated');
     dom.tableBody = document.getElementById('sales-table-body');
-    dom.manualForm = document.getElementById('sales-manual-form');
-    dom.manualItemSelect = document.getElementById('sales-manual-item');
-    dom.manualQty = document.getElementById('sales-manual-qty');
-    dom.manualDate = document.getElementById('sales-manual-date');
     dom.manualStatus = document.getElementById('sales-manual-status');
     dom.analysisPane = document.getElementById('sales-analysis-pane');
     dom.analysisClose = document.getElementById('sales-analysis-close');
     dom.dropProgress = document.getElementById('sales-drop-progress');
     dom.dropCard = document.querySelector('.sales-import-card');
-    if (dom.manualDate && !dom.manualDate.value) {
-      dom.manualDate.value = formatInputDate(new Date());
+    dom.quickGrid = document.getElementById('sales-quick-grid');
+    dom.quickDateInput = document.getElementById('sales-manual-date-quick');
+    dom.quickClearBtn = document.getElementById('sales-manual-clear-quick');
+    dom.quickSubmitBtn = document.getElementById('sales-manual-submit-quick');
+    dom.quickCount = document.getElementById('sales-quick-count');
+    dom.quickTotal = document.getElementById('sales-quick-total');
+    dom.quickSearch = document.getElementById('sales-quick-search');
+    dom.quickSuggestions = document.getElementById('sales-quick-suggestions');
+    if (dom.quickDateInput && !dom.quickDateInput.value) {
+      dom.quickDateInput.value = formatInputDate(new Date());
     }
   }
 
@@ -124,8 +132,23 @@
       dom.previewBody.addEventListener('change', handlePreviewChange);
     }
 
-    if (dom.manualForm) {
-      dom.manualForm.addEventListener('submit', handleManualSaleSubmit);
+    if (dom.quickClearBtn) {
+      dom.quickClearBtn.addEventListener('click', resetQuickSales);
+    }
+    if (dom.quickSubmitBtn) {
+      dom.quickSubmitBtn.addEventListener('click', submitQuickSales);
+    }
+    if (dom.quickSearch) {
+      dom.quickSearch.addEventListener('input', handleQuickSearch);
+      dom.quickSearch.addEventListener('keydown', handleQuickSearchKeydown);
+      dom.quickSearch.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (dom.quickSuggestions) {
+            dom.quickSuggestions.hidden = true;
+          }
+          state.quickSearchIndex = -1;
+        }, 200);
+      });
     }
 
     if (dom.analysisClose) {
@@ -163,7 +186,7 @@
     try {
       const response = await authorizedFetch('/api/purchasing/menu-items');
       state.menuItems = Array.isArray(response) ? response : [];
-      populateManualMenuOptions();
+      renderQuickGrid();
     } catch (error) {
       console.error('sales::menu-items', error);
       showToast(error.message || 'Impossible de charger les plats.');
@@ -840,5 +863,272 @@
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function uuid4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  function handleQuickSearch(event) {
+    const query = (event.target.value || '').trim().toLowerCase();
+    state.quickSearchIndex = -1;
+    state.quickSearchMode = false;
+    if (!query || !state.menuItems.length) {
+      if (dom.quickSuggestions) {
+        dom.quickSuggestions.hidden = true;
+      }
+      return;
+    }
+    const filtered = state.menuItems
+      .filter((item) => item.name.toLowerCase().includes(query))
+      .slice(0, 8);
+    if (!filtered.length) {
+      if (dom.quickSuggestions) {
+        dom.quickSuggestions.hidden = true;
+      }
+      return;
+    }
+    if (dom.quickSuggestions) {
+      dom.quickSuggestions.innerHTML = filtered
+        .map((item) => {
+          const qty = state.quickSales[item.id] || 0;
+          return `<div class="sales-quick-suggestion-item" data-item-id="${item.id}" data-item-name="${escapeHtml(item.name)}">
+            <span class="sales-quick-suggestion-name">${escapeHtml(item.name)}</span>
+            ${qty > 0 ? `<span class="sales-quick-suggestion-qty">${qty}</span>` : ''}
+          </div>`;
+        })
+        .join('');
+      dom.quickSuggestions.hidden = false;
+      attachQuickSuggestionEvents();
+    }
+  }
+
+  function attachQuickSuggestionEvents() {
+    if (!dom.quickSuggestions) {
+      return;
+    }
+    const suggestions = dom.quickSuggestions.querySelectorAll('.sales-quick-suggestion-item');
+    suggestions.forEach((suggestion) => {
+      suggestion.addEventListener('click', () => {
+        selectQuickSuggestion(suggestion);
+      });
+    });
+  }
+
+  function handleQuickSearchKeydown(event) {
+    // Mode quantité : flèches pour augmenter/diminuer après sélection
+    if (state.quickSearchMode && state.lastSelectedItemId) {
+      switch (event.key) {
+        case 'ArrowUp':
+          event.preventDefault();
+          increaseLastSelectedQuantity();
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          decreaseLastSelectedQuantity();
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
+    // Mode suggestions actif
+    if (!dom.quickSuggestions || dom.quickSuggestions.hidden) {
+      return;
+    }
+
+    const suggestions = dom.quickSuggestions.querySelectorAll('.sales-quick-suggestion-item');
+    if (!suggestions.length) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        state.quickSearchIndex = Math.min(state.quickSearchIndex + 1, suggestions.length - 1);
+        updateQuickSearchHighlight(suggestions);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        state.quickSearchIndex = Math.max(state.quickSearchIndex - 1, -1);
+        updateQuickSearchHighlight(suggestions);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (state.quickSearchIndex >= 0 && state.quickSearchIndex < suggestions.length) {
+          selectQuickSuggestion(suggestions[state.quickSearchIndex]);
+          state.quickSearchMode = true;
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        if (dom.quickSuggestions) {
+          dom.quickSuggestions.hidden = true;
+        }
+        state.quickSearchIndex = -1;
+        state.quickSearchMode = false;
+        break;
+      default:
+        break;
+    }
+  }
+
+  function updateQuickSearchHighlight(suggestions) {
+    suggestions.forEach((suggestion, index) => {
+      if (index === state.quickSearchIndex) {
+        suggestion.classList.add('highlighted');
+        suggestion.scrollIntoView({ block: 'nearest' });
+      } else {
+        suggestion.classList.remove('highlighted');
+      }
+    });
+  }
+
+  function selectQuickSuggestion(suggestion) {
+    const itemId = suggestion.getAttribute('data-item-id');
+    incrementQuickSale(itemId);
+    state.lastSelectedItemId = itemId;
+    if (dom.quickSearch) {
+      dom.quickSearch.value = '';
+      dom.quickSearch.focus();
+    }
+    if (dom.quickSuggestions) {
+      dom.quickSuggestions.hidden = true;
+    }
+    state.quickSearchIndex = -1;
+  }
+
+  function increaseLastSelectedQuantity() {
+    if (state.lastSelectedItemId) {
+      incrementQuickSale(state.lastSelectedItemId);
+    }
+  }
+
+  function decreaseLastSelectedQuantity() {
+    if (state.lastSelectedItemId) {
+      decrementQuickSale(state.lastSelectedItemId);
+    }
+  }
+
+  function renderQuickGrid() {
+    if (!dom.quickGrid || !state.menuItems.length) {
+      return;
+    }
+    const sorted = state.menuItems.slice().sort((a, b) => a.name.localeCompare(b.name));
+    dom.quickGrid.innerHTML = sorted
+      .map((item) => {
+        const qty = state.quickSales[item.id] || 0;
+        const isActive = qty > 0;
+        return `<div class="sales-quick-item ${isActive ? 'active' : ''}" data-item-id="${item.id}" data-item-name="${escapeHtml(item.name)}">
+          <div class="sales-quick-item-name">${escapeHtml(item.name)}</div>
+          <div class="sales-quick-item-qty">${qty}</div>
+          <div class="sales-quick-item-controls">
+            <button type="button" class="sales-quick-item-btn sales-quick-minus" aria-label="Diminuer">−</button>
+            <button type="button" class="sales-quick-item-btn sales-quick-plus" aria-label="Augmenter">+</button>
+          </div>
+        </div>`;
+      })
+      .join('');
+    attachQuickGridEvents();
+    updateQuickStats();
+  }
+
+  function attachQuickGridEvents() {
+    if (!dom.quickGrid) {
+      return;
+    }
+    const items = dom.quickGrid.querySelectorAll('.sales-quick-item');
+    items.forEach((item) => {
+      const itemId = item.getAttribute('data-item-id');
+      item.addEventListener('click', (event) => {
+        if (event.target.closest('.sales-quick-minus')) {
+          decrementQuickSale(itemId);
+        } else if (event.target.closest('.sales-quick-plus')) {
+          incrementQuickSale(itemId);
+        } else if (!event.target.closest('.sales-quick-item-controls')) {
+          incrementQuickSale(itemId);
+        }
+      });
+    });
+  }
+
+  function incrementQuickSale(itemId) {
+    state.quickSales[itemId] = (state.quickSales[itemId] || 0) + 1;
+    renderQuickGrid();
+  }
+
+  function decrementQuickSale(itemId) {
+    if (state.quickSales[itemId] && state.quickSales[itemId] > 0) {
+      state.quickSales[itemId]--;
+      if (state.quickSales[itemId] === 0) {
+        delete state.quickSales[itemId];
+      }
+      renderQuickGrid();
+    }
+  }
+
+  function updateQuickStats() {
+    const count = Object.keys(state.quickSales).length;
+    const total = Object.values(state.quickSales).reduce((sum, qty) => sum + qty, 0);
+    if (dom.quickCount) {
+      dom.quickCount.textContent = String(count);
+    }
+    if (dom.quickTotal) {
+      dom.quickTotal.textContent = String(total);
+    }
+    if (dom.quickSubmitBtn) {
+      dom.quickSubmitBtn.disabled = count === 0;
+    }
+  }
+
+  function resetQuickSales() {
+    state.quickSales = {};
+    renderQuickGrid();
+  }
+
+  async function submitQuickSales() {
+    if (!Object.keys(state.quickSales).length || !state.restaurantId || !state.token) {
+      return;
+    }
+    const date = dom.quickDateInput ? dom.quickDateInput.value : formatInputDate(new Date());
+    const lines = Object.entries(state.quickSales)
+      .map(([menuItemId, quantity]) => ({
+        line_id: uuid4(),
+        menu_item_id: menuItemId,
+        quantity: Math.round(quantity),
+        served_at: new Date(date).toISOString(),
+      }));
+    if (!lines.length) {
+      showToast('Aucun plat à enregistrer.');
+      return;
+    }
+    if (dom.quickSubmitBtn) {
+      dom.quickSubmitBtn.disabled = true;
+    }
+    try {
+      const payload = { lines };
+      const insights = await authorizedFetch('/api/sales/confirm', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      showToast('Ventes enregistrées avec succès.');
+      resetQuickSales();
+      if (dom.quickDateInput) {
+        dom.quickDateInput.value = formatInputDate(new Date());
+      }
+      renderInsights(insights);
+    } catch (error) {
+      console.error('sales::quick-submit', error);
+      showToast(error.message || 'Impossible de sauvegarder les ventes.');
+    } finally {
+      if (dom.quickSubmitBtn) {
+        dom.quickSubmitBtn.disabled = false;
+      }
+    }
   }
 })();

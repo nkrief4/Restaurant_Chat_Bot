@@ -234,34 +234,35 @@
                 </article>
 
                 <article class="sales-card sales-manual-card">
-                    <div class="sales-manual-head">
+                    <div class="sales-manual-head-compact">
                         <div>
-                            <h3>Ajouter une vente manuellement</h3>
-                            <p class="muted small">Idéal pour consigner une vente téléphonique ou un ticket oublié.</p>
+                            <h3>Saisie rapide</h3>
+                        </div>
+                        <div class="sales-manual-controls-compact">
+                            <input type="date" id="sales-manual-date-quick" class="quick-date-input-compact" required>
+                            <button type="button" class="ghost-btn small" id="sales-manual-clear-quick" title="Réinitialiser">↻</button>
                         </div>
                     </div>
-                    <form id="sales-manual-form" class="sales-manual-form">
-                        <label>
-                            <span>Plat</span>
-                            <select id="sales-manual-item" required>
-                                <option value="">Sélectionnez un plat…</option>
-                            </select>
-                        </label>
-                        <div class="sales-manual-inline">
-                            <label>
-                                <span>Quantité</span>
-                                <input type="number" id="sales-manual-qty" min="1" step="1" value="1" required>
-                            </label>
-                            <label>
-                                <span>Date</span>
-                                <input type="date" id="sales-manual-date" required>
-                            </label>
+                    
+                    <div class="sales-quick-search-container">
+                        <input type="text" id="sales-quick-search" class="quick-search-input" placeholder="Rechercher…" autocomplete="off">
+                        <div class="sales-quick-suggestions" id="sales-quick-suggestions" hidden></div>
+                    </div>
+                    
+                    <div class="sales-quick-grid-wrapper">
+                        <div class="sales-quick-grid" id="sales-quick-grid">
+                            <!-- Grille de plats générée dynamiquement -->
                         </div>
-                        <div class="sales-manual-actions">
-                            <button type="submit" class="primary-btn" id="sales-manual-submit">Enregistrer</button>
-                            <p class="form-error" id="sales-manual-status" role="status" aria-live="polite"></p>
+                    </div>
+
+                    <div class="sales-quick-summary">
+                        <div class="sales-quick-stats">
+                            <span>Plats sélectionnés: <strong id="sales-quick-count">0</strong></span>
+                            <span>Total quantité: <strong id="sales-quick-total">0</strong></span>
                         </div>
-                    </form>
+                        <button type="button" class="primary-btn" id="sales-manual-submit-quick" disabled>Valider la saisie</button>
+                        <p class="form-error" id="sales-manual-status" role="status" aria-live="polite"></p>
+                    </div>
                 </article>
             </div>
 
