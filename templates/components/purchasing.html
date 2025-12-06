@@ -296,7 +296,7 @@
             </article>
 
             <div class="sales-charts-grid">
-                <article class="sales-card sales-chart-card">
+                <article class="sales-card sales-chart-card sales-trend-card">
                     <div class="sales-chart-header">
                         <div>
                             <h3>Tendance hebdomadaire</h3>
@@ -308,18 +308,38 @@
                             <strong id="sales-weekly-total">-</strong>
                         </div>
                     </div>
+                    <div class="chart-legend" aria-hidden="true">
+                        <span class="legend-item">
+                            <span class="legend-dot is-primary"></span>
+                            Confirmées
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-dot is-muted"></span>
+                            Prévision IA
+                        </span>
+                    </div>
                     <div class="chart-container">
                         <canvas id="sales-trend-chart" height="220"
                             aria-label="Graphique des ventes hebdomadaires"></canvas>
                     </div>
                 </article>
 
-                <article class="sales-card sales-chart-card">
+                <article class="sales-card sales-chart-card sales-top-card">
                     <div class="sales-chart-header">
                         <div>
                             <h3>Top 5 des plats</h3>
                             <p class="muted small">Basé sur le volume confirmé</p>
                         </div>
+                    </div>
+                    <div class="chart-legend" aria-hidden="true">
+                        <span class="legend-item">
+                            <span class="legend-dot is-primary"></span>
+                            Volume
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-dot is-muted"></span>
+                            Variation
+                        </span>
                     </div>
                     <div class="chart-container">
                         <canvas id="sales-top-chart" height="220" aria-label="Top 5 plats vendus"></canvas>
@@ -331,6 +351,24 @@
                         <div>
                             <h3>Tableau des ventes</h3>
                             <p class="muted small">Comparatif vs semaine précédente</p>
+                        </div>
+                        <div class="sales-table-toolbar">
+                            <div class="table-pill-group">
+                                <span class="table-pill-indicator" aria-hidden="true"></span>
+                                <button type="button" class="table-pill is-active" data-table-filter="all">
+                                    Tous
+                                </button>
+                                <button type="button" class="table-pill" data-table-filter="up">
+                                    Hausse
+                                </button>
+                                <button type="button" class="table-pill" data-table-filter="down">
+                                    Baisse
+                                </button>
+                            </div>
+                            <div class="sales-table-legend">
+                                <span><span class="legend-dot is-positive"></span>Meilleure progression</span>
+                                <span><span class="legend-dot is-negative"></span>À surveiller</span>
+                            </div>
                         </div>
                     </div>
                     <div class="table-responsive">

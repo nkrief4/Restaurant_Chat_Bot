@@ -383,9 +383,53 @@
   gap: 24px;
 }
 
+.sales-chart-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.sales-chart-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 0%, rgba(79, 70, 229, 0.25), transparent 55%);
+  opacity: 0.4;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.sales-chart-card:hover::before {
+  opacity: 0.6;
+  transform: scale(1.05);
+}
+
+.sales-chart-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sales-trend-card::before {
+  background: radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.35), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(99, 102, 241, 0.25), transparent 55%);
+}
+
+.sales-top-card::before {
+  background: radial-gradient(circle at 20% 0%, rgba(16, 185, 129, 0.35), transparent 55%),
+    radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.2), transparent 55%);
+}
+
 .sales-chart-card .chart-container {
   min-height: 240px;
   position: relative;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.04);
+  padding: 12px;
+}
+
+.sales-chart-card canvas {
+  width: 100%;
 }
 
 .sales-chart-header {
@@ -396,8 +440,16 @@
   margin-bottom: 16px;
 }
 
+.sales-chart-header h3 {
+  margin-bottom: 4px;
+}
+
 .sales-weekly-total {
   text-align: right;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.08);
+  align-self: flex-start;
 }
 
 .sales-weekly-total span {
@@ -411,6 +463,50 @@
 .sales-weekly-total strong {
   font-size: 1.8rem;
   color: #0f172a;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+  background: rgba(15, 23, 42, 0.2);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+.legend-dot.is-primary {
+  background: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+}
+
+.legend-dot.is-muted {
+  background: #cbd5f5;
+}
+
+.legend-dot.is-positive {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.legend-dot.is-negative {
+  background: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.25);
 }
 
 .sales-table-card table {
@@ -428,6 +524,81 @@
   border-bottom: none;
 }
 
+.sales-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.sales-table-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.table-pill-group {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.table-pill-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0f172a, #312e81);
+  transition: transform 0.25s ease, width 0.25s ease;
+  pointer-events: none;
+}
+
+.table-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.table-pill.is-active {
+  color: #fff;
+}
+
+.table-pill:focus-visible {
+  outline: 2px solid rgba(15, 23, 42, 0.4);
+  outline-offset: 2px;
+}
+
+.sales-table-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.sales-table-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .sales-delta {
   font-weight: 600;
 }
@@ -440,9 +611,34 @@
   color: #dc2626;
 }
 
+@media (min-width: 1280px) {
+  .sales-charts-grid .sales-card {
+    padding: 20px;
+  }
+
+  .sales-chart-card .chart-container {
+    min-height: 200px;
+    padding: 8px;
+  }
+
+  .sales-table-card .table-responsive {
+    max-height: 320px;
+    overflow: auto;
+  }
+}
+
 @media (max-width: 1024px) {
   .sales-upload-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sales-table-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sales-table-toolbar {
+    align-items: flex-start;
   }
 }
 

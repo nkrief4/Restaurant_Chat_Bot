@@ -13,6 +13,8 @@
     quickSearchIndex: -1,
     quickSearchMode: false,
     lastSelectedItemId: null,
+    tableRows: [],
+    tableFilter: 'all',
     charts: {
       trend: null,
       top: null,
@@ -72,8 +74,14 @@
     dom.quickTotal = document.getElementById('sales-quick-total');
     dom.quickSearch = document.getElementById('sales-quick-search');
     dom.quickSuggestions = document.getElementById('sales-quick-suggestions');
+    dom.tableFilterButtons = Array.from(document.querySelectorAll('[data-table-filter]'));
+    dom.tablePillGroup = document.querySelector('.table-pill-group');
+    dom.tablePillIndicator = document.querySelector('.table-pill-indicator');
     if (dom.quickDateInput && !dom.quickDateInput.value) {
       dom.quickDateInput.value = formatInputDate(new Date());
+    }
+    if (dom.tablePillIndicator && dom.tableFilterButtons.length) {
+      window.requestAnimationFrame(updateTableIndicatorPosition);
     }
   }
 
@@ -154,6 +162,15 @@
     if (dom.analysisClose) {
       dom.analysisClose.addEventListener('click', handleAnalysisClose);
     }
+
+    if (dom.tableFilterButtons && dom.tableFilterButtons.length) {
+      dom.tableFilterButtons.forEach((button) => {
+        button.addEventListener('click', handleTableFilter);
+      });
+    }
+    window.addEventListener('resize', () => {
+      window.requestAnimationFrame(updateTableIndicatorPosition);
+    });
 
     document.addEventListener('activeRestaurantChange', (event) => {
       const detail = event.detail || {};
@@ -326,14 +343,24 @@
   }
 
   function renderTable(rows) {
+    state.tableRows = Array.isArray(rows) ? rows : [];
+    updateTableFilterButtons();
+    renderTableRows();
+  }
+
+  function renderTableRows() {
     if (!dom.tableBody) {
       return;
     }
-    if (!rows.length) {
-      dom.tableBody.innerHTML = `<tr><td colspan="3" class="text-center muted">Aucune donnée disponible. Importez ou confirmez des ventes pour afficher les tendances.</td></tr>`;
+    const rowsToDisplay = getFilteredTableRows();
+    if (!rowsToDisplay.length) {
+      const message = state.tableRows.length
+        ? 'Aucun plat ne correspond au filtre sélectionné.'
+        : 'Aucune donnée disponible. Importez ou confirmez des ventes pour afficher les tendances.';
+      dom.tableBody.innerHTML = `<tr><td colspan="3" class="text-center muted">${message}</td></tr>`;
       return;
     }
-    dom.tableBody.innerHTML = rows
+    dom.tableBody.innerHTML = rowsToDisplay
       .map((row) => {
         const deltaClass = row.delta >= 0 ? 'is-positive' : 'is-negative';
         const deltaLabel = `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(1)}%`;
@@ -344,6 +371,57 @@
         </tr>`;
       })
       .join('');
+  }
+
+  function getFilteredTableRows() {
+    if (state.tableFilter === 'up') {
+      return state.tableRows.filter((row) => (row.delta || 0) > 0);
+    }
+    if (state.tableFilter === 'down') {
+      return state.tableRows.filter((row) => (row.delta || 0) < 0);
+    }
+    return state.tableRows;
+  }
+
+  function handleTableFilter(event) {
+    const button = event.currentTarget;
+    const filter = button.dataset.tableFilter || 'all';
+    if (filter === state.tableFilter) {
+      return;
+    }
+    state.tableFilter = filter;
+    updateTableFilterButtons();
+    renderTableRows();
+  }
+
+  function updateTableFilterButtons() {
+    if (!dom.tableFilterButtons || !dom.tableFilterButtons.length) {
+      return;
+    }
+    dom.tableFilterButtons.forEach((button) => {
+      const filter = button.dataset.tableFilter || 'all';
+      button.classList.toggle('is-active', filter === state.tableFilter);
+    });
+    window.requestAnimationFrame(updateTableIndicatorPosition);
+  }
+
+  function updateTableIndicatorPosition() {
+    if (!dom.tablePillIndicator || !dom.tablePillGroup) {
+      return;
+    }
+    const activeButton =
+      dom.tableFilterButtons &&
+      dom.tableFilterButtons.find((button) => (button.dataset.tableFilter || 'all') === state.tableFilter);
+    if (!activeButton) {
+      dom.tablePillIndicator.style.width = '0';
+      dom.tablePillIndicator.style.transform = 'translateX(0)';
+      return;
+    }
+    const groupRect = dom.tablePillGroup.getBoundingClientRect();
+    const activeRect = activeButton.getBoundingClientRect();
+    const offsetX = activeRect.left - groupRect.left;
+    dom.tablePillIndicator.style.width = `${activeRect.width}px`;
+    dom.tablePillIndicator.style.transform = `translateX(${offsetX}px)`;
   }
 
   function handleFile(file) {
