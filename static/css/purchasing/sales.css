@@ -405,7 +405,7 @@
   transform: scale(1.05);
 }
 
-.sales-chart-card > * {
+.sales-chart-card>* {
   position: relative;
   z-index: 1;
 }
@@ -679,6 +679,7 @@
     gap: 12px;
   }
 }
+
 .sales-manual-head {
   display: flex;
   justify-content: space-between;
@@ -930,4 +931,32 @@
 .sales-quick-stats strong {
   color: #0f172a;
   font-weight: 600;
+}
+
+/* Sales Stats Modal */
+.sales-stats-modal {
+  width: min(600px, 100%);
+}
+
+.sales-stats-modal .dashboard-table th,
+.sales-stats-modal .dashboard-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.sales-stats-modal .dashboard-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+}
+
+.sales-stats-modal .table-responsive {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
 }

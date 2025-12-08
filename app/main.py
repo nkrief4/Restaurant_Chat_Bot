@@ -19,6 +19,7 @@ from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.public import router as public_router
 from app.api.routes.purchasing import router as purchasing_router
 from app.api.routes.sales import router as sales_router
+from app.api.routes.ingredient_categories import router as ingredient_categories_router
 
 app = FastAPI(title="Restaurant Chatbot")
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(public_router, prefix="/api", tags=["Public"])
 app.include_router(sales_router)
+app.include_router(ingredient_categories_router)
+
 
 
 @app.get("/", response_class=FileResponse)

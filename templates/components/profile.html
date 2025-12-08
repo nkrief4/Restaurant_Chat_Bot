@@ -51,4 +51,79 @@
             </div>
         </div>
     </form>
+
+    <!-- Stock Thresholds Section -->
+    <div class="section-divider"></div>
+
+    <div class="section-header">
+        <div>
+            <h2>Seuils de stock par catégorie</h2>
+            <p>Définissez les seuils critiques, faibles et bons pour chaque catégorie d'ingrédients. Les seuils sont
+                exprimés en pourcentage du stock de sécurité.</p>
+        </div>
+        <div class="threshold-restaurant-info">
+            <span class="threshold-restaurant-label">Restaurant actif :</span>
+            <strong id="threshold-active-restaurant" class="threshold-restaurant-name">Aucun</strong>
+        </div>
+    </div>
+
+    <div class="stock-thresholds-container" id="stock-thresholds-container">
+        <div class="loading-state">
+            <span class="loading-spinner"></span>
+            <p>Chargement des catégories...</p>
+        </div>
+    </div>
+
+    <!-- Stock Thresholds Template -->
+    <template id="threshold-card-template">
+        <div class="threshold-card">
+            <div class="threshold-card-header">
+                <div>
+                    <h3 class="threshold-category-name"></h3>
+                    <p class="threshold-category-description"></p>
+                </div>
+                <button type="button" class="ghost-btn small threshold-edit-btn">
+                    Modifier
+                </button>
+            </div>
+            <div class="threshold-values">
+                <div class="threshold-value">
+                    <span class="threshold-label">🚨 Critique</span>
+                    <span class="threshold-percent critical"></span>
+                </div>
+                <div class="threshold-value">
+                    <span class="threshold-label">⚠️ Faible</span>
+                    <span class="threshold-percent low"></span>
+                </div>
+                <div class="threshold-value">
+                    <span class="threshold-label">✅ Bon</span>
+                    <span class="threshold-percent ok"></span>
+                </div>
+            </div>
+            <div class="threshold-edit-form" hidden>
+                <div class="threshold-inputs">
+                    <label>
+                        <span>Seuil critique (%)</span>
+                        <input type="number" class="threshold-input-critical" min="0" max="100" step="5" />
+                        <p class="field-hint">Stock considéré critique si inférieur à ce % du stock de sécurité</p>
+                    </label>
+                    <label>
+                        <span>Seuil faible (%)</span>
+                        <input type="number" class="threshold-input-low" min="0" max="200" step="5" />
+                        <p class="field-hint">Stock considéré faible si inférieur à ce % du stock de sécurité</p>
+                    </label>
+                    <label>
+                        <span>Seuil bon (%)</span>
+                        <input type="number" class="threshold-input-ok" min="0" max="300" step="5" />
+                        <p class="field-hint">Stock considéré bon si supérieur ou égal à ce % du stock de sécurité</p>
+                    </label>
+                </div>
+                <div class="threshold-actions">
+                    <button type="button" class="ghost-btn threshold-cancel-btn">Annuler</button>
+                    <button type="button" class="primary-btn threshold-save-btn">Enregistrer</button>
+                </div>
+                <p class="threshold-feedback" role="status"></p>
+            </div>
+        </div>
+    </template>
 </section>

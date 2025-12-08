@@ -326,6 +326,17 @@ class MenuEditor {
                 tagsInput.value = '';
             }
         });
+        tagsInput.addEventListener('blur', () => {
+            if (tagsInput.value.trim()) {
+                const newTag = tagsInput.value.trim();
+                if (!this.menuData.categories[categoryIndex].items[itemIndex].tags.includes(newTag)) {
+                    this.menuData.categories[categoryIndex].items[itemIndex].tags.push(newTag);
+                    this.syncToJSON();
+                    this.render();
+                }
+                tagsInput.value = '';
+            }
+        });
 
         tagsBubbleContainer.appendChild(tagsInput);
 
@@ -412,6 +423,17 @@ class MenuEditor {
         containsInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && containsInput.value.trim()) {
                 e.preventDefault();
+                const newAllergen = containsInput.value.trim();
+                if (!this.menuData.categories[categoryIndex].items[itemIndex].contains.includes(newAllergen)) {
+                    this.menuData.categories[categoryIndex].items[itemIndex].contains.push(newAllergen);
+                    this.syncToJSON();
+                    this.render();
+                }
+                containsInput.value = '';
+            }
+        });
+        containsInput.addEventListener('blur', () => {
+            if (containsInput.value.trim()) {
                 const newAllergen = containsInput.value.trim();
                 if (!this.menuData.categories[categoryIndex].items[itemIndex].contains.includes(newAllergen)) {
                     this.menuData.categories[categoryIndex].items[itemIndex].contains.push(newAllergen);

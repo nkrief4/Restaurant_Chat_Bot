@@ -219,13 +219,73 @@
     0% {
         opacity: 0.4;
     }
+
     50% {
         opacity: 0.8;
     }
+
     100% {
         opacity: 0.4;
     }
 }
+
+/* Ingredient Status Tabs */
+.ingredient-status-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    background: #f8fafc;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.status-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-tab:hover {
+    background: rgba(59, 130, 246, 0.08);
+    color: #3b82f6;
+}
+
+.status-tab.is-active {
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.status-tab.is-active .tab-count {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
 /* ========================================
    RESPONSIVE DESIGN - Dashboard Achats & Stock
    ======================================== */
@@ -235,11 +295,11 @@
     .purchasing-charts-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .sales-summary-grid {
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     }
-    
+
     .chart-container {
         height: 200px;
     }
@@ -251,20 +311,20 @@
         padding: 16px;
         border-radius: 16px;
     }
-    
+
     .block-header h3 {
         font-size: 1rem;
     }
-    
+
     .purchasing-charts-grid {
         gap: 16px;
     }
-    
+
     .sales-detail {
         grid-template-columns: 1fr;
         gap: 16px;
     }
-    
+
     .chart-container {
         height: 180px;
     }
@@ -276,56 +336,56 @@
         padding: 14px;
         border-radius: 14px;
     }
-    
+
     .block-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-    
+
     .block-header h3 {
         font-size: 0.95rem;
     }
-    
+
     .orders-list {
         gap: 10px;
     }
-    
+
     .order-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
         padding: 10px;
     }
-    
+
     .order-info h4 {
         font-size: 0.9rem;
     }
-    
+
     .order-meta {
         font-size: 0.75rem;
     }
-    
+
     .order-status {
         align-self: flex-start;
     }
-    
+
     .purchasing-charts-grid {
         grid-template-columns: 1fr;
         gap: 14px;
     }
-    
+
     .sales-summary-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
     }
-    
+
     .sales-chart {
         padding: 14px;
         min-height: 180px;
         border-radius: 18px;
     }
-    
+
     .chart-container {
         height: 160px;
     }
@@ -337,52 +397,52 @@
         padding: 12px;
         border-radius: 12px;
     }
-    
+
     .block-header h3 {
         font-size: 0.9rem;
     }
-    
+
     .orders-list {
         gap: 8px;
     }
-    
+
     .order-item {
         padding: 8px;
         border-radius: 10px;
     }
-    
+
     .order-info h4 {
         font-size: 0.85rem;
     }
-    
+
     .order-meta {
         font-size: 0.7rem;
     }
-    
+
     .order-status {
         font-size: 0.7rem;
         padding: 3px 6px;
     }
-    
+
     .sales-summary-grid {
         grid-template-columns: 1fr;
         gap: 10px;
     }
-    
+
     .sales-chart {
         padding: 12px;
         min-height: 160px;
         border-radius: 16px;
     }
-    
+
     .sales-chart-bars {
         gap: 6px;
     }
-    
+
     .chart-container {
         height: 140px;
     }
-    
+
     .small {
         font-size: 0.8rem;
     }
@@ -393,20 +453,20 @@
     .dashboard-block {
         padding: 10px;
     }
-    
+
     .block-header h3 {
         font-size: 0.85rem;
     }
-    
+
     .order-item {
         padding: 6px;
     }
-    
+
     .sales-chart {
         padding: 10px;
         min-height: 140px;
     }
-    
+
     .chart-container {
         height: 120px;
     }
@@ -417,30 +477,30 @@
     .orders-list {
         gap: 8px;
     }
-    
+
     .order-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
         padding: 12px;
     }
-    
+
     .order-info {
         width: 100%;
     }
-    
+
     .order-info h4 {
         font-size: 0.9rem;
         margin-bottom: 4px;
     }
-    
+
     .order-meta {
         font-size: 0.75rem;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
     }
-    
+
     .order-status {
         align-self: flex-start;
         margin-top: 4px;
@@ -451,16 +511,16 @@
     .order-item {
         padding: 10px;
     }
-    
+
     .order-info h4 {
         font-size: 0.85rem;
     }
-    
+
     .order-meta {
         font-size: 0.7rem;
         gap: 6px;
     }
-    
+
     .order-status {
         font-size: 0.7rem;
         padding: 3px 8px;
@@ -471,7 +531,7 @@
     .order-item {
         padding: 8px;
     }
-    
+
     .order-info h4 {
         font-size: 0.8rem;
     }

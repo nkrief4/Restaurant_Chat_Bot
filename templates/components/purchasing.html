@@ -72,10 +72,24 @@
             <!-- 2) Liste des ingrédients critiques -->
             <section class="dashboard-block is-wide">
                 <div class="block-header">
-                    <h3>Ingrédients Critiques</h3>
+                    <h3>Ingrédients par Statut</h3>
                     <button type="button" class="ghost-btn small" data-purchasing-nav-link data-section="purchasing"
                         data-purchasing-view="stock">
                         Tout voir
+                    </button>
+                </div>
+                <div class="ingredient-status-tabs">
+                    <button type="button" class="status-tab is-active" data-status-filter="all">
+                        Tous <span class="tab-count" id="tab-count-all">0</span>
+                    </button>
+                    <button type="button" class="status-tab" data-status-filter="CRITICAL">
+                        🚨 Critique <span class="tab-count" id="tab-count-critical">0</span>
+                    </button>
+                    <button type="button" class="status-tab" data-status-filter="LOW">
+                        ⚠️ Faible <span class="tab-count" id="tab-count-low">0</span>
+                    </button>
+                    <button type="button" class="status-tab" data-status-filter="OK">
+                        ✅ Bon <span class="tab-count" id="tab-count-ok">0</span>
                     </button>
                 </div>
                 <div class="table-responsive">
@@ -91,7 +105,7 @@
                         </thead>
                         <tbody id="dashboard-critical-ingredients-body">
                             <tr>
-                                <td colspan="6" class="text-center muted">Chargement...</td>
+                                <td colspan="5" class="text-center muted">Chargement...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -784,5 +798,44 @@
                         </div>
                     </div>
                 </div>
+        </div>
+        <!-- Sales Stats Modal -->
+        <div id="sales-stats-modal" class="modal" hidden>
+            <div class="modal-content modal-sheet sales-stats-modal" role="dialog" aria-modal="true"
+                aria-labelledby="sales-stats-title">
+                <div class="modal-sheet-header">
+                    <div>
+                        <p class="eyebrow">Analyse</p>
+                        <h2 id="sales-stats-title">Détail des Ventes</h2>
+                        <p class="modal-sheet-description">
+                            Vue détaillée des performances par plat sur la période sélectionnée.
+                        </p>
+                    </div>
+                    <button type="button" class="close-modal-btn" aria-label="Fermer la fenêtre">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-sheet-body">
+                    <div class="table-responsive">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Plat</th>
+                                    <th class="text-right">Quantité</th>
+                                    <th class="text-right">Évolution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-stats-body">
+                                <tr>
+                                    <td colspan="3" class="text-center muted">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-sheet-footer">
+                    <button type="button" class="primary-btn close-modal-btn">Fermer</button>
+                </div>
+            </div>
         </div>
 </section>

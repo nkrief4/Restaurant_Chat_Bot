@@ -1,56 +1,118 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble";
-  bubble.textContent = "💬";
+  // Check if we are on the standalone chat page
+  const isStandalone = document.body.classList.contains("chat-experience");
 
-  const chatWindow = document.createElement("div");
-  chatWindow.className = "chat-window";
+  let messagesContainer, input, sendButton, chatWindow, bubble;
+  let restaurantId = null;
+  let restaurantName = "Restaurant";
 
-  const header = document.createElement("div");
-  header.className = "chat-header";
-  const headerInfo = document.createElement("div");
-  const headerTitle = document.createElement("h2");
-  headerTitle.textContent = "Assistant du restaurant";
-  const headerStatus = document.createElement("div");
-  headerStatus.className = "chat-status";
-  headerStatus.innerHTML = '<span class="status-dot"></span><span>Disponible</span>';
-  headerInfo.appendChild(headerTitle);
-  headerInfo.appendChild(headerStatus);
-  const headerAction = document.createElement("button");
-  headerAction.type = "button";
-  headerAction.textContent = "–";
-  headerAction.setAttribute("aria-label", "Réduire le chat");
-  headerAction.style.background = "transparent";
-  headerAction.style.border = "none";
-  headerAction.style.color = "#cbd5f5";
-  headerAction.style.fontSize = "22px";
-  headerAction.style.cursor = "pointer";
-  headerAction.addEventListener("click", () => chatWindow.classList.remove("open"));
-  header.appendChild(headerInfo);
-  header.appendChild(headerAction);
+  // Parse URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  restaurantId = urlParams.get("restaurant_id");
+  const nameParam = urlParams.get("restaurant_name");
+  if (nameParam) {
+    restaurantName = nameParam;
+  }
 
-  const messagesContainer = document.createElement("div");
-  messagesContainer.className = "chat-messages";
+  if (isStandalone) {
+    // Use existing elements
+    messagesContainer = document.getElementById("chat-messages");
+    input = document.getElementById("chat-input");
+    sendButton = document.getElementById("chat-send");
+    const titleEl = document.getElementById("chat-restaurant-name");
+    if (titleEl) titleEl.textContent = restaurantName;
 
-  const inputArea = document.createElement("div");
-  inputArea.className = "chat-input-area";
+    // Update status
+    const statusEl = document.getElementById("chat-status");
+    if (statusEl) statusEl.innerHTML = '<span class="status-dot"></span><span>En ligne</span>';
 
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "Pose ta question...";
+    // Load menu from localStorage cache if available
+    const menuSection = document.getElementById("menu-sections");
+    const menuEmpty = document.getElementById("menu-empty-state");
 
-  const sendButton = document.createElement("button");
-  sendButton.textContent = "Envoyer";
+    if (restaurantId && window.localStorage) {
+      try {
+        const cachedData = window.localStorage.getItem(`restaubot-chat-${restaurantId}`);
+        if (cachedData) {
+          const data = JSON.parse(cachedData);
+          if (data.menu_document) {
+            displayMenu(data.menu_document, menuSection, menuEmpty);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not load menu from cache:', error);
+      }
+    }
 
-  inputArea.appendChild(input);
-  inputArea.appendChild(sendButton);
+    // Hide loading overlay
+    const loadingOverlay = document.getElementById("chat-loading-overlay");
+    if (loadingOverlay) {
+      setTimeout(() => {
+        loadingOverlay.style.opacity = '0';
+        setTimeout(() => {
+          loadingOverlay.style.display = 'none';
+        }, 300);
+      }, 500);
+    }
 
-  chatWindow.appendChild(header);
-  chatWindow.appendChild(messagesContainer);
-  chatWindow.appendChild(inputArea);
+  } else {
+    // Create widget elements
+    bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+    bubble.textContent = "💬";
 
-  document.body.appendChild(bubble);
-  document.body.appendChild(chatWindow);
+    chatWindow = document.createElement("div");
+    chatWindow.className = "chat-window";
+
+    const header = document.createElement("div");
+    header.className = "chat-header";
+    const headerInfo = document.createElement("div");
+    const headerTitle = document.createElement("h2");
+    headerTitle.textContent = "Assistant du restaurant";
+    const headerStatus = document.createElement("div");
+    headerStatus.className = "chat-status";
+    headerStatus.innerHTML = '<span class="status-dot"></span><span>Disponible</span>';
+    headerInfo.appendChild(headerTitle);
+    headerInfo.appendChild(headerStatus);
+    const headerAction = document.createElement("button");
+    headerAction.type = "button";
+    headerAction.textContent = "–";
+    headerAction.setAttribute("aria-label", "Réduire le chat");
+    headerAction.style.background = "transparent";
+    headerAction.style.border = "none";
+    headerAction.style.color = "#cbd5f5";
+    headerAction.style.fontSize = "22px";
+    headerAction.style.cursor = "pointer";
+    headerAction.addEventListener("click", () => chatWindow.classList.remove("open"));
+    header.appendChild(headerInfo);
+    header.appendChild(headerAction);
+
+    messagesContainer = document.createElement("div");
+    messagesContainer.className = "chat-messages";
+
+    const inputArea = document.createElement("div");
+    inputArea.className = "chat-input-area";
+
+    input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Pose ta question...";
+
+    sendButton = document.createElement("button");
+    sendButton.textContent = "Envoyer";
+
+    inputArea.appendChild(input);
+    inputArea.appendChild(sendButton);
+
+    chatWindow.appendChild(header);
+    chatWindow.appendChild(messagesContainer);
+    chatWindow.appendChild(inputArea);
+
+    document.body.appendChild(bubble);
+    document.body.appendChild(chatWindow);
+
+    // Widget toggle logic
+    bubble.addEventListener("click", toggleChat);
+  }
 
   let hasGreeted = false;
   let isSending = false;
@@ -88,7 +150,9 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const scrollToBottom = () => {
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
   };
 
   const sanitizeHTML = (value = "") =>
@@ -142,6 +206,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const appendMessage = (text, role) => {
+    if (!messagesContainer) return;
+
     const message = document.createElement("div");
     message.className = `message ${role}`;
     const content = document.createElement("div");
@@ -162,6 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const showTypingIndicator = () => {
+    if (!messagesContainer) return;
+
     const message = document.createElement("div");
     message.className = "message assistant";
     const indicator = document.createElement("div");
@@ -178,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     appendMessage(
-      "Bonjour ! Je suis là pour vous guider dans la carte, les régimes alimentaires (casher, halal, végétalien, sans porc, etc.) ou les horaires. Que puis-je faire pour vous ?",
+      `Bonjour ! Bienvenue chez ${restaurantName}. Je suis là pour vous guider dans la carte. Que puis-je faire pour vous ?`,
       "assistant"
     );
     hasGreeted = true;
@@ -186,14 +254,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const setSendingState = (sending) => {
     isSending = sending;
-    input.disabled = sending;
-    sendButton.disabled = sending;
-    if (!sending) {
+    if (input) input.disabled = sending;
+    if (sendButton) sendButton.disabled = sending;
+    if (!sending && input) {
       input.focus();
     }
   };
 
-  const toggleChat = () => {
+  function toggleChat() {
+    if (!chatWindow) return;
     const isOpen = chatWindow.classList.contains("open");
     if (isOpen) {
       chatWindow.classList.remove("open");
@@ -202,13 +271,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     chatWindow.classList.add("open");
     ensureSessionId();
-    input.focus();
+    if (input) input.focus();
     greetIfNeeded();
-  };
-
-  bubble.addEventListener("click", toggleChat);
+  }
 
   const sendMessage = async () => {
+    if (!input) return;
     const userMessage = input.value.trim();
     if (!userMessage || isSending) {
       return;
@@ -218,12 +286,19 @@ document.addEventListener("DOMContentLoaded", () => {
     input.value = "";
     setSendingState(true);
 
+    // Hide empty state if standalone
+    if (isStandalone) {
+      const emptyState = document.getElementById("chat-empty-state");
+      if (emptyState) emptyState.hidden = true;
+    }
+
     const typingMessage = showTypingIndicator();
 
     const payload = {
       message: userMessage,
       history: conversationHistory.slice(),
-      session_id: ensureSessionId()
+      session_id: ensureSessionId(),
+      restaurant_id: restaurantId // Include restaurant_id
     };
 
     recordHistory("user", userMessage);
@@ -242,13 +317,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
-      messagesContainer.removeChild(typingMessage);
+      if (messagesContainer && typingMessage && messagesContainer.contains(typingMessage)) {
+        messagesContainer.removeChild(typingMessage);
+      }
       const reply = data?.reply || "Désolé, une erreur est survenue. Réessayez plus tard.";
       appendMessage(reply, "assistant");
       recordHistory("assistant", reply);
     } catch (error) {
       console.error(error);
-      if (messagesContainer.contains(typingMessage)) {
+      if (messagesContainer && typingMessage && messagesContainer.contains(typingMessage)) {
         messagesContainer.removeChild(typingMessage);
       }
       appendMessage("Désolé, une erreur est survenue. Réessayez plus tard.", "assistant");
@@ -257,11 +334,101 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  sendButton.addEventListener("click", sendMessage);
-  input.addEventListener("keypress", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
+  if (sendButton) {
+    sendButton.addEventListener("click", (e) => {
+      e.preventDefault(); // Prevent form submission if in form
       sendMessage();
+    });
+  }
+
+  if (input) {
+    input.addEventListener("keypress", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  // Auto-greet if standalone
+  if (isStandalone) {
+    greetIfNeeded();
+  }
+
+  // Function to display menu
+  function displayMenu(menuDocument, menuSection, menuEmpty) {
+    if (!menuSection || !menuDocument) return;
+
+    const menu = typeof menuDocument === 'string' ? JSON.parse(menuDocument) : menuDocument;
+
+    if (!menu.categories || !Array.isArray(menu.categories) || menu.categories.length === 0) {
+      return;
     }
-  });
+
+    // Hide empty state and show menu
+    if (menuEmpty) menuEmpty.hidden = true;
+    menuSection.hidden = false;
+    menuSection.innerHTML = '';
+
+    menu.categories.forEach(category => {
+      if (!category.items || category.items.length === 0) return;
+
+      const section = document.createElement('div');
+      section.className = 'menu-category';
+
+      const title = document.createElement('h3');
+      title.className = 'menu-category-title';
+      title.textContent = category.name || 'Sans nom';
+      section.appendChild(title);
+
+      const itemsList = document.createElement('div');
+      itemsList.className = 'menu-items';
+
+      category.items.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'menu-item';
+
+        const itemHeader = document.createElement('div');
+        itemHeader.className = 'menu-item-header';
+
+        const itemName = document.createElement('h4');
+        itemName.className = 'menu-item-name';
+        itemName.textContent = item.name || 'Sans nom';
+        itemHeader.appendChild(itemName);
+
+        if (item.price) {
+          const itemPrice = document.createElement('span');
+          itemPrice.className = 'menu-item-price';
+          itemPrice.textContent = `${item.price}€`;
+          itemHeader.appendChild(itemPrice);
+        }
+
+        itemEl.appendChild(itemHeader);
+
+        if (item.description) {
+          const itemDesc = document.createElement('p');
+          itemDesc.className = 'menu-item-description';
+          itemDesc.textContent = item.description;
+          itemEl.appendChild(itemDesc);
+        }
+
+        if (item.tags && item.tags.length > 0) {
+          const tagsEl = document.createElement('div');
+          tagsEl.className = 'menu-item-tags';
+          item.tags.forEach(tag => {
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'menu-tag';
+            tagSpan.textContent = tag;
+            tagsEl.appendChild(tagSpan);
+          });
+          itemEl.appendChild(tagsEl);
+        }
+
+        itemsList.appendChild(itemEl);
+      });
+
+      section.appendChild(itemsList);
+      menuSection.appendChild(section);
+    });
+  }
 });
