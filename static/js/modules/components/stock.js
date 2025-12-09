@@ -83,23 +83,37 @@ export async function loadStockData(restaurantId = null) {
     const targetRestaurantId = restaurantId || state.overview?.restaurantId || null;
     state.activeStockRestaurantId = targetRestaurantId;
     if (!targetRestaurantId) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">Utilisez le sélecteur global pour afficher le stock.</td></tr>';
+        setStockTableLoadingState(false);
+        tableBody.innerHTML = '<tr><td colspan="4" class="muted text-center">Utilisez le sélecteur global pour afficher le stock.</td></tr>';
         state.stockData = [];
         return;
     }
 
     ensureCategoryStore(targetRestaurantId);
 
+    setStockTableLoadingState(true);
+
     // Skeleton loader
     tableBody.innerHTML = Array(5).fill(0).map(() => `
-    <tr>
-      <td><span class="loading-skeleton"></span></td>
-      <td><span class="loading-skeleton" style="width: 60%"></span></td>
-      <td><span class="loading-skeleton" style="width: 40%"></span></td>
-      <td><span class="loading-skeleton" style="width: 30%"></span></td>
-      <td><span class="loading-skeleton" style="width: 20px"></span></td>
-    </tr>
-  `).join('');
+      <tr class="stock-row-placeholder">
+        <td>
+          <div class="loading-skeleton skeleton-line is-long"></div>
+          <div class="skeleton-meta">
+            <span class="loading-skeleton skeleton-pill"></span>
+            <span class="loading-skeleton skeleton-pill is-short"></span>
+          </div>
+        </td>
+        <td>
+          <div class="loading-skeleton skeleton-line is-medium"></div>
+        </td>
+        <td>
+          <span class="loading-skeleton skeleton-badge"></span>
+        </td>
+        <td class="actions-cell">
+          <span class="loading-skeleton skeleton-action"></span>
+        </td>
+      </tr>
+    `).join('');
 
     try {
         // Fetch recommendations which include stock levels and consumption
@@ -122,8 +136,10 @@ export async function loadStockData(restaurantId = null) {
 
     } catch (error) {
         console.error("Failed to load stock data:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" class="muted text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="muted text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
         state.stockData = [];
+    } finally {
+        setStockTableLoadingState(false);
     }
 }
 
@@ -132,7 +148,7 @@ function renderStockTable(data) {
     if (!tableBody) return;
 
     if (!data || data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="muted text-center">No stock data available.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="4" class="muted text-center">No stock data available.</td></tr>';
         return;
     }
 
@@ -186,20 +202,16 @@ function renderStockTable(data) {
           </div>
         </td>
         <td>${qty} <small class="text-gray-500">${item.unit}</small></td>
-        <td>${coverageText}</td>
-        <td><span class="stock-badge ${statusClass}">${formatStatusLabel(statusClass)}</span></td>
+        <td class="status-cell"><span class="stock-badge ${statusClass}">${formatStatusLabel(statusClass)}</span></td>
         <td class="actions-cell">
           <div class="stock-row-actions">
-            <button type="button" class="action-edit-btn" data-action="edit-ingredient" data-ingredient-id="${item.ingredient_id}">
-              Modifier
-            </button>
-            <button type="button" class="action-delete-btn" data-action="delete-ingredient" data-ingredient-id="${item.ingredient_id}" data-ingredient-name="${item.ingredient_name}">
-              Supprimer
-            </button>
+            <button type="button" class="action-edit-btn" data-action="edit-ingredient" data-ingredient-id="${item.ingredient_id}" aria-label="Modifier ${item.ingredient_name}"></button>
+            <button type="button" class="action-delete-btn" data-action="delete-ingredient" data-ingredient-id="${item.ingredient_id}" data-ingredient-name="${item.ingredient_name}" aria-label="Supprimer ${item.ingredient_name}"></button>
           </div>
         </td>
       </tr>
     `;
+
     }).join("");
 
     updateStockCategoryFilterOptions(categories);
@@ -245,6 +257,12 @@ function filterStockTable() {
 
 function getActiveStockRestaurantId() {
     return state.activeStockRestaurantId || (state.overview?.restaurantId || null);
+}
+
+function setStockTableLoadingState(isLoading) {
+    const container = document.querySelector(".stock-table-container");
+    if (!container) return;
+    container.classList.toggle("is-loading", Boolean(isLoading));
 }
 
 // --- Ingredient Form ---
@@ -486,6 +504,7 @@ async function handleIngredientFormSubmit(event) {
 }
 
 async function deleteIngredientById(id, name) {
+    setStockTableLoadingState(true);
     try {
         const restaurantId = state.overview?.restaurantId || null;
         if (!restaurantId) return;
@@ -494,10 +513,12 @@ async function deleteIngredientById(id, name) {
         // showToast(`"${name}" supprimé.`);
         document.dispatchEvent(new CustomEvent('showToast', { detail: { message: `"${name}" supprimé.` } }));
         removeIngredientCategory(restaurantId, id);
-        loadStockData(restaurantId);
+        await loadStockData(restaurantId);
     } catch (error) {
         console.error("Error deleting ingredient:", error);
         alert("Failed to delete ingredient: " + error.message);
+    } finally {
+        setStockTableLoadingState(false);
     }
 }
 

@@ -119,36 +119,384 @@
     min-height: 44px;
 }
 
+/* Stock Card - Minimalist Container */
 .stock-card {
     background: #fff;
-    border-radius: 22px;
-    box-shadow: 0 8px 34px rgba(15, 23, 42, 0.04);
-    border: 1px solid rgba(15, 23, 42, 0.04);
+    border-radius: 0;
+    box-shadow: none;
+    border: 1px solid #F5F5F5;
     overflow: hidden;
 }
 
+/* Stock Table - Minimalist Professional Design */
+.stock-table-container {
+    position: relative;
+    overflow-x: auto;
+    background: #fff;
+    border-radius: 0;
+}
+
+.stock-table-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: linear-gradient(120deg, rgba(37, 99, 235, 0.08), rgba(15, 23, 42, 0.03));
+}
+
+.stock-table-container.is-loading::after {
+    opacity: 1;
+    animation: stockLoadingGlow 1.6s ease-in-out infinite;
+}
+
+.stock-table-container.is-loading .stock-table-final tbody tr:not(.stock-row-placeholder) {
+    opacity: 0.45;
+    filter: blur(0.2px);
+}
+
+.stock-table-final {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.stock-table-final thead {
+    background: transparent;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.stock-table-final thead th {
+    padding: 16px 24px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #A3A3A3;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid #F5F5F5;
+    background: #FAFAFA;
+    white-space: nowrap;
+}
+
+.stock-table-final thead th:first-child {
+    padding-left: 32px;
+}
+
+.stock-table-final thead th:last-child {
+    padding-right: 32px;
+}
+
+.stock-table-final tbody tr {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 1px solid #F5F5F5;
+}
+
+.stock-table-final tbody tr:hover {
+    background: #FAFAFA;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.stock-table-final tbody tr:last-child {
+    border-bottom: none;
+}
+
+.stock-table-final tbody td {
+    padding: 24px;
+    font-size: 0.9rem;
+    color: #525252;
+    vertical-align: middle;
+    border: none;
+}
+
+.stock-table-final tbody td:first-child {
+    padding-left: 32px;
+}
+
+.stock-table-final tbody td:last-child {
+    padding-right: 32px;
+}
+
+.stock-row-placeholder {
+    animation: stockSkeletonFade 0.35s ease forwards;
+}
+
+.stock-row-placeholder .skeleton-meta {
+    display: inline-flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.loading-skeleton {
+    display: inline-block;
+    width: 100%;
+    height: 16px;
+    border-radius: 10px;
+    background: linear-gradient(110deg, #f3f4f6 0%, #e2e8f0 45%, #f3f4f6 100%);
+    background-size: 200% 100%;
+    animation: stockSkeletonPulse 1.3s linear infinite;
+}
+
+.loading-skeleton.skeleton-line {
+    height: 16px;
+}
+
+.loading-skeleton.skeleton-line.is-long {
+    width: 80%;
+}
+
+.loading-skeleton.skeleton-line.is-medium {
+    width: 55%;
+    height: 14px;
+}
+
+.loading-skeleton.skeleton-pill {
+    width: 110px;
+    height: 12px;
+    border-radius: 999px;
+}
+
+.loading-skeleton.skeleton-pill.is-short {
+    width: 70px;
+}
+
+.loading-skeleton.skeleton-badge {
+    width: 120px;
+    height: 26px;
+    border-radius: 999px;
+}
+
+.loading-skeleton.skeleton-action {
+    width: 78px;
+    height: 32px;
+    border-radius: 12px;
+}
+
+/* Ingredient Name Column */
+.stock-item-name {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stock-ingredient-name {
+    font-weight: 600;
+    color: #0A0A0A;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.stock-metadata-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stock-category-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: #F5F5F5;
+    color: #737373;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.stock-ingredient-unit {
+    font-size: 0.8rem;
+    color: #A3A3A3;
+    font-weight: 500;
+}
+
+/* Status Indicator - Minimalist Design */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-dot--critical {
+    background: #DC2626;
+}
+
+.status-dot--low {
+    background: #F59E0B;
+}
+
+.status-dot--ok {
+    background: #10B981;
+}
+
+.status-label {
+    font-size: 0.85rem;
+    color: #737373;
+    font-weight: 500;
+}
+
+/* Legacy badge support (will be replaced) */
+.stock-table-final .stock-badge {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 1 !important;
+    visibility: visible !important;
+    min-width: auto;
+    text-align: left;
+    background: transparent !important;
+    border: none !important;
+    color: #737373 !important;
+    margin: 0 !important;
+    position: static;
+    top: auto;
+    right: auto;
+    animation: none;
+    box-shadow: none;
+    transform: none;
+}
+
+.stock-table-final .stock-badge::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.stock-table-final .stock-badge.ok::before {
+    background: #10B981;
+}
+
+.stock-table-final .stock-badge.low::before,
+.stock-table-final .stock-badge.warning::before {
+    background: #F59E0B;
+}
+
+.stock-table-final .stock-badge.critical::before {
+    background: #DC2626;
+}
+
+.status-cell {
+    vertical-align: middle !important;
+    text-align: left;
+    white-space: nowrap;
+    width: 140px;
+    /* Fixed width for status */
+}
+
+/* Actions - Icon-based Minimalist Design */
+.actions-cell {
+    text-align: right;
+    vertical-align: middle;
+    white-space: nowrap;
+    width: 100px;
+    /* Fixed width for actions */
+}
+
+.stock-row-actions {
+    display: inline-flex;
+    gap: 6px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.action-icon,
+.stock-row-actions button {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: #F5F5F5;
+    color: #737373;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+}
+
+.action-icon::after,
+.stock-row-actions button::after {
+    font-size: 0.9rem;
+    position: absolute;
+}
+
+.stock-row-actions .action-edit-btn::after {
+    content: "✎";
+    color: #525252;
+}
+
+.stock-row-actions .action-delete-btn::after {
+    content: "×";
+    font-size: 1.3rem;
+    color: #525252;
+}
+
+.action-icon:hover,
+.stock-row-actions button:hover {
+    background: #E5E5E5;
+    transform: translateY(-1px);
+}
+
+.stock-row-actions .action-delete-btn:hover::after {
+    color: #DC2626;
+}
+
+/* Table Headline */
 .stock-table-headline {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
-    padding: 20px 28px 10px;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+    gap: 20px;
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid #F5F5F5;
+    background: #fff;
 }
 
 .stock-table-headline .eyebrow {
     margin-bottom: 4px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #A3A3A3;
+    font-weight: 600;
 }
 
 .stock-table-headline h3 {
     margin: 0;
-    font-size: 1.35rem;
-    color: #0f172a;
+    font-size: 1.5rem;
+    color: #0A0A0A;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
+/* Status Overview Chips - Minimalist */
 .stock-status-overview {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
@@ -156,41 +504,105 @@
 .stock-status-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    font-size: 0.82rem;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
     font-weight: 600;
-    background: rgba(15, 23, 42, 0.04);
-    color: #475467;
+    background: #F5F5F5;
+    color: #525252;
 }
 
 .stock-status-chip strong {
-    font-size: 0.95rem;
-    color: #0f172a;
+    font-size: 1rem;
+    color: #0A0A0A;
+    font-weight: 700;
 }
 
-.stock-status-chip.is-critical {
-    background: rgba(220, 38, 38, 0.12);
-    color: #991b1b;
+.stock-status-chip.is-critical strong {
+    color: #DC2626;
 }
 
-.stock-status-chip.is-low {
-    background: rgba(245, 158, 11, 0.15);
-    color: #92400e;
+.stock-status-chip.is-low strong {
+    color: #F59E0B;
 }
 
-.stock-status-chip.is-ok {
-    background: rgba(16, 185, 129, 0.15);
-    color: #047857;
+.stock-status-chip.is-ok strong {
+    color: #10B981;
 }
 
+@keyframes stockSkeletonPulse {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes stockLoadingGlow {
+    0% {
+        opacity: 0.35;
+    }
+
+    50% {
+        opacity: 0.65;
+    }
+
+    100% {
+        opacity: 0.35;
+    }
+}
+
+@keyframes stockSkeletonFade {
+    0% {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stock-table-container::after,
+    .stock-row-placeholder,
+    .stock-table-container .loading-skeleton {
+        animation: none;
+    }
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-    .stock-toolbar {
-        grid-template-columns: 1fr;
+    .stock-table-final thead th {
+        padding: 12px 16px;
+        font-size: 0.65rem;
+    }
+
+    .stock-table-final thead th:first-child,
+    .stock-table-final tbody td:first-child {
+        padding-left: 16px;
+    }
+
+    .stock-table-final thead th:last-child,
+    .stock-table-final tbody td:last-child {
+        padding-right: 16px;
+    }
+
+    .stock-table-final tbody td {
+        padding: 18px 16px;
+        font-size: 0.85rem;
+    }
+
+    .stock-ingredient-name {
+        font-size: 0.9rem;
     }
 
     .stock-table-headline {
+        padding: 20px 16px 16px;
         flex-direction: column;
         align-items: flex-start;
     }
@@ -198,80 +610,6 @@
     .stock-status-overview {
         justify-content: flex-start;
     }
-}
-
-/* Ingredient action buttons */
-.actions-cell {
-    text-align: right;
-}
-
-.stock-row-actions {
-    display: inline-flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-.stock-row-actions button {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 8px 14px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: #fff;
-}
-
-.stock-row-actions .action-edit-btn {
-    color: #2563eb;
-    border-color: rgba(37, 99, 235, 0.3);
-}
-
-.stock-row-actions .action-edit-btn:hover {
-    background: rgba(37, 99, 235, 0.1);
-    border-color: rgba(37, 99, 235, 0.5);
-}
-
-.stock-row-actions .action-delete-btn {
-    color: #dc2626;
-    border-color: rgba(220, 38, 38, 0.3);
-}
-
-.stock-row-actions .action-delete-btn:hover {
-    background: rgba(220, 38, 38, 0.08);
-    border-color: rgba(220, 38, 38, 0.6);
-}
-
-/* Stock badge styles */
-.stock-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.stock-badge.ok {
-    background: rgba(16, 185, 129, 0.15);
-    color: #047857;
-}
-
-.stock-badge.low {
-    background: rgba(251, 191, 36, 0.2);
-    color: #92400e;
-}
-
-.stock-badge.warning {
-    background: rgba(249, 115, 22, 0.2);
-    color: #c2410c;
-}
-
-.stock-badge.critical {
-    background: rgba(239, 68, 68, 0.15);
-    color: #b91c1c;
 }
 
 /* Action Modal Styles */

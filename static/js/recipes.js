@@ -960,6 +960,7 @@
             // To Add or Update Recipe Links
             for (const ing of currentRecipeIngredients) {
                 const payload = {
+                    menu_item_id: currentRecipeId,
                     ingredient_id: ing.ingredient_id,
                     quantity_per_unit: ing.quantity_per_unit,
                     unit: ing.unit
@@ -974,7 +975,7 @@
                 // Actually, looking at the backend code I saw earlier, there is `upsert_recipe` which might handle everything, 
                 // OR we iterate. Let's iterate for safety as per standard REST.
 
-                await fetch(`/api/purchasing/recipes/${currentRecipeId}/ingredients`, {
+                await fetch(`/api/purchasing/recipes`, {
                     method: 'POST', // or PUT
                     headers: {
                         'Content-Type': 'application/json',

@@ -254,15 +254,26 @@ function updateChatbotEmptyState() {
 function appendChatbotMessage(text, role, options = {}) {
     const feed = document.getElementById("chatbot-thread");
     if (!feed) {
-        return;
+        return null;
     }
-    const bubble = document.createElement("div");
     const resolvedRole = role === "assistant" ? "assistant" : "user";
-    bubble.className = `chatbot-bubble ${resolvedRole}`;
 
-    const author = document.createElement("span");
-    author.className = "chatbot-author";
-    author.textContent = resolvedRole === "assistant" ? "RestauBot" : "Vous";
+    const message = document.createElement("div");
+    message.className = `chat-message ${resolvedRole}`;
+
+    const avatar = document.createElement("div");
+    avatar.className = "chat-message-avatar";
+    avatar.textContent = resolvedRole === "assistant" ? "AI" : "Vous";
+
+    const content = document.createElement("div");
+    content.className = "chat-message-content";
+
+    const author = document.createElement("p");
+    author.className = "chat-message-author";
+    author.textContent =
+        resolvedRole === "assistant"
+            ? state.chatbot.restaurantName || "RestauBot"
+            : "Vous";
 
     const body = document.createElement("div");
     body.className = "chatbot-text";
@@ -273,14 +284,26 @@ function appendChatbotMessage(text, role, options = {}) {
         body.innerHTML = formatChatbotMessage(rawText);
     }
 
-    bubble.append(author, body);
-    feed.appendChild(bubble);
+    content.append(author, body);
+
+    if (!options.hideMeta) {
+        const meta = document.createElement("small");
+        meta.className = "chat-message-meta";
+        meta.textContent = new Date().toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+        content.appendChild(meta);
+    }
+
+    message.append(avatar, content);
+    feed.appendChild(message);
     feed.scrollTop = feed.scrollHeight;
     updateChatbotEmptyState();
     if (options.returnElements) {
-        return { bubble, body };
+        return { bubble: message, body };
     }
-    return null;
+    return message;
 }
 
 function streamChatbotReply(target, text) {

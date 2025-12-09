@@ -385,16 +385,22 @@ function renderOverviewChatMessages() {
 
 function buildOverviewChatMessage(entry, options = {}) {
     const role = entry.role === "assistant" ? "assistant" : "user";
-    const bubble = document.createElement("div");
-    bubble.className = `chatbot - bubble ${role} `;
+    const message = document.createElement("div");
+    message.className = `chat-message ${role}`;
 
-    if (options.isTyping) {
-        bubble.classList.add("loading");
-    }
+    const avatar = document.createElement("div");
+    avatar.className = "chat-message-avatar";
+    avatar.textContent = role === "assistant" ? "AI" : "Vous";
 
-    const author = document.createElement("span");
-    author.className = "chatbot-author";
-    author.textContent = role === "assistant" ? "RestauBot" : "Vous";
+    const content = document.createElement("div");
+    content.className = "chat-message-content";
+
+    const author = document.createElement("p");
+    author.className = "chat-message-author";
+    author.textContent =
+        role === "assistant"
+            ? state.overview?.restaurantName || "RestauBot"
+            : "Vous";
 
     const text = document.createElement("div");
     text.className = "chatbot-text";
@@ -414,8 +420,25 @@ function buildOverviewChatMessage(entry, options = {}) {
         }
     }
 
-    bubble.append(author, text);
-    return bubble;
+    content.append(author, text);
+
+    if (!options.hideMeta) {
+        const meta = document.createElement("small");
+        meta.className = "chat-message-meta";
+        meta.textContent = entry.created_at
+            ? new Date(entry.created_at).toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+              })
+            : new Date().toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+              });
+        content.appendChild(meta);
+    }
+
+    message.append(avatar, content);
+    return message;
 }
 
 

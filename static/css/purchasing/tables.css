@@ -133,20 +133,20 @@
     background: #fff;
 }
 
-.stock-table-new {
+.stock-table-final {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
 }
 
-.stock-table-new thead {
+.stock-table-final thead {
     background: #f8fafc;
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
-.stock-table-new thead th {
+.stock-table-final thead th {
     padding: 20px 24px;
     text-align: left;
     font-size: 0.75rem;
@@ -158,15 +158,15 @@
     white-space: nowrap;
 }
 
-.stock-table-new tbody tr {
+.stock-table-final tbody tr {
     transition: background 0.2s ease;
 }
 
-.stock-table-new tbody tr:hover {
+.stock-table-final tbody tr:hover {
     background: #f8fafc;
 }
 
-.stock-table-new tbody td {
+.stock-table-final tbody td {
     padding: 20px 24px;
     font-size: 0.95rem;
     color: #334155;
@@ -174,7 +174,7 @@
     vertical-align: middle;
 }
 
-.stock-table-new tbody tr:last-child td {
+.stock-table-final tbody tr:last-child td {
     border-bottom: none;
 }
 
@@ -346,6 +346,7 @@
     font-size: 0.9rem;
     line-height: 1.3;
 }
+
 /* ========================================
    RESPONSIVE DESIGN - Tables
    ======================================== */
@@ -356,18 +357,18 @@
         padding: 10px 6px;
         font-size: 0.75rem;
     }
-    
+
     .dashboard-table td {
         padding: 10px 6px;
         font-size: 0.85rem;
     }
-    
-    .stock-table-new thead th {
+
+    .stock-table-final thead th {
         padding: 16px 18px;
         font-size: 0.7rem;
     }
-    
-    .stock-table-new tbody td {
+
+    .stock-table-final tbody td {
         padding: 16px 18px;
         font-size: 0.9rem;
     }
@@ -375,44 +376,45 @@
 
 /* Tablettes (≤ 768px) */
 @media (max-width: 768px) {
+
     /* Transformation du tableau en cartes pour mobile */
     .table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
-    
+
     .dashboard-table {
         font-size: 0.85rem;
     }
-    
+
     .dashboard-table th {
         padding: 8px 4px;
         font-size: 0.7rem;
     }
-    
+
     .dashboard-table td {
         padding: 8px 4px;
         font-size: 0.8rem;
     }
-    
-    .stock-table-new thead th {
+
+    .stock-table-final thead th {
         padding: 12px 14px;
         font-size: 0.65rem;
     }
-    
-    .stock-table-new tbody td {
+
+    .stock-table-final tbody td {
         padding: 12px 14px;
         font-size: 0.85rem;
     }
-    
+
     .stock-ingredient-name {
         font-size: 0.9rem;
     }
-    
+
     .stock-ingredient-unit {
         font-size: 0.8rem;
     }
-    
+
     .stock-category-pill {
         font-size: 0.65rem;
         padding: 2px 8px;
@@ -421,24 +423,25 @@
 
 /* Mobiles (≤ 640px) */
 @media (max-width: 640px) {
+
     /* Transformation complète en cartes pour les petits écrans */
     .table-responsive {
         overflow: visible;
     }
-    
+
     .dashboard-table {
         display: block;
         overflow: visible;
     }
-    
+
     .dashboard-table thead {
         display: none;
     }
-    
+
     .dashboard-table tbody {
         display: block;
     }
-    
+
     .dashboard-table tr {
         display: block;
         margin-bottom: 12px;
@@ -447,7 +450,7 @@
         border-radius: 12px;
         border: 1px solid #e2e8f0;
     }
-    
+
     .dashboard-table td {
         display: flex;
         justify-content: space-between;
@@ -456,11 +459,11 @@
         border-bottom: 1px solid #f1f5f9;
         text-align: right;
     }
-    
+
     .dashboard-table td:last-child {
         border-bottom: none;
     }
-    
+
     .dashboard-table td::before {
         content: attr(data-label);
         font-weight: 600;
@@ -471,39 +474,39 @@
         text-align: left;
         flex: 1;
     }
-    
+
     .dashboard-table td:first-child {
         font-weight: 600;
         color: #0f172a;
     }
-    
+
     /* Styles pour le tableau des stocks sur mobile */
     .stock-table-container {
         overflow-x: auto;
     }
-    
-    .stock-table-new {
+
+    .stock-table-final {
         min-width: 600px;
     }
-    
-    .stock-table-new thead th {
+
+    .stock-table-final thead th {
         padding: 10px 12px;
         font-size: 0.6rem;
     }
-    
-    .stock-table-new tbody td {
+
+    .stock-table-final tbody td {
         padding: 10px 12px;
         font-size: 0.8rem;
     }
-    
+
     .stock-ingredient-name {
         font-size: 0.85rem;
     }
-    
+
     .stock-ingredient-unit {
         font-size: 0.75rem;
     }
-    
+
     .stock-status {
         font-size: 0.75rem;
         padding: 3px 8px;
@@ -517,39 +520,39 @@
         margin-bottom: 10px;
         border-radius: 10px;
     }
-    
+
     .dashboard-table td {
         padding: 6px 0;
         font-size: 0.75rem;
     }
-    
+
     .dashboard-table td::before {
         font-size: 0.7rem;
     }
-    
-    .stock-table-new {
+
+    .stock-table-final {
         min-width: 500px;
     }
-    
-    .stock-table-new thead th {
+
+    .stock-table-final thead th {
         padding: 8px 10px;
         font-size: 0.55rem;
     }
-    
-    .stock-table-new tbody td {
+
+    .stock-table-final tbody td {
         padding: 8px 10px;
         font-size: 0.75rem;
     }
-    
+
     .stock-ingredient-name {
         font-size: 0.8rem;
     }
-    
+
     .stock-status {
         font-size: 0.7rem;
         padding: 2px 6px;
     }
-    
+
     .stock-category-pill {
         font-size: 0.6rem;
         padding: 1px 6px;
