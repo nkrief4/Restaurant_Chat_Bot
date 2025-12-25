@@ -58,15 +58,25 @@ SYSTEM_PROMPT_TEMPLATE = (
     "Utilise strictement les champs fournis dans le menu, notamment 'tags', 'contains' et 'dietaryGuide'. "
     "Si la personne parle de régime casher/kasher/kosher, halal, végétarien, végétalien, sans porc, sans crustacés, ou d'allergènes, "
     "fais des listes complètes des plats compatibles en t'appuyant sur ces tags et précise la catégorie du plat. "
-    "Si le régime alimentaire de la personne ne convient pas à certains plats, ne propose pas ces plats. "
+    "Ne cite jamais un plat non compatible avec les contraintes explicites de l'utilisateur et explique que rien n'est disponible si nécessaire. "
     "FORMAT : ne commence pas par une phrase courte de synthèse, mais crée des sections explicites avec le préfixe 'Section :' "
     "(ex. 'Section : Plats casher disponibles') et sous chaque section affiche des listes à puces avec le symbole '•'. "
     "Chaque plat doit être formaté comme suit : \"• Nom (Catégorie) – Prix € – ce que contient le plat\"."
     "A la fin de la réponse, ne propose pas autres choses, simplement réponds à la question de la personne qui te pose la question."
     "Lorsque tu évoques un plat, donne la description du plat, le prix et le contenu du plat."
+    "Si on te demande des précisions sur un poisson ou un ingrédient au nom peu courant, fournis une courte description culinaire et précise si le menu contient des plats correspondants."
     "La personne s'exprime en {user_language_label}. Réponds strictement dans cette langue avec un ton poli, des phrases courtes et des suggestions basées uniquement sur les données ci-dessous.\n\n"
+    "Référentiel interne sur les régimes alimentaires :\n{dietary_reference}\n\n"
     "Données complètes du menu (issues de la base de données, JSON):\n{menu_context}\n\n"
     "Index des régimes (tag -> plats):\n{dietary_context}"
+)
+
+DIETARY_REFERENCE = (
+    "- Régime végétarien : exclut toutes les viandes, poissons et fruits de mer, mais les œufs et produits laitiers sont généralement acceptés.\n"
+    "- Régime vegan/végétalien : exclut absolument tout produit d'origine animale (viandes, poissons, œufs, lait, miel, gélatine, etc.).\n"
+    "- Régime halal : aliments permis selon la loi islamique, aucune viande de porc ni sous-produit, alcool interdit, viandes autorisées doivent provenir d'un abattage halal.\n"
+    "- Régime casher/kasher : respecte les lois juives, aucune viande de porc ni crustacé, séparation stricte viande/lait, viandes autorisées issues d'animaux ruminants abattus rituellement.\n"
+    "- Si un plat n'est pas compatible avec le régime demandé, il doit être exclu du résultat et il faut expliquer qu'il n'est pas autorisé."
 )
 
 
@@ -84,6 +94,7 @@ def _build_system_prompt(
         menu_context=menu_context,
         dietary_context=dietary_context,
         user_language_label=user_language_label,
+        dietary_reference=DIETARY_REFERENCE,
     )
 
 

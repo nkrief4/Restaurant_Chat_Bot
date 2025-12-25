@@ -3,11 +3,11 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,6 +21,8 @@ from app.api.routes.purchasing import router as purchasing_router
 from app.api.routes.sales import router as sales_router
 from app.api.routes.ingredient_categories import router as ingredient_categories_router
 from app.api.routes.menu_optimization import router as menu_optimization_router
+from app.services import dashboard_service as dashboard_service_module, restaurant_service
+from app.services.postgrest_client import extract_bearer_token
 
 app = FastAPI(title="Restaurant Chatbot")
 logger = logging.getLogger(__name__)
@@ -68,8 +70,32 @@ def read_signup() -> FileResponse:
 
 
 @app.get("/dashboard")
-async def read_dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+async def read_dashboard(
+    request: Request,
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+):
+    stock = None
+    token: Optional[str] = None
+    if authorization:
+        try:
+            token = extract_bearer_token(authorization)
+        except HTTPException:
+            token = None
+
+    if token:
+        try:
+            claims = dashboard_service_module._decode_claims(token)
+            user_id = claims.get("sub")
+            if user_id:
+                restaurant = restaurant_service.get_default_restaurant_for_user(str(user_id))
+                if restaurant and restaurant.get("id"):
+                    summary = await dashboard_service_module.get_dashboard_summary(str(restaurant["id"]))
+                    stock = summary.get("stock")
+        except HTTPException:
+            stock = None
+
+    context = {"request": request, "stock": stock}
+    return templates.TemplateResponse("dashboard.html", context)
 
 
 @app.get("/purchasing", response_class=FileResponse)

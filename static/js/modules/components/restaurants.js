@@ -733,10 +733,7 @@ async function handleMenuUpload(event, scopedForm) {
             }
 
             const { menu_document: menuDocument } = payload || {};
-            const menuField = form.querySelector("[name='menu_document']");
-            if (menuField) {
-                menuField.value = stringifyMenu(menuDocument);
-            }
+            applyMenuDocumentToForm(form, menuDocument);
             status.textContent = `${files.length} fichiers importés et fusionnés. Vérifiez puis sauvegardez.`;
         } else {
             // Upload single file (use existing endpoint)
@@ -757,10 +754,7 @@ async function handleMenuUpload(event, scopedForm) {
             }
 
             const { menu_document: menuDocument } = payload || {};
-            const menuField = form.querySelector("[name='menu_document']");
-            if (menuField) {
-                menuField.value = stringifyMenu(menuDocument);
-            }
+            applyMenuDocumentToForm(form, menuDocument);
             status.textContent = "Menu importé. Vérifiez puis sauvegardez.";
         }
     } catch (error) {
@@ -772,6 +766,22 @@ async function handleMenuUpload(event, scopedForm) {
             trigger.disabled = false;
             setAIButtonState(trigger, false);
         }
+    }
+}
+
+function applyMenuDocumentToForm(form, menuDocument) {
+    const menuField = form.querySelector("[name='menu_document']");
+    if (!menuField) {
+        return;
+    }
+    menuField.value = stringifyMenu(menuDocument);
+
+    const editorWrapper = form.querySelector("[data-role='menu-editor-wrapper']");
+    const editor = editorWrapper && editorWrapper.menuEditorInstance ? editorWrapper.menuEditorInstance : null;
+    if (editor) {
+        // Keep the textarea as the source of truth, then refresh the visual editor.
+        editor.syncFromJSON();
+        editor.render();
     }
 }
 

@@ -16,10 +16,8 @@ from fastapi import HTTPException
 from httpx import HTTPError as HttpxError
 from postgrest import APIError as PostgrestAPIError
 
-from app.services.postgrest_client import (
-    create_postgrest_client,
-    raise_postgrest_error,
-)
+from app.services import stock_service
+from app.services.postgrest_client import create_postgrest_client, raise_postgrest_error
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +53,9 @@ PLAN_PRESETS: Dict[str, Dict[str, Any]] = {
 DEFAULT_TIMEZONE = "Europe/Paris"
 PHONE_MIN_DIGITS = 10
 PHONE_MAX_DIGITS = 15
+MENU_ITEM_IMPORT_LIMIT = 200
+MENU_PRICE_PATTERN = re.compile(r"(\d+(?:[.,]\d+)?)")
+_MENU_ITEMS_SUPPORTS_DESCRIPTION: Optional[bool] = None
 
 
 async def build_dashboard_snapshot(
@@ -169,6 +170,12 @@ async def create_restaurant(access_token: str, payload: Dict[str, Any]) -> Dict[
         "menu_document": payload.get("menu_document"),
     }
     record = await _persist_restaurant(access_token, body)
+    if payload.get("menu_document") and record.get("id"):
+        await _sync_menu_items_with_document(
+            access_token,
+            str(record["id"]),
+            record.get("menu_document"),
+        )
     return record
 
 
@@ -201,12 +208,20 @@ async def update_restaurant(access_token: str, restaurant_id: str, payload: Dict
             return _normalize_restaurant_record(response.data[0])
 
     try:
-        return await asyncio.to_thread(_request)
+        record = await asyncio.to_thread(_request)
     except PostgrestAPIError as exc:  # pragma: no cover - network interaction
         raise_postgrest_error(exc, context="restaurant update")
     except HttpxError as exc:  # pragma: no cover - network interaction
         logger.error("Supabase unreachable during restaurant update: %s", exc)
         raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+    if payload.get("menu_document") and record.get("id"):
+        await _sync_menu_items_with_document(
+            access_token,
+            str(record["id"]),
+            record.get("menu_document"),
+        )
+    return record
 
 
 async def update_profile(access_token: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -294,6 +309,201 @@ async def _persist_restaurant(access_token: str, payload: Dict[str, Any]) -> Dic
     except HttpxError as exc:  # pragma: no cover - network interaction
         logger.error("Supabase unreachable during restaurant creation: %s", exc)
         raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+
+
+async def _sync_menu_items_with_document(access_token: str, restaurant_id: str, raw_document: Any) -> None:
+    """Ensure menu_items rows exist for every entry returned by the AI ingestion."""
+
+    document = _normalize_menu_document(raw_document)
+    if not restaurant_id or not document:
+        return
+    entries = _extract_menu_items_from_document(document)
+    if not entries:
+        return
+
+    def _request() -> None:
+        with create_postgrest_client(access_token, prefer="return=minimal") as client:
+            include_description = _MENU_ITEMS_SUPPORTS_DESCRIPTION is not False
+
+            while True:
+                select_clause = "id,name,category,menu_price" + (",description" if include_description else "")
+                try:
+                    existing_response = (
+                        client.table("menu_items")
+                        .select(select_clause)
+                        .eq("restaurant_id", restaurant_id)
+                        .execute()
+                    )
+                    if include_description and _MENU_ITEMS_SUPPORTS_DESCRIPTION is None:
+                        _set_menu_items_description_support(True)
+                    break
+                except PostgrestAPIError as exc:
+                    if include_description and _is_missing_column_error(exc, "description"):
+                        _set_menu_items_description_support(False)
+                        include_description = False
+                        continue
+                    raise
+
+            supports_description = include_description and (_MENU_ITEMS_SUPPORTS_DESCRIPTION is not False)
+            existing_rows = existing_response.data or []
+            existing_by_name: Dict[str, Dict[str, Any]] = {}
+            for row in existing_rows:
+                key = str(row.get("name") or "").strip().casefold()
+                if key:
+                    existing_by_name[key] = row
+
+            to_insert: List[Dict[str, Any]] = []
+            to_update: List[Dict[str, Any]] = []
+            for entry in entries:
+                record_key = entry["key"]
+                existing = existing_by_name.get(record_key)
+                if existing:
+                    update_payload: Dict[str, Any] = {"id": existing.get("id")}
+                    dirty = False
+                    if entry["category"] and not _has_text(existing.get("category")):
+                        update_payload["category"] = entry["category"]
+                        dirty = True
+                    if supports_description and entry["description"] and not _has_text(existing.get("description")):
+                        update_payload["description"] = entry["description"]
+                        dirty = True
+                    if entry["menu_price"] is not None and not _has_meaningful_price(existing.get("menu_price")):
+                        update_payload["menu_price"] = entry["menu_price"]
+                        dirty = True
+                    if dirty and update_payload.get("id"):
+                        to_update.append(update_payload)
+                    continue
+
+                payload = {
+                    "restaurant_id": restaurant_id,
+                    "name": entry["name"],
+                }
+                if entry["category"]:
+                    payload["category"] = entry["category"]
+                if supports_description and entry["description"]:
+                    payload["description"] = entry["description"]
+                if entry["menu_price"] is not None:
+                    payload["menu_price"] = entry["menu_price"]
+                to_insert.append(payload)
+
+            if to_insert:
+                client.table("menu_items").insert(to_insert).execute()
+            if to_update:
+                client.table("menu_items").upsert(to_update, on_conflict="id").execute()
+
+    try:
+        await asyncio.to_thread(_request)
+        logger.info(
+            "Menu items synchronized for restaurant %s (entries=%s)",
+            restaurant_id,
+            len(entries),
+        )
+    except PostgrestAPIError as exc:  # pragma: no cover - depends on schema
+        logger.warning("Unable to sync menu items for restaurant %s: %s", restaurant_id, exc)
+    except HttpxError as exc:  # pragma: no cover - network interaction
+        logger.warning(
+            "Supabase unreachable while syncing menu items for restaurant %s: %s",
+            restaurant_id,
+            exc,
+        )
+
+
+def _extract_menu_items_from_document(document: Dict[str, Any]) -> List[Dict[str, Any]]:
+    categories = document.get("categories")
+    if not isinstance(categories, list):
+        return []
+
+    entries: List[Dict[str, Any]] = []
+    seen: set[str] = set()
+    for category in categories:
+        if not isinstance(category, dict):
+            continue
+        category_name = _clean_menu_text(category.get("name"))
+        items = category.get("items")
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = _clean_menu_text(item.get("name"))
+            if not name:
+                continue
+            key = name.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            description = _clean_menu_text(item.get("description"))
+            price = _parse_menu_price(item.get("price"))
+            entries.append(
+                {
+                    "name": name,
+                    "category": category_name,
+                    "description": description,
+                    "menu_price": price,
+                    "key": key,
+                }
+            )
+            if len(entries) >= MENU_ITEM_IMPORT_LIMIT:
+                return entries
+    return entries
+
+
+def _clean_menu_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    normalized = " ".join(text.split())
+    return normalized or None
+
+
+def _parse_menu_price(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        price = float(value)
+        return round(price, 2) if price >= 0 else None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        normalized = stripped.replace(",", ".")
+        match = MENU_PRICE_PATTERN.search(normalized)
+        if not match:
+            return None
+        token = match.group(1).replace(",", ".")
+        try:
+            price = float(token)
+        except ValueError:
+            return None
+        return round(price, 2) if price >= 0 else None
+    return None
+
+
+def _has_meaningful_price(value: Any) -> bool:
+    if value is None:
+        return False
+    try:
+        return float(value) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _has_text(value: Any) -> bool:
+    return bool(str(value or "").strip())
+
+
+def _is_missing_column_error(exc: PostgrestAPIError, column: str) -> bool:
+    if str(getattr(exc, "code", "")) != "42703":
+        return False
+    message_parts = [exc.message or "", getattr(exc, "details", "") or "", getattr(exc, "hint", "") or ""]
+    combined = " ".join(part for part in message_parts if part).lower()
+    return column.lower() in combined
+
+
+def _set_menu_items_description_support(value: bool) -> None:
+    global _MENU_ITEMS_SUPPORTS_DESCRIPTION
+    _MENU_ITEMS_SUPPORTS_DESCRIPTION = value
 
 
 async def _ensure_profile(access_token: str, user_id: str, claims: Dict[str, Any]) -> Dict[str, Any]:
@@ -1007,10 +1217,25 @@ def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+async def get_dashboard_summary(restaurant_id: str) -> Dict[str, Any]:
+    """Return high-level KPIs for the dashboard summary widget."""
+
+    stock_overview = stock_service.get_stock_overview(restaurant_id)
+    return {"stock": stock_overview}
+
+
+async def get_menu_performance(access_token: str) -> Dict[str, Any]:
+    """Return aggregated menu performance metrics."""
+
+    pass
+
+
 __all__ = [
     "build_dashboard_snapshot",
     "create_restaurant",
     "update_profile",
     "update_restaurant",
     "list_dashboard_restaurants",
+    "get_dashboard_summary",
+    "get_menu_performance",
 ]

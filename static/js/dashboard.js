@@ -64,6 +64,7 @@ async function initializeDashboard() {
   console.log("[Dashboard] Step 4: Binding forms...");
   bindFormEvents();
   bindProfileForm();
+  bindOrderForm();
 
   console.log("[Dashboard] Step 5: Refreshing dashboard data...");
   await refreshDashboardData();
@@ -291,4 +292,72 @@ function validateRange(start, end) {
     return { message: "La date de début doit être antérieure à la fin.", type: "error" };
   }
   return null;
+}
+
+function bindOrderForm() {
+  const form = document.getElementById("order-form");
+  const statusBox = document.getElementById("order-status");
+  if (!form || !statusBox) {
+    return;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const menuItemId = (formData.get("menu_item_id") || "").toString().trim();
+    const quantityValue = Number(formData.get("quantity"));
+    const sourceValue = (formData.get("source") || "manual").toString().trim() || "manual";
+
+    if (!menuItemId) {
+      statusBox.textContent = "Merci de renseigner l'identifiant du plat.";
+      statusBox.className = "order-status error";
+      return;
+    }
+
+    let token;
+    try {
+      token = await getAccessToken();
+    } catch (error) {
+      console.error("Impossible de récupérer le jeton:", error);
+      statusBox.textContent = "Session expirée. Merci de vous reconnecter.";
+      statusBox.className = "order-status error";
+      return;
+    }
+
+    const payload = {
+      menu_item_id: menuItemId,
+      quantity: Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1,
+      source: sourceValue,
+    };
+
+    try {
+      const response = await fetch("/api/sales/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        const detail = errorPayload.detail || "Impossible d'enregistrer la commande.";
+        throw new Error(detail);
+      }
+
+      const data = await response.json();
+      statusBox.textContent = `Commande enregistrée (ID: ${data.id || "n/a"}).`;
+      statusBox.className = "order-status success";
+      form.reset();
+      const quantityInput = form.querySelector('[name="quantity"]');
+      const sourceInput = form.querySelector('[name="source"]');
+      if (quantityInput) quantityInput.value = "1";
+      if (sourceInput) sourceInput.value = sourceValue;
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement de la commande:", error);
+      statusBox.textContent = error.message || "Impossible d'enregistrer la commande.";
+      statusBox.className = "order-status error";
+    }
+  });
 }

@@ -15,7 +15,14 @@ export async function ensureAuthenticated() {
     }
     state.session = data.session;
     state.token = data.session.access_token || null;
-    window.supabaseToken = state.token; // Ensure legacy scripts have access immediately
+    if (state.token) {
+        try {
+            window.supabaseToken = state.token; // legacy consumers
+            localStorage.setItem("supabase_token", state.token);
+        } catch (_) {
+            // ignore storage errors
+        }
+    }
     return data.session.user;
 }
 
@@ -30,5 +37,11 @@ export async function getAccessToken() {
     }
     state.session = data.session;
     state.token = token;
+    try {
+        window.supabaseToken = token;
+        localStorage.setItem("supabase_token", token);
+    } catch (_) {
+        // ignore storage errors
+    }
     return token;
 }

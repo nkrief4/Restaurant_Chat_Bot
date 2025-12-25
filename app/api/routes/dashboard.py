@@ -1,9 +1,11 @@
 from typing import Any, Dict, List, Optional, Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Header, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 
 from app.schemas import RestaurantUpsertPayload, ProfileUpdatePayload
+from app.services import dashboard_service as dashboard_module
+from app.services import menu_stats_service, recommendations_service, restaurant_service
 from app.services.dashboard_service import (
     build_dashboard_snapshot,
     build_statistics_view,
@@ -40,6 +42,50 @@ async def dashboard_statistics_endpoint(
         end_date=end_date,
         restaurant_ids=restaurant_id,
     )
+
+
+@router.get("/summary")
+async def dashboard_summary_endpoint(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+) -> Any:
+    token = extract_bearer_token(authorization)
+    claims = dashboard_module._decode_claims(token)
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur Supabase invalide.")
+
+    restaurant = restaurant_service.get_default_restaurant_for_user(str(user_id))
+    restaurant_id = restaurant.get("id") if restaurant else None
+    if not restaurant_id:
+        raise HTTPException(status_code=404, detail="Aucun restaurant associé à cet utilisateur.")
+
+    return await dashboard_module.get_dashboard_summary(str(restaurant_id))
+
+
+@router.get("/menu-performance")
+async def dashboard_menu_performance_endpoint(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+) -> Any:
+    token = extract_bearer_token(authorization)
+    return await dashboard_module.get_menu_performance(token)
+
+
+@router.get("/sales-overview")
+async def dashboard_sales_overview_endpoint(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    restaurant_id: Optional[str] = Query(default=None, alias="restaurant_id"),
+) -> Any:
+    token = extract_bearer_token(authorization)
+    return await menu_stats_service.get_sales_time_series(token, restaurant_id)
+
+
+@router.get("/weekly-report")
+async def dashboard_weekly_report_endpoint(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+    restaurant_id: Optional[str] = Query(default=None, alias="restaurant_id"),
+) -> Any:
+    token = extract_bearer_token(authorization)
+    return await recommendations_service.generate_business_report(token, restaurant_id)
 
 
 @router.get("/restaurants")

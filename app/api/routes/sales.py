@@ -23,6 +23,7 @@ from rapidfuzz import fuzz, process
 from postgrest import APIError as PostgrestAPIError
 
 from app.config.supabase_client import SUPABASE_SERVICE_ROLE_KEY
+from app.services import orders_service
 from app.services.postgrest_client import (
     create_postgrest_client,
     extract_bearer_token,
@@ -75,6 +76,13 @@ class SalesConfirmRequest(BaseModel):
     source_label: Optional[str] = Field(default=None, max_length=200)
 
 
+class OrderCreate(BaseModel):
+    restaurant_id: Optional[UUID] = None
+    menu_item_id: UUID
+    quantity: int = 1
+    source: Optional[str] = "manual"
+
+
 class SalesTrendPoint(BaseModel):
     date_iso: date
     label: str
@@ -118,6 +126,9 @@ async def get_access_token(
     """Extract the Supabase bearer token from the Authorization header."""
 
     return extract_bearer_token(authorization)
+
+
+require_access_token = get_access_token
 
 
 async def ensure_restaurant_access(restaurant_id: UUID, access_token: str) -> None:
@@ -177,6 +188,14 @@ async def fetch_sales_insights(
     await ensure_restaurant_access(restaurant_id, access_token)
     service = SalesService(restaurant_id, access_token)
     return await service.get_insights(date_from, date_to)
+
+
+@router.post("/orders")
+async def create_order(
+    payload: OrderCreate,
+    user: str = Depends(require_access_token),
+) -> Any:
+    return orders_service.record_order(user, payload)
 
 
 class ParsedSaleRow(BaseModel):

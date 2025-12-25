@@ -56,6 +56,66 @@
       {% include "components/billing.html" %}
       {% include "components/profile.html" %}
       {% include "components/purchasing.html" %}
+
+      {% if stock and stock.items %}
+      <section class="dashboard-stock-section">
+        <h2>Ingrédients critiques</h2>
+        <ul>
+          {% for item in stock.items if item.status == "critical" %}
+          <li>
+            <strong>{{ item.ingredient_name or "Ingrédient" }}</strong> :
+            {{ item.current_stock }} / {{ item.safety_stock }}
+          </li>
+          {% else %}
+          <li>Aucun ingrédient critique.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="dashboard-stock-section">
+        <h2>Ingrédients faibles</h2>
+        <ul>
+          {% for item in stock.items if item.status == "low" %}
+          <li>
+            <strong>{{ item.ingredient_name or "Ingrédient" }}</strong> :
+            {{ item.current_stock }} / {{ item.safety_stock }}
+          </li>
+          {% else %}
+          <li>Aucun ingrédient proche de la rupture.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="dashboard-stock-section">
+        <h2>Surplus</h2>
+        <ul>
+          {% for item in stock.items if item.status == "overstock" %}
+          <li>
+            <strong>{{ item.ingredient_name or "Ingrédient" }}</strong> :
+            {{ item.current_stock }} / {{ item.safety_stock }}
+          </li>
+          {% else %}
+          <li>Aucun ingrédient en surstock.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="dashboard-stock-section">
+        <h2>Vue d'ensemble du stock</h2>
+        <ul>
+          {% for item in stock.items %}
+          <li>
+            <strong>{{ item.ingredient_name or "Ingrédient" }}</strong> —
+            statut : {{ item.status }}, stock : {{ item.current_stock }} / {{ item.safety_stock }}
+          </li>
+          {% else %}
+          <li>Aucun ingrédient n'a été trouvé.</li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% else %}
+      <!-- Stock section intentionally hidden when no data -->
+      {% endif %}
     </main>
   </div>
 
