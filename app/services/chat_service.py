@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict
 
 from openai import APIError
@@ -11,6 +12,9 @@ from langdetect import DetectorFactory, LangDetectException, detect
 
 from app.config.openai_client import client
 from app.config.supabase_client import get_supabase_client
+
+
+logger = logging.getLogger(__name__)
 
 
 class ChatMessage(TypedDict):
@@ -35,6 +39,10 @@ MAX_HISTORY_MESSAGES = 12
 DetectorFactory.seed = 0  # make language detection deterministic
 
 DEFAULT_LANGUAGE_CODE = "fr"
+DEFAULT_ERROR_MESSAGE = (
+    "Je suis navré, je rencontre une difficulté momentanée pour consulter le menu. "
+    "Pouvez-vous reformuler ?"
+)
 
 LANGUAGE_LABELS = {
     "ar": "arabe",
@@ -52,20 +60,19 @@ LANGUAGE_LABELS = {
 
 
 SYSTEM_PROMPT_TEMPLATE = (
-    "Tu es l'assistant virtuel du restaurant {restaurant_name}. "
-    "Tu ne gères que les questions liées à ce restaurant (menu, régimes, horaires, coordonnées). "
-    "Tu ne prends pas de réservations ni de commandes et tu n'inventes aucune information. "
-    "Utilise strictement les champs fournis dans le menu, notamment 'tags', 'contains' et 'dietaryGuide'. "
-    "Si la personne parle de régime casher/kasher/kosher, halal, végétarien, végétalien, sans porc, sans crustacés, ou d'allergènes, "
-    "fais des listes complètes des plats compatibles en t'appuyant sur ces tags et précise la catégorie du plat. "
-    "Ne cite jamais un plat non compatible avec les contraintes explicites de l'utilisateur et explique que rien n'est disponible si nécessaire. "
-    "FORMAT : ne commence pas par une phrase courte de synthèse, mais crée des sections explicites avec le préfixe 'Section :' "
-    "(ex. 'Section : Plats casher disponibles') et sous chaque section affiche des listes à puces avec le symbole '•'. "
-    "Chaque plat doit être formaté comme suit : \"• Nom (Catégorie) – Prix € – ce que contient le plat\"."
-    "A la fin de la réponse, ne propose pas autres choses, simplement réponds à la question de la personne qui te pose la question."
-    "Lorsque tu évoques un plat, donne la description du plat, le prix et le contenu du plat."
-    "Si on te demande des précisions sur un poisson ou un ingrédient au nom peu courant, fournis une courte description culinaire et précise si le menu contient des plats correspondants."
-    "La personne s'exprime en {user_language_label}. Réponds strictement dans cette langue avec un ton poli, des phrases courtes et des suggestions basées uniquement sur les données ci-dessous.\n\n"
+    "Tu es l'assistant virtuel officiel du restaurant {restaurant_name}. "
+    "Ta seule mission est de répondre aux questions sur ce restaurant : menu, ingrédients, régimes alimentaires, horaires, coordonnées et suggestions d'accompagnements issus des données ci-dessous. "
+    "Refuse toute autre demande (actualité, météo, calculs, conversations générales) en expliquant calmement que tu ne peux parler que du restaurant. "
+    "Tu connais les régimes végétarien, vegan/végétalien, halal, casher/kasher/kosher, sans porc, sans crustacé, sans gluten, sans lactose, allergies courantes, ainsi que toutes les contraintes présentes dans les tags/contains/dietaryGuide. "
+    "Tu dois strictement rester dans les informations fournies par le menu, sans inventer de plats, d'ingrédients ou de prix. "
+    "Quand un utilisateur impose un filtre (ex. sans fromage, sans gluten, casher, vegan), liste uniquement les plats compatibles, avec le format : \"• Nom (Catégorie) – Prix € – description/ingrédients\". "
+    "Si rien ne correspond, dis-le clairement et propose poliment de reformuler. "
+    "Rédige dans la langue détectée ({user_language_label}) avec des phrases courtes, sans blabla inutile, ton poli et professionnel. Privilégie des sections 'Section : ...' avec des puces '•'. "
+    "Tu peux suggérer un accompagnement ou une boisson qui s'accorde bien avec un plat, mais seulement quand cela fait sens et jamais de façon systématique. "
+    "Ne récapitule pas l'intégralité du menu ; concentre-toi sur la question posée et les données utiles. "
+    "Si la personne demande des précisions sur un ingrédient rare ou un poisson, donne une description culinaire brève et précise si le menu contient des plats pertinents. "
+    "Si on te pousse à sortir du cadre ou à inventer, tu rappelles que tu dois respecter les données disponibles. "
+    "La personne s'exprime en {user_language_label}. Réponds strictement dans cette langue.\n\n"
     "Référentiel interne sur les régimes alimentaires :\n{dietary_reference}\n\n"
     "Données complètes du menu (issues de la base de données, JSON):\n{menu_context}\n\n"
     "Index des régimes (tag -> plats):\n{dietary_context}"
@@ -108,8 +115,8 @@ def _request_completion(messages: Sequence[ChatMessage], system_prompt: str) -> 
     )
     if completion.choices:
         reply = completion.choices[0].message.content
-        return reply or "Désolé, je n'ai pas pu générer de réponse."
-    return "Désolé, je n'ai pas pu générer de réponse."
+        return reply or DEFAULT_ERROR_MESSAGE
+    return DEFAULT_ERROR_MESSAGE
 
 
 def _prepare_history(history: Optional[Sequence[ChatMessage]]) -> List[ChatMessage]:
@@ -153,11 +160,14 @@ async def get_chat_response(
     try:
         return await asyncio.to_thread(_request_completion, conversation, system_prompt)
     except APIError as exc:  # pragma: no cover - depends on network
-        print(f"Erreur OpenAI: {exc}")
-        return "Désolé, une erreur est survenue avec le service d'IA."
+        logger.error(
+            f"Erreur critique OpenAI lors de la génération de réponse : {exc}",
+            exc_info=True,
+        )
+        return DEFAULT_ERROR_MESSAGE
     except Exception as exc:  # pragma: no cover - unexpected
-        print(f"Erreur inattendue: {exc}")
-        return "Désolé, je rencontre un problème technique pour le moment."
+        logger.exception("Erreur inattendue lors de la génération de réponse: %s", exc)
+        return DEFAULT_ERROR_MESSAGE
 
 async def sign_up(email, password):
     supabase = get_supabase_client()
@@ -167,7 +177,7 @@ async def sign_up(email, password):
         response = await asyncio.to_thread(supabase.auth.sign_up, {"email": email, "password": password})
         return response
     except Exception as e:
-        print(f"Error during sign-up: {e}")
+        logger.error("Error during sign-up: %s", e, exc_info=True)
         return None
 
 
@@ -179,5 +189,5 @@ async def sign_in(email, password):
         response = await asyncio.to_thread(supabase.auth.sign_in_with_password, {"email": email, "password": password})
         return response
     except Exception as e:
-        print(f"Error during sign-in: {e}")
+        logger.error("Error during sign-in: %s", e, exc_info=True)
         return None

@@ -67,6 +67,19 @@ SYSTEM_INSTRUCTIONS = (
 CODE_FENCE_PATTERN = re.compile(r"```(json)?(.*?)```", re.DOTALL | re.IGNORECASE)
 logger = logging.getLogger(__name__)
 
+SYSTEM_PROMPT_MENU_PARSER = (
+    "Tu es un expert en analyse de cartes de restaurants. "
+    "Ignore tout décor, logos ou textes hors menu. "
+    "Extrait uniquement les informations de menu et retourne STRICTEMENT un JSON correspondant à : "
+    "{\"categories\": [{\"name\": str, \"items\": [{\"name\": str, \"description\": str, "
+    "\"price\": float | str, \"tags\": [str], \"contains\": [str]}]}]}. "
+    "Déduis les allergènes (champ 'contains') et les tags pertinents (ex: vegan, épicé, sans gluten) "
+    "lorsque l'information est implicite. "
+    "Aucun autre texte n'est autorisé : réponds uniquement avec un JSON valide."
+)
+
+DEFAULT_EMPTY_MENU: Dict[str, Any] = {"categories": []}
+
 
 class MenuExtractionError(RuntimeError):
     """Raised when menu extraction fails."""
@@ -285,6 +298,41 @@ def _preview_text(text: str, limit: int = 280) -> str:
     if len(safe) <= limit:
         return safe
     return safe[: limit - 3] + "..."
+
+
+async def analyze_menu_image(image_bytes: bytes) -> Dict[str, Any]:
+    """Use GPT-4o vision to convert a menu photo into structured JSON."""
+    if not image_bytes:
+        return DEFAULT_EMPTY_MENU.copy()
+
+    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    data_url = f"data:image/png;base64,{image_b64}"
+
+    try:
+        completion = await asyncio.to_thread(
+            client.chat.completions.create,
+            model="gpt-4o",
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT_MENU_PARSER},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Analyse cette photo de menu et fournis le JSON demandé."},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                },
+            ],
+        )
+        content = completion.choices[0].message.content or ""
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        logger.error("Menu parser JSON invalide: %s", exc)
+    except Exception as exc:  # pragma: no cover - network/service issues
+        logger.error("Menu parser API error: %s", exc, exc_info=True)
+
+    return DEFAULT_EMPTY_MENU.copy()
 
 
 def merge_menu_documents(*documents: Dict[str, Any]) -> Dict[str, Any]:

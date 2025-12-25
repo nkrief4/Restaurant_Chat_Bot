@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, UploadFile, File
 
 from app.schemas import RestaurantUpsertPayload, ProfileUpdatePayload
 from app.services import dashboard_service as dashboard_module
@@ -15,6 +15,7 @@ from app.services.dashboard_service import (
     update_restaurant as dashboard_update_restaurant,
 )
 from app.services.postgrest_client import extract_bearer_token
+from app.services.menu_ingest_service import analyze_menu_image
 
 router = APIRouter()
 
@@ -104,6 +105,17 @@ async def dashboard_restaurant_create(
 ) -> Dict[str, Any]:
     token = extract_bearer_token(authorization)
     return await dashboard_create_restaurant(token, payload.model_dump())
+
+
+@router.post("/restaurants/menu/analyze")
+async def dashboard_menu_analyze(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+) -> Dict[str, Any]:
+    extract_bearer_token(authorization)  # ensure caller is authenticated
+    data = await file.read()
+    analysis = await analyze_menu_image(data)
+    return {"menu_document": analysis}
 
 
 @router.put("/restaurants/{restaurant_id}")

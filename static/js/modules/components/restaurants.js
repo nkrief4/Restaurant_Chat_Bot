@@ -433,6 +433,10 @@ async function handleRestaurantFormSubmit(event) {
                 submitBtn.disabled = false;
             }, 2000);
         }
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 600);
     } catch (error) {
         console.error("Restaurant form submission failed", error);
         if (messageEl) {
