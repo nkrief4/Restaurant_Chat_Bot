@@ -183,7 +183,7 @@
   height: 36px;
   border-radius: 50%;
   border: 3px solid rgba(59, 130, 246, 0.4);
-  border-top-color: #2563eb;
+  border-top-color: #7c3aed;
   animation: spin 0.9s linear infinite;
 }
 
@@ -369,7 +369,7 @@
   border-radius: 999px;
   font-size: 0.85rem;
   background: rgba(59, 130, 246, 0.15);
-  color: #1d4ed8;
+  color: #5b21b6;
 }
 
 .sales-confidence-chip.is-low {

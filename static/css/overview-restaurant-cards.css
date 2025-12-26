@@ -35,9 +35,9 @@
     right: 0;
     height: 3px;
     background: linear-gradient(90deg,
-            rgba(58, 117, 255, 0.8) 0%,
+            rgba(139, 92, 246, 0.8) 0%,
             rgba(107, 157, 255, 0.8) 50%,
-            rgba(58, 117, 255, 0.8) 100%);
+            rgba(139, 92, 246, 0.8) 100%);
     background-size: 200% 100%;
     opacity: 0;
     transition: opacity 0.25s ease;
@@ -193,7 +193,7 @@
     flex-wrap: wrap;
     margin-top: auto;
     padding-top: 10px;
-    border-top: 1px solid rgba(58, 117, 255, 0.1);
+    border-top: 1px solid rgba(139, 92, 246, 0.1);
     position: relative;
     z-index: 1;
 }
@@ -204,14 +204,14 @@
     gap: 6px;
     font-size: 0.75rem;
     color: var(--text-muted);
-    background: rgba(58, 117, 255, 0.06);
+    background: rgba(139, 92, 246, 0.06);
     padding: 5px 8px;
     border-radius: 6px;
     transition: all 0.2s ease;
 }
 
 .overview-restaurant-card .meta-item:hover {
-    background: rgba(58, 117, 255, 0.1);
+    background: rgba(139, 92, 246, 0.1);
     transform: translateY(-1px);
 }
 
@@ -226,7 +226,7 @@
     width: 16px;
     height: 16px;
     border-radius: 6px;
-    background: linear-gradient(135deg, rgba(58, 117, 255, 0.2), rgba(58, 117, 255, 0.1));
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -258,7 +258,7 @@
 
 .overview-restaurant-card .restaurant-card-actions button:hover {
     filter: brightness(1.05);
-    box-shadow: 0 4px 12px rgba(58, 117, 255, 0.15);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
 }
 
 .overview-restaurant-card .restaurant-card-actions button:active {
@@ -268,16 +268,16 @@
 /* Primary button style - HAUTE VISIBILITÉ */
 .overview-restaurant-card .restaurant-card-actions .primary-btn,
 .overview-restaurant-card .restaurant-card-actions button[type="button"]:first-child {
-    background: linear-gradient(135deg, var(--primary), #5a8dff);
+    background: linear-gradient(135deg, var(--primary), #c084fc);
     color: #fff;
-    box-shadow: 0 3px 10px rgba(58, 117, 255, 0.2);
+    box-shadow: 0 3px 10px rgba(139, 92, 246, 0.2);
     font-weight: 700;
 }
 
 .overview-restaurant-card .restaurant-card-actions .primary-btn:hover,
 .overview-restaurant-card .restaurant-card-actions button[type="button"]:first-child:hover {
-    background: linear-gradient(135deg, #315fcb, var(--primary));
-    box-shadow: 0 4px 14px rgba(58, 117, 255, 0.3);
+    background: linear-gradient(135deg, #6d28d9, var(--primary));
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
 }
 
 /* Secondary button style - HAUTE VISIBILITÉ */
@@ -291,20 +291,20 @@
 
 .overview-restaurant-card .restaurant-card-actions .secondary-btn:hover,
 .overview-restaurant-card .restaurant-card-actions button:not(:first-child):hover {
-    background: rgba(58, 117, 255, 0.08);
-    border-color: #315fcb;
+    background: rgba(139, 92, 246, 0.08);
+    border-color: #6d28d9;
 }
 
 /* Ghost button alternative */
 .overview-restaurant-card .restaurant-card-actions .ghost-btn {
-    background: rgba(58, 117, 255, 0.08);
+    background: rgba(139, 92, 246, 0.08);
     color: var(--primary);
-    border: 1px solid rgba(58, 117, 255, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
 .overview-restaurant-card .restaurant-card-actions .ghost-btn:hover {
-    background: rgba(58, 117, 255, 0.15);
-    border-color: rgba(58, 117, 255, 0.4);
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.4);
 }
 
 /* Animation d'entrée sophistiquée */

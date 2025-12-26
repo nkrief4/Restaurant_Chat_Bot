@@ -50,7 +50,7 @@
     right: 0;
     bottom: 0;
     background: radial-gradient(500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-            rgba(58, 117, 255, 0.15),
+            rgba(139, 92, 246, 0.15),
             transparent 40%);
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -63,8 +63,8 @@
 }
 
 .restaurant-card:hover {
-    border-color: rgba(58, 117, 255, 0.25);
-    box-shadow: 0 12px 40px rgba(58, 117, 255, 0.15);
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.15);
     transform: translateY(-4px);
 }
 
@@ -266,15 +266,15 @@
 }
 
 .restaurant-card-actions .secondary-btn {
-    background: linear-gradient(135deg, #3a75ff, #5b8fff);
+    background: linear-gradient(135deg, #7c3aed, #5b8fff);
     color: white;
     border: none;
-    box-shadow: 0 4px 12px rgba(58, 117, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
 .restaurant-card-actions .secondary-btn:hover {
     background: linear-gradient(135deg, #2d63e8, #4a7de8);
-    box-shadow: 0 6px 20px rgba(58, 117, 255, 0.3);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
     transform: translateY(-2px);
 }
 
@@ -332,8 +332,8 @@
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
-    background: rgba(58, 117, 255, 0.08);
-    border: 1px solid rgba(58, 117, 255, 0.15);
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.15);
     border-radius: 12px;
     font-size: 0.85rem;
     color: var(--text-muted);
@@ -353,8 +353,8 @@
     gap: 24px;
     margin-top: 48px;
     padding: 20px;
-    background: linear-gradient(135deg, rgba(58, 117, 255, 0.08) 0%, rgba(58, 117, 255, 0.02) 100%);
-    border: 1px solid rgba(58, 117, 255, 0.15);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0.02) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.15);
     border-radius: 24px;
     position: relative;
     overflow: hidden;
@@ -367,7 +367,7 @@
     right: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(58, 117, 255, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
     animation: rotateBg 20s linear infinite;
 }
 
@@ -403,10 +403,10 @@
     position: relative;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    background: linear-gradient(120deg, rgba(58, 117, 255, 0.08), rgba(58, 117, 255, 0.02));
+    background: linear-gradient(120deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02));
     border-radius: 18px;
     padding: 6px;
-    border: 1px solid rgba(58, 117, 255, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.15);
     overflow: hidden;
 }
 
@@ -430,7 +430,7 @@
 
 .restaurant-tab:focus-visible {
     outline: 2px solid transparent;
-    box-shadow: 0 0 0 3px rgba(58, 117, 255, 0.25);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
 }
 
 .restaurant-tab-indicator {
@@ -441,7 +441,7 @@
     width: calc(50% - 12px);
     border-radius: 12px;
     background: #fff;
-    box-shadow: 0 15px 25px rgba(58, 117, 255, 0.18);
+    box-shadow: 0 15px 25px rgba(139, 92, 246, 0.18);
     transform: translateX(0);
     transition: transform 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.15), width 0.35s ease;
     will-change: transform, width;
@@ -449,7 +449,7 @@
 }
 
 .restaurant-tabs:has(.restaurant-tab:focus-visible) {
-    box-shadow: 0 0 0 2px rgba(58, 117, 255, 0.2);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
 .restaurant-tabs button+button {
@@ -632,7 +632,7 @@
 .panel-selector select:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(58, 117, 255, 0.18);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
 }
 
 .panel-selector select:hover {

@@ -23,12 +23,13 @@ from rapidfuzz import fuzz, process
 from postgrest import APIError as PostgrestAPIError
 
 from app.config.supabase_client import SUPABASE_SERVICE_ROLE_KEY
-from app.services import orders_service
+from app.services import orders_service, restaurant_service
 from app.services.postgrest_client import (
     create_postgrest_client,
     extract_bearer_token,
     raise_postgrest_error,
 )
+from app.services.auth_utils import decode_access_token
 
 logger = logging.getLogger(__name__)
 
@@ -134,23 +135,18 @@ require_access_token = get_access_token
 async def ensure_restaurant_access(restaurant_id: UUID, access_token: str) -> None:
     """Ensure the caller can access the requested restaurant before using service credentials."""
 
-    def _request() -> bool:
-        with create_postgrest_client(access_token) as client:
-            response = (
-                client.table("restaurants")
-                .select("id")
-                .eq("id", str(restaurant_id))
-                .limit(1)
-                .execute()
-            )
-            return bool(response.data)
+    claims = decode_access_token(access_token)
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur Supabase invalide.")
+
+    def _check() -> bool:
+        return restaurant_service.user_can_access_restaurant(str(user_id), str(restaurant_id))
 
     try:
-        has_access = await asyncio.to_thread(_request)
-    except PostgrestAPIError as exc:  # pragma: no cover
-        raise_postgrest_error(exc, context="restaurant access check")
-    except HttpxError as exc:  # pragma: no cover
-        raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+        has_access = await asyncio.to_thread(_check)
+    except RuntimeError as exc:  # pragma: no cover - Supabase misconfiguration
+        raise HTTPException(status_code=500, detail="Supabase n'est pas configuré.") from exc
 
     if not has_access:
         raise HTTPException(status_code=403, detail="Accès refusé à ce restaurant.")

@@ -1,7 +1,8 @@
 :root {
-    --primary: #3a75ff;
-    /* #3a75ff */
-    --primary-hover: #315fcb;
+    --primary: #8b5cf6;
+    /* violet gradient palette */
+    --primary-hover: #7c3aed;
+    --primary-accent: #c084fc;
     --bg: #f5f7fa;
     --text: #1a1f36;
     --text-muted: #6b7280;
@@ -42,8 +43,8 @@ body.dashboard-loading {
 .dashboard-loading-overlay {
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at 20% 20%, rgba(58, 117, 255, 0.15), transparent 55%),
-        linear-gradient(180deg, #f7f9fc, #edf2ff);
+    background: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.18), transparent 55%),
+        linear-gradient(180deg, #f8f5ff, #efe7ff);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -80,7 +81,7 @@ body.dashboard-loading {
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+    background: linear-gradient(90deg, var(--primary), var(--primary-accent));
     animation: loadingBar 2s ease-in-out infinite;
     z-index: 2;
 }
@@ -124,8 +125,8 @@ body.dashboard-loading {
 }
 
 .loading-spinner::after {
-    border-bottom-color: rgba(58, 117, 255, 0.35);
-    border-right-color: rgba(58, 117, 255, 0.35);
+    border-bottom-color: rgba(192, 132, 252, 0.5);
+    border-right-color: rgba(192, 132, 252, 0.5);
     animation: dashboard-spinner 1.5s linear infinite reverse;
 }
 

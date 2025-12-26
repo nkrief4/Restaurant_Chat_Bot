@@ -88,13 +88,27 @@ async function initializeDashboard() {
   console.log("[Dashboard] Initialization complete!");
 }
 
+document.addEventListener("dashboard:refresh", () => {
+  refreshDashboardData({ silent: false }).catch((error) => {
+    console.warn("[Dashboard] Manual refresh failed:", error);
+  });
+});
+
+document.addEventListener("dashboard:refreshStockAndPurchasing", (event) => {
+  const targetRestaurantId = event?.detail?.restaurantId || state.overview.restaurantId || null;
+  refreshPurchasingDashboard();
+  if (targetRestaurantId) {
+    loadStockData(targetRestaurantId);
+  }
+});
+
 function handleInitializationError(error) {
   console.error("Dashboard initialization failed:", error);
   document.body.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;font-family:sans-serif;">
       <h1 style="color:#ef4444;margin-bottom:1rem;">Erreur de chargement</h1>
       <p style="color:#374151;margin-bottom:2rem;">Impossible d'initialiser le tableau de bord.</p>
-      <button onclick="window.location.reload()" style="padding:0.75rem 1.5rem;background:#2563eb;color:white;border:none;border-radius:0.5rem;cursor:pointer;">
+      <button onclick="window.location.reload()" style="padding:0.75rem 1.5rem;background:#7c3aed;color:white;border:none;border-radius:0.5rem;cursor:pointer;">
         Réessayer
       </button>
     </div>

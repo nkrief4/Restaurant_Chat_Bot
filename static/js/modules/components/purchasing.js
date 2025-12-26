@@ -338,12 +338,12 @@ function setPurchasingDashboardLoading(isLoading) {
     // Tables loading state
     const criticalBody = document.getElementById('dashboard-critical-ingredients-body');
     if (criticalBody && isLoading) {
-        criticalBody.innerHTML = '<tr><td colspan="5" class="text-center muted"><span class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Chargement...</td></tr>';
+        criticalBody.innerHTML = '<tr><td colspan="5" class="text-center muted"><span class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #8b5cf6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Chargement...</td></tr>';
     }
 
     const ordersList = document.getElementById('dashboard-recent-orders-list');
     if (ordersList && isLoading) {
-        ordersList.innerHTML = '<p class="text-center muted"><span class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Chargement...</p>';
+        ordersList.innerHTML = '<p class="text-center muted"><span class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #8b5cf6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Chargement...</p>';
     }
 
     // Charts loading state
@@ -450,7 +450,7 @@ async function renderPurchasingCharts(recommendations, orders, salesInsights) {
                     datasets: [{
                         data: topDishes.map(d => d.quantity || 0),
                         backgroundColor: [
-                            '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
+                            '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
                         ]
                     }]
                 },

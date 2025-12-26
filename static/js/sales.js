@@ -267,7 +267,7 @@
             label: 'Ventes',
             data: values,
             fill: true,
-            borderColor: '#60a5fa',
+            borderColor: '#c084fc',
             backgroundColor: 'rgba(96, 165, 250, 0.18)',
             tension: 0.4,
             borderWidth: 3,

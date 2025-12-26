@@ -75,7 +75,23 @@ async def build_dashboard_snapshot(
     tenant = await _fetch_tenant(access_token, user_id)
     tenant_id = tenant.get("id") if tenant else None
     restaurants = await _fetch_restaurants(access_token, tenant_id)
-    chat_rows = await _fetch_chat_history(access_token, [r["id"] for r in restaurants], range_start, range_end)
+    try:
+        chat_rows = await _fetch_chat_history(
+            access_token,
+            [r["id"] for r in restaurants],
+            range_start,
+            range_end,
+        )
+    except HTTPException as exc:
+        if exc.status_code in {404, 500, 502, 503, 504}:
+            logger.warning(
+                "Chat history unavailable for snapshot (%s): %s",
+                exc.status_code,
+                exc.detail,
+            )
+            chat_rows = []
+        else:
+            raise
     chat_sessions = _group_chat_sessions(chat_rows)
 
     kpis = _build_kpis(profile, restaurants, chat_rows, chat_sessions, range_start, range_end)
@@ -122,7 +138,23 @@ async def build_statistics_view(
         filtered = [restaurant for restaurant in restaurants if str(restaurant.get("id")) in requested_ids]
     else:
         filtered = restaurants
-    chat_rows = await _fetch_chat_history(access_token, [r["id"] for r in filtered], range_start, range_end)
+    try:
+        chat_rows = await _fetch_chat_history(
+            access_token,
+            [r["id"] for r in filtered],
+            range_start,
+            range_end,
+        )
+    except HTTPException as exc:
+        if exc.status_code in {404, 500, 502, 503, 504}:
+            logger.warning(
+                "Chat history unavailable for statistics (%s): %s",
+                exc.status_code,
+                exc.detail,
+            )
+            chat_rows = []
+        else:
+            raise
     chat_sessions = _group_chat_sessions(chat_rows)
 
     statistics = _build_statistics(filtered, chat_rows, chat_sessions, range_start, range_end)

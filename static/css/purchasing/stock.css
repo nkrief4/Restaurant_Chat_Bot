@@ -106,7 +106,7 @@
 
 .stock-toolbar-block select:focus {
     outline: none;
-    border-color: #2563eb;
+    border-color: #7c3aed;
     background: #fff;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
@@ -677,7 +677,7 @@
 
 .modal-sheet-header .eyebrow {
     margin-bottom: 4px;
-    color: #2563eb;
+    color: #7c3aed;
     font-size: 0.8rem;
 }
 
@@ -1002,7 +1002,7 @@
     font-size: 0.85rem;
     border-radius: 10px;
     border: 1px solid rgba(37, 99, 235, 0.3);
-    color: #2563eb;
+    color: #7c3aed;
     white-space: nowrap;
 }
 
@@ -1046,7 +1046,7 @@
 .modal-field-group input:focus,
 .modal-field-group select:focus {
     outline: none;
-    border-color: #2563eb;
+    border-color: #7c3aed;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 

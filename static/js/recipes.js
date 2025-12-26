@@ -1136,11 +1136,11 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: linear-gradient(135deg, #3a75ff, #60a5fa);
+            background: linear-gradient(135deg, #7c3aed, #c084fc);
             color: white;
             padding: 16px 24px;
             border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(58, 117, 255, 0.3);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
             z-index: 10000;
             font-weight: 600;
             animation: slideInRight 0.3s ease;

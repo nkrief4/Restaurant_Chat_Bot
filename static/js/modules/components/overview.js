@@ -9,6 +9,8 @@ import { getAccessToken } from "../core/auth.js";
 // --- Overview Logic ---
 
 let overviewConversationChart = null;
+let overviewFetchToken = 0;
+let overviewLoadingState = false;
 
 export function bindOverviewUI() {
     const chatForm = document.getElementById("overview-chat-form");
@@ -234,7 +236,9 @@ export function selectOverviewRestaurant(restaurantId, options = {}) {
 
         // Trigger data refresh
         document.dispatchEvent(new CustomEvent('dashboard:refreshStockAndPurchasing', { detail: { restaurantId: null } }));
-
+        refreshOverviewMetrics(null).catch((error) => {
+            console.warn("[Overview] Unable to reset metrics:", error);
+        });
         return;
     }
 
@@ -255,6 +259,9 @@ export function selectOverviewRestaurant(restaurantId, options = {}) {
 
         document.dispatchEvent(new CustomEvent('activeRestaurantChange', { detail: { id: null, name: "" } }));
         document.dispatchEvent(new CustomEvent('dashboard:refreshStockAndPurchasing', { detail: { restaurantId: null } }));
+        refreshOverviewMetrics(null).catch((error) => {
+            console.warn("[Overview] Unable to reset metrics:", error);
+        });
         return;
     }
 
@@ -291,6 +298,9 @@ export function selectOverviewRestaurant(restaurantId, options = {}) {
             detail: { id: String(record.id), name: record.display_name || record.name || "" }
         }));
         document.dispatchEvent(new CustomEvent('dashboard:refreshStockAndPurchasing', { detail: { restaurantId: record.id } }));
+        refreshOverviewMetrics(record.id).catch((error) => {
+            console.warn("[Overview] Unable to refresh metrics:", error);
+        });
     }
 }
 
@@ -610,6 +620,76 @@ export function updateOverview(kpis) {
     updateBusiestSections(busiestEntries);
 }
 
+export async function refreshOverviewMetrics(restaurantId) {
+    const targetId = restaurantId || state.overview.restaurantId;
+    if (!targetId) {
+        if (state.snapshot?.kpis) {
+            updateOverview(state.snapshot.kpis);
+        }
+        return;
+    }
+
+    const requestToken = ++overviewFetchToken;
+    setOverviewLoading(true);
+    try {
+        const token = await getAccessToken();
+        const params = new URLSearchParams();
+        params.append("restaurant_id", targetId);
+        const response = await fetch(`/api/dashboard/statistics?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const detail = payload?.detail || "Impossible de charger les données du restaurant.";
+            throw new Error(detail);
+        }
+        if (requestToken !== overviewFetchToken) {
+            return;
+        }
+        const stats = payload.statistics;
+        if (!stats) {
+            throw new Error("Aucune donnée disponible pour ce restaurant.");
+        }
+        const scopedKpis = {
+            restaurants: 1,
+            conversations: stats.total_conversations,
+            messages: stats.total_messages,
+            unique_customers: stats.total_conversations,
+            plan: state.snapshot?.kpis?.plan,
+            plan_detail: state.snapshot?.kpis?.plan_detail,
+            timeline: stats.timeline,
+            busiest: stats.busiest,
+            average_per_day: stats.average_per_day,
+            average_messages: stats.average_messages,
+            date_range: stats.date_range,
+            range_label: formatRangeText(stats.date_range),
+        };
+        updateOverview(scopedKpis);
+    } catch (error) {
+        console.error("[Overview] refreshOverviewMetrics error:", error);
+        document.dispatchEvent(
+            new CustomEvent("showToast", {
+                detail: { message: error.message || "Impossible de charger les données du restaurant." },
+            }),
+        );
+    } finally {
+        if (requestToken === overviewFetchToken) {
+            setOverviewLoading(false);
+        }
+    }
+}
+
+function setOverviewLoading(isLoading) {
+    if (overviewLoadingState === isLoading) {
+        return;
+    }
+    overviewLoadingState = isLoading;
+    const cards = document.querySelectorAll("[data-overview-kpi]");
+    cards.forEach((card) => {
+        card.classList.toggle("is-loading", isLoading);
+    });
+}
+
 function setTextContent(id, value) {
     const target = document.getElementById(id);
     if (!target) {
@@ -799,8 +879,8 @@ async function renderConversationChart(timeline) {
             {
                 label: "Conversations",
                 data: values,
-                backgroundColor: "rgba(58, 117, 255, 0.65)",
-                hoverBackgroundColor: "rgba(58, 117, 255, 0.9)",
+                backgroundColor: "rgba(139, 92, 246, 0.65)",
+                hoverBackgroundColor: "rgba(139, 92, 246, 0.9)",
                 borderRadius: 12,
                 borderSkipped: false,
                 barThickness: values.length > 30 ? 12 : undefined,

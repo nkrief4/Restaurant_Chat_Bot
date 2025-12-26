@@ -117,8 +117,8 @@ function renderStatisticsActivityChart(timeline) {
                     {
                         label: "Conversations",
                         data: conversations,
-                        borderColor: "#3a75ff",
-                        backgroundColor: "rgba(58, 117, 255, 0.18)",
+                        borderColor: "#7c3aed",
+                        backgroundColor: "rgba(139, 92, 246, 0.18)",
                         tension: 0.4,
                         fill: true,
                         borderWidth: 2,

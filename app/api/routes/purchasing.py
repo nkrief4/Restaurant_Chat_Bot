@@ -21,6 +21,8 @@ from app.services.postgrest_client import (
     raise_postgrest_error,
 )
 from app.services.purchasing import IngredientRecommendation, compute_purchase_recommendations
+from app.services import restaurant_service
+from app.services.auth_utils import decode_access_token
 
 router = APIRouter(prefix="/api/purchasing", tags=["purchasing"])
 
@@ -1398,23 +1400,18 @@ async def get_purchasing_dao(
 async def _ensure_restaurant_authorized(restaurant_id: UUID, access_token: str) -> None:
     """Make sure the authenticated user can access the requested restaurant."""
 
-    def _request() -> bool:
-        with create_postgrest_client(access_token) as client:
-            response = (
-                client.table("restaurants")
-                .select("id")
-                .eq("id", str(restaurant_id))
-                .limit(1)
-                .execute()
-            )
-            return bool(response.data)
+    claims = decode_access_token(access_token)
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur Supabase invalide.")
+
+    def _check() -> bool:
+        return restaurant_service.user_can_access_restaurant(str(user_id), str(restaurant_id))
 
     try:
-        is_authorized = await asyncio.to_thread(_request)
-    except PostgrestAPIError as exc:  # pragma: no cover - network interaction
-        raise_postgrest_error(exc, context="restaurant access check")
-    except HttpxError as exc:  # pragma: no cover - network interaction
-        raise HTTPException(status_code=503, detail="Supabase est temporairement inaccessible.") from exc
+        is_authorized = await asyncio.to_thread(_check)
+    except RuntimeError as exc:  # pragma: no cover - Supabase misconfiguration
+        raise HTTPException(status_code=500, detail="Supabase n'est pas configuré.") from exc
 
     if not is_authorized:
         raise HTTPException(status_code=403, detail="Accès refusé à ce restaurant.")
