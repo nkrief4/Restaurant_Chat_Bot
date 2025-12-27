@@ -2,9 +2,9 @@
   --color-bg: #f9fafb;
   --color-surface: #ffffff;
   --color-subtle: #f3f5f8;
-  --color-primary: #6c5ce7;
-  --color-primary-2: #7de2fc;
-  --color-primary-3: #cbb6ff;
+  --color-primary: #7c3aed;
+  --color-primary-2: #c084fc;
+  --color-primary-3: #d8b4fe;
   --color-text: #0f172a;
   --color-muted: #475467;
   --color-border: rgba(15, 23, 42, 0.08);
@@ -15,9 +15,9 @@
   --radius-pill: 999px;
   --radius-card: 24px;
   --section-space: clamp(4rem, 7vw, 7.5rem);
-  --gradient-accent: linear-gradient(120deg, rgba(108, 92, 231, 0.95), rgba(125, 226, 252, 0.9));
-  --gradient-soft: radial-gradient(circle at 20% 20%, rgba(125, 226, 252, 0.4), transparent 55%),
-    radial-gradient(circle at 80% 0%, rgba(203, 182, 255, 0.45), transparent 45%), #fdfdff;
+  --gradient-accent: linear-gradient(120deg, rgba(124, 58, 237, 0.95), rgba(192, 132, 252, 0.9));
+  --gradient-soft: radial-gradient(circle at 20% 20%, rgba(192, 132, 252, 0.4), transparent 55%),
+    radial-gradient(circle at 80% 0%, rgba(216, 180, 254, 0.45), transparent 45%), #fdfdff;
 }
 
 * {
@@ -211,7 +211,7 @@ ul {
 .btn.primary {
   background: var(--gradient-accent);
   color: #fff;
-  box-shadow: 0 15px 35px rgba(108, 92, 231, 0.35);
+  box-shadow: 0 15px 35px rgba(124, 58, 237, 0.35);
 }
 
 .btn.secondary {
@@ -221,7 +221,7 @@ ul {
 }
 
 .btn.tertiary {
-  background: rgba(108, 92, 231, 0.08);
+  background: rgba(124, 58, 237, 0.08);
   color: var(--color-primary);
 }
 
@@ -231,7 +231,7 @@ ul {
 }
 
 .btn:focus-visible {
-  outline: 3px solid rgba(108, 92, 231, 0.3);
+  outline: 3px solid rgba(124, 58, 237, 0.3);
   outline-offset: 2px;
 }
 
@@ -402,7 +402,7 @@ ul {
   width: 52px;
   height: 52px;
   border-radius: 16px;
-  background: linear-gradient(140deg, rgba(108, 92, 231, 0.12), rgba(125, 226, 252, 0.4));
+  background: linear-gradient(140deg, rgba(124, 58, 237, 0.12), rgba(125, 226, 252, 0.4));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -442,7 +442,7 @@ ul {
 .usecase-tabs button[aria-selected='true'] {
   background: var(--gradient-accent);
   color: #fff;
-  box-shadow: 0 15px 35px rgba(108, 92, 231, 0.22);
+  box-shadow: 0 15px 35px rgba(124, 58, 237, 0.22);
 }
 
 .usecase-panels {
@@ -460,8 +460,8 @@ ul {
 }
 
 .usecase-card.is-active {
-  border-color: rgba(108, 92, 231, 0.4);
-  box-shadow: 0 35px 70px rgba(108, 92, 231, 0.15);
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 35px 70px rgba(124, 58, 237, 0.15);
 }
 
 .usecase-card h3 {
@@ -592,7 +592,7 @@ ul {
   padding: 48px;
   border-radius: 36px;
   border: 1px solid var(--color-border);
-  box-shadow: 0 40px 80px rgba(108, 92, 231, 0.15);
+  box-shadow: 0 40px 80px rgba(124, 58, 237, 0.15);
   background: #fff;
 }
 
@@ -789,7 +789,7 @@ ul {
   left: -10%;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(108, 92, 231, 0.25) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, rgba(255, 255, 255, 0) 70%);
 }
 
 .shape-2 {
@@ -805,7 +805,7 @@ ul {
   left: 10%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(108, 92, 231, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
 }
 
 /* =========================================
@@ -849,8 +849,8 @@ ul {
 
 .pricing-card.popular {
   background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(108, 92, 231, 0.4);
-  box-shadow: 0 20px 50px rgba(108, 92, 231, 0.12);
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 20px 50px rgba(124, 58, 237, 0.12);
   transform: scale(1.05);
   /* Highlight always */
   z-index: 5;
@@ -858,7 +858,7 @@ ul {
 
 .pricing-card.popular:hover {
   transform: scale(1.05) translateY(-12px);
-  box-shadow: 0 35px 80px rgba(108, 92, 231, 0.2);
+  box-shadow: 0 35px 80px rgba(124, 58, 237, 0.2);
 }
 
 .popular-tag {
@@ -866,7 +866,7 @@ ul {
   top: -14px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(120deg, #6c5ce7 0%, #a29bfe 100%);
+  background: linear-gradient(120deg, #7c3aed 0%, #c084fc 100%);
   color: white;
   padding: 6px 16px;
   border-radius: 20px;
@@ -874,7 +874,7 @@ ul {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
 .pricing-header {

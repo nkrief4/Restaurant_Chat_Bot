@@ -7,6 +7,13 @@
 (function () {
     'use strict';
 
+    const DEBUG = window?.localStorage?.getItem("debug") === "1";
+    const debugLog = (...args) => {
+        if (DEBUG) {
+            console.log(...args);
+        }
+    };
+
     // State management
     let currentRestaurantId = null;
     let currentRecipeId = null;
@@ -54,11 +61,11 @@
      * Initialize the recipes module
      */
     function init() {
-        console.log('Initializing Recipes Module');
+        debugLog('Initializing Recipes Module');
 
         // Listen for token ready event
         document.addEventListener('tokenReady', function (e) {
-            console.log('Recipes Module received tokenReady event');
+            debugLog('Recipes Module received tokenReady event');
             // If we have restaurants but couldn't load recipes due to missing token, retry now
             if (currentRestaurantId) {
                 loadRecipes(currentRestaurantId);
@@ -176,7 +183,7 @@
                 return;
             }
 
-            console.log('Loading recipes for restaurant:', restaurantId);
+            debugLog('Loading recipes for restaurant:', restaurantId);
 
             const response = await fetch('/api/purchasing/recipes', {
                 headers: {
@@ -190,8 +197,8 @@
             }
 
             const data = await response.json();
-            console.log('Raw API response:', data);
-            console.log('Number of recipes received:', data.length);
+            debugLog('Raw API response:', data);
+            debugLog('Number of recipes received:', data.length);
 
             allRecipes = data.map(item => {
                 const mapped = {
@@ -205,11 +212,11 @@
                     ingredientCount: item.ingredient_count || 0,
                     isManualCost: item.is_manual_cost || false
                 };
-                console.log('Mapped recipe:', mapped);
+                debugLog('Mapped recipe:', mapped);
                 return mapped;
             });
 
-            console.log('All recipes after mapping:', allRecipes);
+            debugLog('All recipes after mapping:', allRecipes);
 
             filteredRecipes = [...allRecipes];
             renderRecipesTable(filteredRecipes);
@@ -246,7 +253,7 @@
             }
 
             const recipe = await response.json();
-            console.log('Loaded recipe details:', recipe);
+            debugLog('Loaded recipe details:', recipe);
             showRecipeDetails(recipe);
 
         } catch (error) {
@@ -365,7 +372,7 @@
             return;
         }
 
-        console.log('Rendering recipes:', recipesToRender); // Debug log
+        debugLog('Rendering recipes:', recipesToRender);
 
         tableBody.innerHTML = recipesToRender.map((recipe, index) => {
             const marginClass = getMarginClass(recipe.profitMargin);
@@ -461,7 +468,7 @@
         if (!confirm('Voulez-vous vraiment retirer cet ingrédient de la recette ?')) return;
 
         // TODO: Implement API call to remove ingredient
-        console.log('Removing ingredient:', ingredientId, 'from recipe:', currentRecipeId);
+        debugLog('Removing ingredient:', ingredientId, 'from recipe:', currentRecipeId);
         alert('Fonctionnalité de suppression à venir');
     }
 
@@ -1103,7 +1110,7 @@
             return;
         }
 
-        console.log('Navigating to Stock Management for recipe:', currentRecipeId);
+        debugLog('Navigating to Stock Management for recipe:', currentRecipeId);
 
         // Find the Stock Management link in the purchasing section
         const stockLink = document.querySelector('[data-purchasing-view="stock"]');

@@ -135,6 +135,16 @@ export function bindGlobalButtons() {
             if (error) {
                 throw error;
             }
+            try {
+                window.supabaseToken = null;
+                window.activeRestaurant = null;
+                window.localStorage.removeItem("supabase_token");
+                window.localStorage.removeItem("supabase_user_id");
+                window.localStorage.removeItem("activeRestaurantId");
+                window.localStorage.removeItem("restaurantId");
+            } catch (_) {
+                // ignore storage errors
+            }
             window.location.href = "/login";
         } catch (error) {
             console.error("Erreur lors de la déconnexion :", error);

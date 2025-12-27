@@ -22,15 +22,80 @@ class ChatMessage(TypedDict):
     content: str
 
 
+def _normalize_dietary_label(value: Any) -> Optional[str]:
+    """Return a human readable dietary/allergen label."""
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        label = value.strip()
+    elif isinstance(value, dict):
+        label = (
+            value.get("label")
+            or value.get("name")
+            or value.get("value")
+            or value.get("title")
+        )
+        label = label.strip() if isinstance(label, str) else None
+    else:
+        label = str(value).strip()
+    if not label:
+        return None
+    return label
+
+
+def _add_dietary_entry(
+    index: Dict[str, List[str]],
+    canonical_labels: Dict[str, str],
+    label: str,
+    entry: str,
+) -> None:
+    """Store the entry under a normalized label while keeping readable text."""
+
+    normalized = label.lower()
+    canonical = canonical_labels.setdefault(normalized, label)
+    bucket = index.setdefault(canonical, [])
+    if entry not in bucket:
+        bucket.append(entry)
+
+
 def _build_dietary_index(menu_data: Dict[str, Any]) -> Dict[str, List[str]]:
-    """Create a quick lookup of tags -> list of dish names with category."""
+    """Create a quick lookup of tags/allergens -> list of dish names with category."""
+
     index: Dict[str, List[str]] = {}
+    canonical_labels: Dict[str, str] = {}
+
     for category in menu_data.get("categories", []):
         category_name = category.get("name", "Autres")
         for item in category.get("items", []):
-            for tag in item.get("tags", []):
-                entry = f"{item.get('name', 'Plat')} ({category_name})"
-                index.setdefault(tag, []).append(entry)
+            entry = f"{item.get('name', 'Plat')} ({category_name})"
+
+            raw_tags = item.get("tags") or []
+            for raw_tag in raw_tags:
+                label = _normalize_dietary_label(raw_tag)
+                if label:
+                    _add_dietary_entry(index, canonical_labels, label, entry)
+
+            allergens = item.get("contains") or []
+            for allergen in allergens:
+                label = _normalize_dietary_label(allergen)
+                if label:
+                    _add_dietary_entry(index, canonical_labels, label, entry)
+
+    dietary_guides = menu_data.get("dietaryGuide") or []
+    for guide in dietary_guides:
+        if not isinstance(guide, dict):
+            continue
+        label = _normalize_dietary_label(guide.get("label"))
+        if not label:
+            continue
+        items = guide.get("items") or []
+        for dish_name in items:
+            normalized_name = _normalize_dietary_label(dish_name)
+            if not normalized_name:
+                continue
+            _add_dietary_entry(index, canonical_labels, label, normalized_name)
+
     return index
 
 

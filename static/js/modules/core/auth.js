@@ -15,10 +15,19 @@ export async function ensureAuthenticated() {
     }
     state.session = data.session;
     state.token = data.session.access_token || null;
+    const userId = data.session.user?.id || null;
     if (state.token) {
         try {
             window.supabaseToken = state.token; // legacy consumers
             localStorage.setItem("supabase_token", state.token);
+            const previousUserId = localStorage.getItem("supabase_user_id");
+            if (previousUserId && userId && previousUserId !== userId) {
+                localStorage.removeItem("activeRestaurantId");
+                localStorage.removeItem("restaurantId");
+            }
+            if (userId) {
+                localStorage.setItem("supabase_user_id", userId);
+            }
         } catch (_) {
             // ignore storage errors
         }
@@ -40,6 +49,15 @@ export async function getAccessToken() {
     try {
         window.supabaseToken = token;
         localStorage.setItem("supabase_token", token);
+        const userId = data.session?.user?.id || null;
+        const previousUserId = localStorage.getItem("supabase_user_id");
+        if (previousUserId && userId && previousUserId !== userId) {
+            localStorage.removeItem("activeRestaurantId");
+            localStorage.removeItem("restaurantId");
+        }
+        if (userId) {
+            localStorage.setItem("supabase_user_id", userId);
+        }
     } catch (_) {
         // ignore storage errors
     }

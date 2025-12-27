@@ -145,7 +145,10 @@ async def ensure_restaurant_access(restaurant_id: UUID, access_token: str) -> No
 
     try:
         has_access = await asyncio.to_thread(_check)
-    except RuntimeError as exc:  # pragma: no cover - Supabase misconfiguration
+    except RuntimeError as exc:  # pragma: no cover - Supabase issues
+        message = str(exc)
+        if "unreachable" in message.lower():
+            raise HTTPException(status_code=503, detail="Supabase est momentanément indisponible.") from exc
         raise HTTPException(status_code=500, detail="Supabase n'est pas configuré.") from exc
 
     if not has_access:

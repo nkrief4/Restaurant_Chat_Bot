@@ -5,11 +5,17 @@ import { ensureChartJsLibrary } from "../utils/charts.js";
 // --- Statistics Logic ---
 
 let statsActivityChart = null;
+const DEBUG = window?.localStorage?.getItem("debug") === "1";
+const debugLog = (...args) => {
+    if (DEBUG) {
+        console.log(...args);
+    }
+};
 
 export function renderStatistics(statistics) {
-    console.log("[Statistics] Rendering with:", statistics);
+    debugLog("[Statistics] Rendering with:", statistics);
     if (statistics && statistics.date_range) {
-        console.log("[Statistics] Date range:", statistics.date_range);
+        debugLog("[Statistics] Date range:", statistics.date_range);
     } else {
         console.warn("[Statistics] Date range missing or invalid");
     }
@@ -663,7 +669,7 @@ export async function fetchStatisticsData() {
             throw new Error("Erreur lors de la récupération des statistiques.");
         }
         const data = await response.json();
-        console.log("[Statistics] Fetched data:", data);
+        debugLog("[Statistics] Fetched data:", data);
         renderStatistics(data.statistics);
     } catch (error) {
         console.error("Statistics fetch failed", error);
