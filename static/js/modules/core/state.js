@@ -26,6 +26,7 @@ export const state = {
         history: [],
         isSending: false,
         hasManualSelection: false,
+        sessionId: null,
     },
     chatbot: {
         restaurantId: null,

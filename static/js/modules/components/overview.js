@@ -1,21 +1,54 @@
 
 import { state } from "../core/state.js";
 import { OVERVIEW_HISTORY_LIMIT } from "../core/constants.js";
-import { formatNumber, formatRangeText, escapeHtml, formatChatbotMessage } from "../utils/format.js";
+import { formatNumber, formatRangeText } from "../utils/format.js";
 import { startEditRestaurant, countCategories } from "./restaurants.js";
 import { goToRestaurantManagement } from "./restaurants.js"; // Need to export this from restaurants.js
 import { getAccessToken } from "../core/auth.js";
+import { createChatSurface } from "./chat_surface.js";
 
 // --- Overview Logic ---
 
 let overviewConversationChart = null;
 let overviewFetchToken = 0;
 let overviewLoadingState = false;
+let overviewChatSurface = null;
 
 export function bindOverviewUI() {
-    const chatForm = document.getElementById("overview-chat-form");
-    if (chatForm) {
-        chatForm.addEventListener("submit", handleOverviewChatSubmit);
+    if (!overviewChatSurface) {
+        overviewChatSurface = createChatSurface({
+            thread: document.getElementById("overview-chat-messages"),
+            empty: document.getElementById("overview-chat-empty"),
+            typing: document.getElementById("overview-chat-typing"),
+            form: document.getElementById("overview-chat-form"),
+            input: document.getElementById("overview-chat-input"),
+            sendButton: document.getElementById("overview-chat-send"),
+            status: document.getElementById("overview-chat-status"),
+            history: state.overview.history,
+            historyLimit: OVERVIEW_HISTORY_LIMIT,
+            getContext: () => ({
+                restaurantId: state.overview.restaurantId,
+                restaurantName: state.overview.restaurantName,
+            }),
+            getAuthToken: getAccessToken,
+            getSessionId: () => state.overview.sessionId,
+            setSessionId: (value) => {
+                state.overview.sessionId = value;
+            },
+            resetSessionId: () => {
+                state.overview.sessionId = null;
+            },
+            placeholder: (context) => context.restaurantId
+                ? `Message pour ${context.restaurantName || "votre restaurant"}…`
+                : "Utilisez le sélecteur global pour commencer.",
+            emptyMessage: (context) => context.restaurantId
+                ? `Posez une question à ${context.restaurantName || "votre restaurant"}.`
+                : "Utilisez le sélecteur supérieur puis envoyez une question.",
+            onStateChange: ({ isSending }) => {
+                state.overview.isSending = isSending;
+            },
+        });
+        overviewChatSurface.bind();
     }
 }
 let chartJsReadyPromise = null;
@@ -30,7 +63,6 @@ export function syncOverviewStateWithRestaurants() {
         persistActiveRestaurantId(null);
         selectOverviewRestaurant(null, { manual: false });
         updateOverviewChatState();
-        renderOverviewChatMessages();
         return;
     }
 
@@ -38,7 +70,6 @@ export function syncOverviewStateWithRestaurants() {
     if (current) {
         state.overview.restaurantName = current.display_name || current.name || state.overview.restaurantName;
         updateOverviewChatState();
-        renderOverviewChatMessages();
         highlightOverviewSelection();
         return;
     }
@@ -218,9 +249,9 @@ export function selectOverviewRestaurant(restaurantId, options = {}) {
         persistActiveRestaurantId(null);
         state.overview.hasManualSelection = manual ? true : false;
         if (hadSelection) {
-            state.overview.history = [];
+            state.overview.history.length = 0;
             clearOverviewChatStatus();
-            renderOverviewChatMessages();
+            overviewChatSurface?.reset();
         }
         updateOverviewChatState();
         highlightOverviewSelection();
@@ -276,9 +307,9 @@ export function selectOverviewRestaurant(restaurantId, options = {}) {
         state.overview.hasManualSelection = true;
     }
     if (changed) {
-        state.overview.history = [];
+        state.overview.history.length = 0;
         clearOverviewChatStatus();
-        renderOverviewChatMessages();
+        overviewChatSurface?.reset();
     }
     if (select) {
         select.value = currentId || "";
@@ -325,6 +356,7 @@ function updateActiveRestaurantIndicators() {
         "stock-active-restaurant",
         "recipes-active-restaurant",
         "sales-active-restaurant",
+        "threshold-active-restaurant",
     ];
     targets.forEach((id) => {
         const node = document.getElementById(id);
@@ -339,14 +371,6 @@ function updateActiveRestaurantIndicators() {
 function updateOverviewChatState() {
     const hasRestaurant = Boolean(state.overview.restaurantId);
     const hasOptions = Array.isArray(state.restaurants) && state.restaurants.length > 0;
-    const input = document.getElementById("overview-chat-input");
-    if (input) {
-        input.disabled = !hasRestaurant || state.overview.isSending;
-    }
-    const submitBtn = document.getElementById("overview-chat-send");
-    if (submitBtn) {
-        submitBtn.disabled = !hasRestaurant || state.overview.isSending;
-    }
     const hint = document.getElementById("overview-chat-hint");
     if (hint) {
         hint.textContent = hasRestaurant
@@ -358,223 +382,14 @@ function updateOverviewChatState() {
     if (!hasRestaurant) {
         clearOverviewChatStatus();
     }
+    if (overviewChatSurface) {
+        overviewChatSurface.refresh();
+    }
 }
 
 function clearOverviewChatStatus() {
-    const statusEl = document.getElementById("overview-chat-status");
-    if (statusEl) {
-        statusEl.textContent = "";
-    }
-}
-
-function renderOverviewChatMessages() {
-    const container = document.getElementById("overview-chat-messages");
-    const empty = document.getElementById("overview-chat-empty");
-    if (!container || !empty) {
-        return;
-    }
-    container.innerHTML = "";
-    const history = state.overview.history.slice(-OVERVIEW_HISTORY_LIMIT * 2);
-    if (!history.length) {
-        empty.hidden = false;
-        return;
-    }
-    empty.hidden = true;
-    history.forEach((entry) => {
-        const bubble = buildOverviewChatMessage(entry);
-        container.appendChild(bubble);
-    });
-    requestAnimationFrame(() => {
-        if (typeof container.scrollTo === "function") {
-            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-        } else {
-            container.scrollTop = container.scrollHeight;
-        }
-    });
-}
-
-function buildOverviewChatMessage(entry, options = {}) {
-    const role = entry.role === "assistant" ? "assistant" : "user";
-    const message = document.createElement("div");
-    message.className = `chat-message ${role}`;
-
-    const avatar = document.createElement("div");
-    avatar.className = "chat-message-avatar";
-    avatar.textContent = role === "assistant" ? "AI" : "Vous";
-
-    const content = document.createElement("div");
-    content.className = "chat-message-content";
-
-    const author = document.createElement("p");
-    author.className = "chat-message-author";
-    author.textContent =
-        role === "assistant"
-            ? state.overview?.restaurantName || "RestauBot"
-            : "Vous";
-
-    const text = document.createElement("div");
-    text.className = "chatbot-text";
-
-    if (typeof options.renderText === "function") {
-        options.renderText(text);
-    } else {
-        const content = entry.content || "";
-        if (content) {
-            // We need formatChatbotMessage. It's in chatbot.js?
-            // It's better to move formatChatbotMessage to utils/format.js or duplicate/import.
-            // It uses escapeHtml which is in utils/format.js.
-            // I'll import it from chatbot.js if I export it, or move it to format.js.
-            // formatChatbotMessage is specific to chat formatting (newlines etc).
-            // I'll add it to format.js for now.
-            text.innerHTML = formatChatbotMessage(content);
-        }
-    }
-
-    content.append(author, text);
-
-    if (!options.hideMeta) {
-        const meta = document.createElement("small");
-        meta.className = "chat-message-meta";
-        meta.textContent = entry.created_at
-            ? new Date(entry.created_at).toLocaleTimeString("fr-FR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-              })
-            : new Date().toLocaleTimeString("fr-FR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-              });
-        content.appendChild(meta);
-    }
-
-    message.append(avatar, content);
-    return message;
-}
-
-
-
-export async function handleOverviewChatSubmit(event) {
-    event.preventDefault();
-    if (state.overview.isSending) {
-        return;
-    }
-    if (!state.overview.restaurantId) {
-        const statusEl = document.getElementById("overview-chat-status");
-        if (statusEl) {
-            statusEl.textContent = "Utilisez le sélecteur global avant d'envoyer un message.";
-        }
-        return;
-    }
-
-    const input = document.getElementById("overview-chat-input");
-    const statusEl = document.getElementById("overview-chat-status");
-    const message = (input?.value || "").trim();
-    if (!message) {
-        if (statusEl) {
-            statusEl.textContent = "Votre message ne peut pas être vide.";
-        }
-        return;
-    }
-
-    const payloadHistory = buildChatPayloadHistory(state.overview.history, OVERVIEW_HISTORY_LIMIT);
-    state.overview.history.push(createChatHistoryEntry("user", message));
-    trimOverviewHistory();
-    renderOverviewChatMessages();
-    if (input) {
-        input.value = "";
-    }
-
-    state.overview.isSending = true;
-    updateOverviewChatState();
-    showOverviewTypingIndicator();
-    if (statusEl) {
-        statusEl.textContent = "Envoi en cours…";
-    }
-
-    try {
-        const token = await getAccessToken();
-        const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token} `,
-            },
-            body: JSON.stringify({
-                restaurant_id: state.overview.restaurantId,
-                message,
-                history: payloadHistory,
-            }),
-        });
-
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            const detail = body && body.detail ? body.detail : null;
-            throw new Error(detail || "Impossible d'obtenir une réponse.");
-        }
-
-        const reply = body.reply || "";
-        if (reply) {
-            state.overview.history.push(createChatHistoryEntry("assistant", reply));
-            trimOverviewHistory();
-            renderOverviewChatMessages();
-        }
-        if (statusEl) {
-            statusEl.textContent = "Réponse générée.";
-        }
-    } catch (error) {
-        console.error("Overview chat failed", error);
-        if (statusEl) {
-            statusEl.textContent = error.message || "Impossible d'obtenir une réponse.";
-        }
-    } finally {
-        hideOverviewTypingIndicator();
-        state.overview.isSending = false;
-        updateOverviewChatState();
-    }
-}
-
-function buildChatPayloadHistory(history, limit) {
-    if (!Array.isArray(history) || history.length === 0) {
-        return [];
-    }
-    const sliceLimit = limit ? -Math.abs(limit) : undefined;
-    return history.slice(sliceLimit).map((entry) => ({
-        role: entry.role === "assistant" ? "assistant" : "user",
-        content: entry.content || "",
-    }));
-}
-
-function createChatHistoryEntry(role, content) {
-    return {
-        role: role === "assistant" ? "assistant" : "user",
-        content: content || "",
-        created_at: new Date().toISOString(),
-    };
-}
-
-function trimOverviewHistory() {
-    const maxEntries = OVERVIEW_HISTORY_LIMIT * 2;
-    if (state.overview.history.length > maxEntries) {
-        state.overview.history = state.overview.history.slice(-maxEntries);
-    }
-}
-
-function showOverviewTypingIndicator() {
-    const typing = document.getElementById("overview-chat-typing");
-    if (!typing) {
-        return;
-    }
-    const empty = document.getElementById("overview-chat-empty");
-    if (empty) {
-        empty.hidden = true;
-    }
-    typing.hidden = false;
-}
-
-function hideOverviewTypingIndicator() {
-    const typing = document.getElementById("overview-chat-typing");
-    if (typing) {
-        typing.hidden = true;
+    if (overviewChatSurface) {
+        overviewChatSurface.setStatus("");
     }
 }
 
@@ -658,7 +473,7 @@ export async function refreshOverviewMetrics(restaurantId) {
             plan: state.snapshot?.kpis?.plan,
             plan_detail: state.snapshot?.kpis?.plan_detail,
             timeline: stats.timeline,
-            busiest: stats.busiest,
+            busiest: state.snapshot?.kpis?.busiest || stats.busiest,
             average_per_day: stats.average_per_day,
             average_messages: stats.average_messages,
             date_range: stats.date_range,

@@ -10,7 +10,7 @@ import json
 import base64
 
 from app.schemas import ChatRequest
-from app.services.chat_service import get_chat_response
+from app.services.chat_service import get_chat_response, _extract_dietary_constraints
 from app.services.postgrest_client import (
     create_postgrest_client,
     extract_bearer_token,
@@ -48,6 +48,40 @@ async def _fetch_restaurant(restaurant_id: UUID, access_token: str) -> Dict[str,
     if not rows:
         raise HTTPException(status_code=404, detail="Restaurant introuvable ou inaccessible.")
     return rows[0]
+
+
+async def _fetch_session_history(session_id: str, access_token: str) -> List[Dict[str, str]]:
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return []
+
+    def _request() -> List[Dict[str, Any]]:
+        with create_postgrest_client(access_token) as client:
+            response = (
+                client.table("chat_history")
+                .select("user_prompt,ai_response,created_at")
+                .eq("session_id", session_id)
+                .order("created_at", desc=False)
+                .limit(20)
+                .execute()
+            )
+            return response.data or []
+
+    try:
+        rows = await asyncio.to_thread(_request)
+    except PostgrestAPIError:
+        return []
+    except HttpxError:
+        return []
+
+    messages: List[Dict[str, str]] = []
+    for row in rows:
+        user_prompt = (row.get("user_prompt") or "").strip()
+        if user_prompt:
+            messages.append({"role": "user", "content": user_prompt})
+        ai_response = (row.get("ai_response") or "").strip()
+        if ai_response:
+            messages.append({"role": "assistant", "content": ai_response})
+    return messages
 
 
 def _parse_menu_document(raw_document: Any) -> Dict[str, Any]:
@@ -126,11 +160,18 @@ async def chat_endpoint(
     restaurant_name = restaurant.get("display_name") or "Restaurant"
 
     history = [{"role": entry.role, "content": entry.content} for entry in request.history]
+    session_history: List[Dict[str, str]] = []
+    if request.session_id:
+        session_history = await _fetch_session_history(str(request.session_id), bearer_token)
+        if not history:
+            history = session_history
+    persisted_constraints = _extract_dietary_constraints(session_history) if session_history else None
     reply = await get_chat_response(
         request.message,
         history,
         restaurant_name=restaurant_name,
         menu_document=menu_document,
+        persisted_constraints=persisted_constraints,
     )
     await _insert_chat_history(
         restaurant_id=str(request.restaurant_id),

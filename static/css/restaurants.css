@@ -228,7 +228,7 @@
 .restaurant-card-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 12px;
     margin-top: 20px;
 }
 
@@ -247,11 +247,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%;
 }
 
-.restaurant-card-actions button:last-child {
-    grid-column: 1 / -1;
-}
 
 .restaurant-card-actions .ghost-btn {
     background: rgba(15, 23, 42, 0.04);
@@ -262,6 +260,18 @@
 .restaurant-card-actions .ghost-btn:hover {
     background: rgba(15, 23, 42, 0.08);
     border-color: rgba(15, 23, 42, 0.12);
+    transform: translateY(-2px);
+}
+
+.restaurant-card-actions .ghost-btn.danger {
+    background: rgba(198, 60, 60, 0.08);
+    color: var(--danger);
+    border: 1px solid rgba(198, 60, 60, 0.3);
+}
+
+.restaurant-card-actions .ghost-btn.danger:hover {
+    background: rgba(198, 60, 60, 0.16);
+    border-color: rgba(198, 60, 60, 0.5);
     transform: translateY(-2px);
 }
 

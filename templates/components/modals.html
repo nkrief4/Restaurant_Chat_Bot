@@ -27,3 +27,23 @@
         </div>
     </div>
 </div>
+
+<div class="modal" id="restaurant-delete-modal" hidden aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-overlay" data-modal-close></div>
+    <div class="modal-content danger-modal" role="document">
+        <button class="modal-close" data-modal-close aria-label="Fermer le modal">&times;</button>
+        <div class="modal-header">
+            <p class="eyebrow">Suppression definitive</p>
+            <h3>Supprimer le restaurant ?</h3>
+            <p class="muted" id="restaurant-delete-name">—</p>
+        </div>
+        <div class="danger-callout">
+            <strong>Action irreversible.</strong>
+            Toutes les conversations, stocks, ventes, recettes et donnees liees seront supprimees.
+        </div>
+        <div class="form-footer">
+            <button type="button" class="ghost-btn" data-action="cancel-delete">Annuler</button>
+            <button type="button" class="danger-btn" data-action="confirm-delete">Supprimer definitivement</button>
+        </div>
+    </div>
+</div>

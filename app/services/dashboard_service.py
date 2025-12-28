@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from httpx import HTTPError as HttpxError
 from postgrest import APIError as PostgrestAPIError
 
+from app.config.supabase_client import SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL
 from app.services import stock_service
 from app.services.postgrest_client import create_postgrest_client, raise_postgrest_error
 
@@ -255,6 +256,94 @@ async def update_restaurant(access_token: str, restaurant_id: str, payload: Dict
             record.get("menu_document"),
         )
     return record
+
+
+async def delete_restaurant(access_token: str, restaurant_id: str) -> None:
+    """Delete a restaurant and all related data."""
+
+    claims = _decode_claims(access_token)
+    user_id = claims.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utilisateur Supabase invalide.")
+
+    tenant = await _fetch_tenant(access_token, user_id)
+    if not tenant:
+        raise HTTPException(status_code=400, detail="Aucun tenant associé à ce compte.")
+
+    restaurants = await _fetch_restaurants(access_token, tenant.get("id"))
+    if not any(str(rest.get("id")) == str(restaurant_id) for rest in restaurants):
+        raise HTTPException(status_code=403, detail="Accès refusé à ce restaurant.")
+
+    service_token = SUPABASE_SERVICE_ROLE_KEY or access_token
+    api_key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
+    if not SUPABASE_URL or not api_key:
+        raise HTTPException(status_code=500, detail="Supabase n'est pas configuré.")
+
+    def _fetch_ids() -> Dict[str, List[str]]:
+        with create_postgrest_client(service_token, api_key=api_key) as client:
+            menu_items = (
+                client.table("menu_items")
+                .select("id")
+                .eq("restaurant_id", restaurant_id)
+                .execute()
+            )
+            categories = (
+                client.table("menu_categories")
+                .select("id")
+                .eq("restaurant_id", restaurant_id)
+                .execute()
+            )
+        return {
+            "menu_item_ids": [str(row.get("id")) for row in (menu_items.data or []) if row.get("id")],
+            "category_ids": [str(row.get("id")) for row in (categories.data or []) if row.get("id")],
+        }
+
+    try:
+        ids = await asyncio.to_thread(_fetch_ids)
+    except PostgrestAPIError as exc:
+        raise_postgrest_error(exc, context="restaurant delete lookup")
+    except HttpxError as exc:
+        logger.error("Supabase unreachable during restaurant delete lookup: %s", exc)
+        raise HTTPException(status_code=503, detail="Impossible de joindre Supabase.") from exc
+
+    def _delete_all() -> None:
+        with create_postgrest_client(service_token, api_key=api_key) as client:
+            client.table("chat_history").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("orders").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("recipes").delete().eq("restaurant_id", restaurant_id).execute()
+
+            menu_item_ids = ids.get("menu_item_ids") or []
+            if menu_item_ids:
+                client.table("menu_item_allergens").delete().in_("menu_item_id", menu_item_ids).execute()
+                client.table("menu_item_diet_tags").delete().in_("menu_item_id", menu_item_ids).execute()
+                client.table("menu_item_stats").delete().in_("menu_item_id", menu_item_ids).execute()
+                client.table("menu_item_translations").delete().in_("menu_item_id", menu_item_ids).execute()
+                client.table("menu_item_variants").delete().in_("menu_item_id", menu_item_ids).execute()
+
+            client.table("menu_items").delete().eq("restaurant_id", restaurant_id).execute()
+
+            category_ids = ids.get("category_ids") or []
+            if category_ids:
+                client.table("menu_category_translations").delete().in_("category_id", category_ids).execute()
+            client.table("menu_categories").delete().eq("restaurant_id", restaurant_id).execute()
+
+            client.table("purchase_order_lines").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("purchase_orders").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("ingredient_suppliers").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("ingredient_stock").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("suppliers").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("ingredients").delete().eq("restaurant_id", restaurant_id).execute()
+            client.table("ingredient_categories").delete().eq("restaurant_id", restaurant_id).execute()
+
+            client.table("restaurants").delete().eq("id", restaurant_id).execute()
+
+    try:
+        await asyncio.to_thread(_delete_all)
+    except PostgrestAPIError as exc:
+        raise_postgrest_error(exc, context="restaurant delete")
+    except HttpxError as exc:
+        logger.error("Supabase unreachable during restaurant delete: %s", exc)
+        raise HTTPException(status_code=503, detail="Impossible de joindre Supabase.") from exc
 
 
 async def update_profile(access_token: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -1307,6 +1396,7 @@ async def get_menu_performance(access_token: str) -> Dict[str, Any]:
 __all__ = [
     "build_dashboard_snapshot",
     "create_restaurant",
+    "delete_restaurant",
     "update_profile",
     "update_restaurant",
     "list_dashboard_restaurants",

@@ -1,20 +1,54 @@
 import { state } from "../core/state.js";
 import { CHATBOT_HISTORY_LIMIT, CHAT_TESTER_WINDOW_NAME, CHAT_TESTER_WINDOW_FEATURES, CHAT_PAGE_PATH } from "../core/constants.js";
-import { escapeHtml, formatChatbotMessage } from "../utils/format.js";
 import { getAccessToken } from "../core/auth.js";
+import { createChatSurface } from "./chat_surface.js";
 
 // --- Chatbot Logic ---
+let chatbotSurface = null;
+let hasRestaurantListener = false;
 
 export function bindChatbotUI() {
-    const form = document.getElementById("chatbot-form");
-    if (form) {
-        form.addEventListener("submit", handleChatbotSubmit);
+    if (!chatbotSurface) {
+        chatbotSurface = createChatSurface({
+            thread: document.getElementById("chatbot-thread"),
+            empty: document.getElementById("chatbot-empty-state"),
+            typing: document.getElementById("chatbot-typing"),
+            form: document.getElementById("chatbot-form"),
+            input: document.getElementById("chatbot-input"),
+            sendButton: document.getElementById("chatbot-send-btn"),
+            status: document.getElementById("chatbot-feedback"),
+            history: state.chatbot.history,
+            historyLimit: CHATBOT_HISTORY_LIMIT,
+            getContext: () => ({
+                restaurantId: state.chatbot.restaurantId,
+                restaurantName: state.chatbot.restaurantName,
+            }),
+            getAuthToken: getAccessToken,
+            getSessionId: () => state.chatbot.sessionId,
+            setSessionId: (value) => {
+                state.chatbot.sessionId = value;
+            },
+            resetSessionId: () => {
+                state.chatbot.sessionId = null;
+            },
+            placeholder: (context) => context.restaurantId
+                ? `Message pour ${context.restaurantName || "votre restaurant"}…`
+                : "Utilisez le sélecteur global pour commencer.",
+            emptyMessage: (context) => context.restaurantId
+                ? `Discutez avec ${context.restaurantName || "votre restaurant"}.`
+                : "Utilisez le sélecteur global puis dites bonjour à votre assistant.",
+            onStateChange: ({ isSending, hasInteracted }) => {
+                state.chatbot.isSending = isSending;
+                state.chatbot.hasInteracted = hasInteracted;
+            },
+        });
+        chatbotSurface.bind();
     }
     const resetBtn = document.getElementById("chatbot-reset-btn");
     if (resetBtn) {
         resetBtn.addEventListener("click", (event) => {
             event.preventDefault();
-            resetChatbotConversation();
+            chatbotSurface?.reset();
         });
     }
     const fullscreenBtn = document.getElementById("chatbot-fullscreen-btn");
@@ -26,14 +60,18 @@ export function bindChatbotUI() {
             }
         });
     }
-    const input = document.getElementById("chatbot-input");
-    if (input) {
-        input.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                if (form) form.requestSubmit();
+    if (!hasRestaurantListener) {
+        document.addEventListener("activeRestaurantChange", (event) => {
+            const nextId = event?.detail?.id ? String(event.detail.id) : null;
+            if (!nextId) {
+                applyChatbotSelectionFromGlobal(null, { changed: true });
+                return;
             }
+            const restaurants = Array.isArray(state.restaurants) ? state.restaurants : [];
+            const match = restaurants.find((restaurant) => restaurant && String(restaurant.id) === nextId);
+            applyChatbotSelectionFromGlobal(match || null, { changed: true });
         });
+        hasRestaurantListener = true;
     }
 }
 
@@ -74,7 +112,7 @@ export function applyChatbotSelectionFromGlobal(record, options = {}) {
         state.chatbot.restaurantName = "";
         state.chatbot.hasManualSelection = false;
         if (hadSelection || changed) {
-            resetChatbotConversation();
+            chatbotSurface?.reset();
             setChatbotFeedback("Utilisez le sélecteur global pour lancer la discussion.");
         }
         syncChatbotControls();
@@ -86,7 +124,7 @@ export function applyChatbotSelectionFromGlobal(record, options = {}) {
     state.chatbot.hasManualSelection = true;
 
     if (previousId !== nextId || changed) {
-        resetChatbotConversation();
+        chatbotSurface?.reset();
         if (state.chatbot.restaurantName) {
             setChatbotFeedback(`Contexte chargé pour ${state.chatbot.restaurantName}.`);
         } else {
@@ -124,262 +162,11 @@ function syncChatbotControls() {
         statusMessage = `${state.chatbot.restaurantName || "Votre restaurant"} est prêt à répondre.`;
     }
     setChatbotStatus(statusMessage, isError);
-
-    refreshChatbotFormAvailability();
-    updateChatbotEmptyState();
-}
-
-export async function handleChatbotSubmit(event) {
-    event.preventDefault();
-    if (state.chatbot.isSending) {
-        return;
-    }
-    if (!state.chatbot.restaurantId) {
-        setChatbotFeedback("Utilisez le sélecteur global avant de discuter.", true);
-        return;
-    }
-
-    const input = document.getElementById("chatbot-input");
-    if (!input) {
-        return;
-    }
-    const message = (input.value || "").trim();
-    if (!message) {
-        setChatbotFeedback("Votre message ne peut pas être vide.", true);
-        return;
-    }
-
-    appendChatbotMessage(message, "user");
-    input.value = "";
-
-    const historySnapshot = state.chatbot.history.slice(-CHATBOT_HISTORY_LIMIT);
-    const pendingUserEntry = { role: "user", content: message };
-    const sessionId = ensureChatbotSession();
-
-    setChatbotFeedback("Envoi en cours…");
-    state.chatbot.hasInteracted = true;
-    setChatbotSending(true);
-
-    try {
-        const token = await getAccessToken();
-        const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                restaurant_id: state.chatbot.restaurantId,
-                message,
-                history: historySnapshot,
-                session_id: sessionId,
-            }),
-        });
-
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            const detail = payload && payload.detail ? payload.detail : null;
-            throw new Error(detail || "Impossible d'obtenir une réponse.");
-        }
-
-        const reply = (payload && payload.reply ? payload.reply : "").toString().trim() || "Réponse indisponible.";
-        const assistantElements = appendChatbotMessage("", "assistant", { skipFormat: true, returnElements: true });
-        await streamChatbotReply(assistantElements?.body || null, reply);
-        state.chatbot.history.push(pendingUserEntry);
-        state.chatbot.history.push({ role: "assistant", content: reply });
-        trimChatbotHistory();
-        setChatbotFeedback("Réponse générée.");
-    } catch (error) {
-        console.error("Chatbot request failed", error);
-        setChatbotFeedback("Impossible de charger la réponse, réessayez.", true);
-    } finally {
-        setChatbotSending(false);
-    }
-}
-
-function setChatbotSending(isSending) {
-    state.chatbot.isSending = Boolean(isSending);
-    refreshChatbotFormAvailability();
-    toggleChatbotTyping(isSending);
-    if (!state.chatbot.isSending) {
-        focusChatbotInput();
-    }
-}
-
-function refreshChatbotFormAvailability() {
-    const hasSelection = Boolean(state.chatbot.restaurantId);
-    const input = document.getElementById("chatbot-input");
-    const sendBtn = document.getElementById("chatbot-send-btn");
-    const disabled = !hasSelection || state.chatbot.isSending;
-    if (input) {
-        input.disabled = disabled;
-        input.placeholder = hasSelection
-            ? `Message pour ${state.chatbot.restaurantName || "votre restaurant"}…`
-            : "Utilisez le sélecteur global pour commencer.";
-    }
-    if (sendBtn) {
-        sendBtn.disabled = disabled;
-    }
-}
-
-function toggleChatbotTyping(shouldShow) {
-    const indicator = document.getElementById("chatbot-typing");
-    if (!indicator) {
-        return;
-    }
-    // L'indicateur ne doit apparaître que lorsqu'un message utilisateur est en cours d'envoi.
-    const canDisplay = Boolean(shouldShow && state.chatbot.hasInteracted);
-    indicator.hidden = !canDisplay;
-    indicator.setAttribute("aria-hidden", (!canDisplay).toString());
-    indicator.style.display = canDisplay ? "inline-flex" : "none";
-    indicator.classList.toggle("is-visible", canDisplay);
-}
-
-function updateChatbotEmptyState() {
-    const empty = document.getElementById("chatbot-empty-state");
-    const thread = document.getElementById("chatbot-thread");
-    if (!empty || !thread) {
-        return;
-    }
-    const hasMessages = thread.children.length > 0;
-    empty.hidden = hasMessages;
-    if (!hasMessages) {
-        const baseMessage = state.chatbot.restaurantId
-            ? `Discutez avec ${state.chatbot.restaurantName || "votre restaurant"}.`
-            : "Utilisez le sélecteur global puis dites bonjour à votre assistant.";
-        empty.innerHTML = `<p>${escapeHtml(baseMessage)}</p>`;
-    }
-}
-
-function appendChatbotMessage(text, role, options = {}) {
-    const feed = document.getElementById("chatbot-thread");
-    if (!feed) {
-        return null;
-    }
-    const resolvedRole = role === "assistant" ? "assistant" : "user";
-
-    const message = document.createElement("div");
-    message.className = `chat-message ${resolvedRole}`;
-
-    const avatar = document.createElement("div");
-    avatar.className = "chat-message-avatar";
-    avatar.textContent = resolvedRole === "assistant" ? "AI" : "Vous";
-
-    const content = document.createElement("div");
-    content.className = "chat-message-content";
-
-    const author = document.createElement("p");
-    author.className = "chat-message-author";
-    author.textContent =
-        resolvedRole === "assistant"
-            ? state.chatbot.restaurantName || "RestauBot"
-            : "Vous";
-
-    const body = document.createElement("div");
-    body.className = "chatbot-text";
-    const rawText = (text || "").toString();
-    if (options.skipFormat) {
-        body.textContent = rawText;
-    } else if (rawText) {
-        body.innerHTML = formatChatbotMessage(rawText);
-    }
-
-    content.append(author, body);
-
-    if (!options.hideMeta) {
-        const meta = document.createElement("small");
-        meta.className = "chat-message-meta";
-        meta.textContent = new Date().toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-        content.appendChild(meta);
-    }
-
-    message.append(avatar, content);
-    feed.appendChild(message);
-    feed.scrollTop = feed.scrollHeight;
-    updateChatbotEmptyState();
-    if (options.returnElements) {
-        return { bubble: message, body };
-    }
-    return message;
-}
-
-function streamChatbotReply(target, text) {
-    return streamFormattedContent(target, text, formatChatbotMessage);
-}
-
-// Animate the assistant reply so it feels streamed, even when received in one payload.
-function streamFormattedContent(target, text, formatter) {
-    return new Promise((resolve) => {
-        if (!target) {
-            resolve();
-            return;
-        }
-        const fullText = (text || "").toString();
-        if (!fullText) {
-            target.classList.remove("is-streaming");
-            target.innerHTML = typeof formatter === "function" ? formatter("") : "";
-            resolve();
-            return;
-        }
-
-        const characters = Array.from(fullText);
-        const chunkSize = 4;
-        const baseDelay = 18;
-        let index = 0;
-        let buffer = "";
-
-        target.classList.add("is-streaming");
-        target.textContent = "";
-
-        const writeNextChunk = () => {
-            const nextChunk = characters.slice(index, index + chunkSize).join("");
-            buffer += nextChunk;
-            target.textContent = buffer;
-            index += chunkSize;
-            if (index < characters.length) {
-                const jitter = Math.random() * 40;
-                window.setTimeout(writeNextChunk, baseDelay + jitter);
-            } else {
-                target.classList.remove("is-streaming");
-                if (typeof formatter === "function") {
-                    target.innerHTML = formatter(buffer);
-                } else {
-                    target.textContent = buffer;
-                }
-                resolve();
-            }
-        };
-
-        writeNextChunk();
-    });
-}
-
-function resetChatbotConversation() {
-    state.chatbot.history = [];
-    state.chatbot.isSending = false;
-    state.chatbot.hasInteracted = false;
-    resetChatbotSession();
-    const thread = document.getElementById("chatbot-thread");
-    if (thread) {
-        thread.innerHTML = "";
-    }
-    toggleChatbotTyping(false);
-    refreshChatbotFormAvailability();
-    updateChatbotEmptyState();
-    setChatbotFeedback("");
+    chatbotSurface?.refresh();
 }
 
 function setChatbotFeedback(message, isError = false) {
-    const target = document.getElementById("chatbot-feedback");
-    if (!target) {
-        return;
-    }
-    const resolved = message || "";
-    target.textContent = resolved;
-    target.classList.toggle("error", Boolean(isError && resolved));
+    chatbotSurface?.setStatus(message, isError);
 }
 
 function setChatbotStatus(message, isError = false) {
@@ -396,32 +183,6 @@ function focusChatbotInput() {
     const input = document.getElementById("chatbot-input");
     if (input && !input.disabled) {
         input.focus();
-    }
-}
-
-function ensureChatbotSession() {
-    if (!state.chatbot.sessionId) {
-        state.chatbot.sessionId = createChatbotSessionId();
-    }
-    return state.chatbot.sessionId;
-}
-
-function createChatbotSessionId() {
-    if (window.crypto && typeof window.crypto.randomUUID === "function") {
-        return window.crypto.randomUUID();
-    }
-    const random = Math.random().toString(16).slice(2, 10);
-    return `${Date.now().toString(36)}-${random}`;
-}
-
-function resetChatbotSession() {
-    state.chatbot.sessionId = null;
-}
-
-function trimChatbotHistory() {
-    const maxEntries = CHATBOT_HISTORY_LIMIT * 2;
-    if (state.chatbot.history.length > maxEntries) {
-        state.chatbot.history = state.chatbot.history.slice(-maxEntries);
     }
 }
 

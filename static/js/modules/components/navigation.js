@@ -119,7 +119,11 @@ export function setupNavigation() {
         link.addEventListener("click", (event) => {
             event.preventDefault();
             const sectionId = link.dataset.openSection;
+            const targetTab = link.dataset.openTab;
             navigateToSection(sectionId);
+            if (sectionId === "manage-restaurants" && targetTab) {
+                setRestaurantManagementTab(targetTab, { focus: true });
+            }
         });
     });
 
@@ -287,4 +291,3 @@ function activateSection(sectionId, options) {
 
     return targetId;
 }
-

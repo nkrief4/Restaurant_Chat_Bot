@@ -15,6 +15,69 @@ const restaurantTabsRuntime = {
     resizeObserver: null,
 };
 
+const deleteModalState = {
+    modal: null,
+    nameEl: null,
+    confirmBtn: null,
+    cancelBtn: null,
+    resolve: null,
+};
+
+function ensureDeleteModal() {
+    if (deleteModalState.modal) {
+        return deleteModalState;
+    }
+    const modal = document.getElementById("restaurant-delete-modal");
+    if (!modal) {
+        return null;
+    }
+    deleteModalState.modal = modal;
+    deleteModalState.nameEl = modal.querySelector("#restaurant-delete-name");
+    deleteModalState.confirmBtn = modal.querySelector("[data-action='confirm-delete']");
+    deleteModalState.cancelBtn = modal.querySelector("[data-action='cancel-delete']");
+    const closeButtons = modal.querySelectorAll("[data-modal-close]");
+
+    const closeModal = (result) => {
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+        modal.setAttribute("hidden", "");
+        const resolver = deleteModalState.resolve;
+        deleteModalState.resolve = null;
+        if (resolver) {
+            resolver(result);
+        }
+    };
+
+    closeButtons.forEach((button) => {
+        button.addEventListener("click", () => closeModal(false));
+    });
+
+    if (deleteModalState.cancelBtn) {
+        deleteModalState.cancelBtn.addEventListener("click", () => closeModal(false));
+    }
+    if (deleteModalState.confirmBtn) {
+        deleteModalState.confirmBtn.addEventListener("click", () => closeModal(true));
+    }
+
+    return deleteModalState;
+}
+
+function openDeleteModal(name) {
+    const state = ensureDeleteModal();
+    if (!state) {
+        return Promise.resolve(false);
+    }
+    if (state.nameEl) {
+        state.nameEl.textContent = name;
+    }
+    state.modal.removeAttribute("hidden");
+    state.modal.setAttribute("aria-hidden", "false");
+    state.modal.classList.add("open");
+    return new Promise((resolve) => {
+        deleteModalState.resolve = resolve;
+    });
+}
+
 export function setupRestaurantTabs() {
     const container = document.querySelector("[data-restaurant-tabs]");
     if (!container) {
@@ -653,7 +716,50 @@ export function renderRestaurants() {
         chatBtn.dataset.restaurantName = restaurant.display_name || restaurant.name || "";
         chatBtn.innerHTML = "🤖 Tester";
 
-        actions.append(qrBtn, configBtn, chatBtn);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "ghost-btn danger";
+        deleteBtn.innerHTML = "🗑️ Supprimer";
+        deleteBtn.addEventListener("click", async (event) => {
+            event.preventDefault();
+            if (!restaurant.id) {
+                return;
+            }
+            const name = restaurant.display_name || restaurant.name || "ce restaurant";
+            const confirmed = await openDeleteModal(name);
+            if (!confirmed) {
+                return;
+            }
+            try {
+                const token = await getAccessToken();
+                const response = await fetch(`/api/dashboard/restaurants/${restaurant.id}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    const detail = payload?.detail || "Impossible de supprimer le restaurant.";
+                    throw new Error(detail);
+                }
+                state.restaurants = state.restaurants.filter(
+                    (entry) => String(entry.id) !== String(restaurant.id),
+                );
+                if (state.editingId && String(state.editingId) === String(restaurant.id)) {
+                    state.editingId = null;
+                }
+                renderRestaurants();
+                document.dispatchEvent(new CustomEvent("dashboard:refresh"));
+            } catch (error) {
+                console.error("Restaurant deletion failed:", error);
+                document.dispatchEvent(
+                    new CustomEvent("showToast", {
+                        detail: { message: error.message || "Erreur lors de la suppression." },
+                    }),
+                );
+            }
+        });
+
+        actions.append(qrBtn, configBtn, chatBtn, deleteBtn);
 
         card.append(header, infoSection, actions);
         fragment.appendChild(card);

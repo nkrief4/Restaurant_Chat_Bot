@@ -10,6 +10,7 @@ from app.services.dashboard_service import (
     build_dashboard_snapshot,
     build_statistics_view,
     create_restaurant as dashboard_create_restaurant,
+    delete_restaurant as dashboard_delete_restaurant,
     list_dashboard_restaurants,
     update_profile as dashboard_update_profile,
     update_restaurant as dashboard_update_restaurant,
@@ -126,6 +127,16 @@ async def dashboard_restaurant_update(
 ) -> Dict[str, Any]:
     token = extract_bearer_token(authorization)
     return await dashboard_update_restaurant(token, str(restaurant_id), payload.model_dump())
+
+
+@router.delete("/restaurants/{restaurant_id}")
+async def dashboard_restaurant_delete(
+    restaurant_id: UUID,
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+) -> Dict[str, str]:
+    token = extract_bearer_token(authorization)
+    await dashboard_delete_restaurant(token, str(restaurant_id))
+    return {"status": "deleted"}
 
 
 @router.put("/profile")

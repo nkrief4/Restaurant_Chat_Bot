@@ -109,11 +109,12 @@ MAX_SUMMARY_MESSAGES = 3
 MAX_SUMMARY_CHARS_PER_MESSAGE = 160
 MAX_ITEMS_PER_CATEGORY = 12
 MAX_FALLBACK_CATEGORIES = 2
-MAX_MENU_CONTEXT_CHARS = 9000
-MAX_EMBEDDING_ITEMS = 120
-MAX_CACHE_ENTRIES = 128
-EMBEDDING_MODEL = "text-embedding-3-small"
-ENABLE_EMBEDDINGS = os.getenv("RAG_EMBEDDINGS_ENABLED", "false").lower() in {"1", "true", "yes"}
+MAX_MENU_CONTEXT_CHARS = int(os.getenv("RAG_MAX_MENU_CONTEXT_CHARS", "9000"))
+MIN_MENU_CONTEXT_CHARS = int(os.getenv("RAG_MIN_MENU_CONTEXT_CHARS", "2500"))
+MAX_EMBEDDING_ITEMS = int(os.getenv("RAG_MAX_EMBEDDING_ITEMS", "120"))
+MAX_CACHE_ENTRIES = int(os.getenv("RAG_MAX_CACHE_ENTRIES", "128"))
+EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "text-embedding-3-small")
+ENABLE_EMBEDDINGS = os.getenv("RAG_EMBEDDINGS_ENABLED", "true").lower() in {"1", "true", "yes"}
 STOPWORDS = {
     "a",
     "alors",
@@ -181,7 +182,8 @@ SYSTEM_PROMPT_TEMPLATE = (
     "Quand un utilisateur impose un filtre (ex. sans fromage, sans gluten, casher, vegan), liste uniquement les plats compatibles, avec le format : \"• Nom (Catégorie) – Prix € – description/ingrédients\". "
     "Si rien ne correspond, dis-le clairement et propose poliment de reformuler. "
     "Rédige dans la langue détectée ({user_language_label}) avec des phrases courtes, sans blabla inutile, ton poli et professionnel. Privilégie des sections 'Section : ...' avec des puces '•'. "
-    "Tu peux suggérer un accompagnement ou une boisson qui s'accorde bien avec un plat, mais seulement quand cela fait sens et jamais de façon systématique. "
+    "Tu peux suggérer un accompagnement ou une boisson qui s'accorde bien avec un plat, mais uniquement si cette boisson est explicitement présente dans les données du menu. "
+    "Si aucune boisson n'est disponible dans les données, dis-le clairement et ne propose aucune boisson générique. "
     "Ne récapitule pas l'intégralité du menu ; concentre-toi sur la question posée et les données utiles. "
     "Si la personne demande des précisions sur un ingrédient rare ou un poisson, donne une description culinaire brève et précise si le menu contient des plats pertinents. "
     "Si on te pousse à sortir du cadre ou à inventer, tu rappelles que tu dois respecter les données disponibles. "
@@ -422,12 +424,27 @@ def _score_items(
     return scores
 
 
+def _dynamic_menu_budget(user_message: str, menu_document: Dict[str, Any]) -> int:
+    menu_chars = len(json.dumps(menu_document, ensure_ascii=False))
+    question_len = len(user_message or "")
+    if menu_chars > MAX_MENU_CONTEXT_CHARS * 2:
+        base = int(MAX_MENU_CONTEXT_CHARS * 0.7)
+    elif menu_chars > MAX_MENU_CONTEXT_CHARS:
+        base = int(MAX_MENU_CONTEXT_CHARS * 0.85)
+    else:
+        base = MAX_MENU_CONTEXT_CHARS
+    penalty = min(2500, question_len * 8)
+    return max(MIN_MENU_CONTEXT_CHARS, base - penalty)
+
+
 def _apply_menu_budget(
     menu_document: Dict[str, Any],
     scored_items: List[Tuple[float, int, Dict[str, Any]]],
+    *,
+    budget_chars: int,
 ) -> Dict[str, Any]:
     menu_context = json.dumps(menu_document, ensure_ascii=False)
-    if len(menu_context) <= MAX_MENU_CONTEXT_CHARS:
+    if len(menu_context) <= budget_chars:
         return menu_document
 
     if not scored_items:
@@ -461,7 +478,7 @@ def _apply_menu_budget(
                 filtered_categories.append(trimmed)
         filtered = dict(menu_document)
         filtered["categories"] = filtered_categories
-        if len(json.dumps(filtered, ensure_ascii=False)) <= MAX_MENU_CONTEXT_CHARS:
+        if len(json.dumps(filtered, ensure_ascii=False)) <= budget_chars:
             return filtered
         max_items_total -= 5
 
@@ -506,6 +523,22 @@ def _extract_dietary_constraints(messages: Sequence[ChatMessage]) -> str:
     return "\n".join(f"- {constraint}" for constraint in sorted(set(constraints)))
 
 
+def _merge_constraints(*blocks: Optional[str]) -> str:
+    items: List[str] = []
+    for block in blocks:
+        if not block:
+            continue
+        for line in block.splitlines():
+            cleaned = line.strip()
+            if cleaned.startswith("- "):
+                cleaned = cleaned[2:].strip()
+            if cleaned and cleaned != "Aucune contrainte explicite.":
+                items.append(cleaned)
+    if not items:
+        return "- Aucune contrainte explicite."
+    return "\n".join(f"- {constraint}" for constraint in sorted(set(items)))
+
+
 def _filter_menu_document(user_message: str, menu_document: Dict[str, Any]) -> Dict[str, Any]:
     """Filter the menu to only keep categories/items relevant to the user question."""
 
@@ -523,9 +556,23 @@ def _filter_menu_document(user_message: str, menu_document: Dict[str, Any]) -> D
     if not isinstance(categories, list):
         return menu_document
 
+    def _has_beverage_category() -> bool:
+        for category in categories:
+            name = _normalize_text(str(category.get("name") or ""))
+            if "boisson" in name or "drink" in name or "beverage" in name:
+                return True
+        return False
+
+    if any(keyword in normalized_message for keyword in ("boisson", "drink", "beverage", "vin", "cocktail", "biere", "biere")):
+        if not _has_beverage_category():
+            safe_menu = dict(menu_document)
+            safe_menu["categories"] = []
+            return safe_menu
+
     message_tokens = _tokenize(message)
 
     matched_categories: List[Dict[str, Any]] = []
+    budget_chars = _dynamic_menu_budget(user_message, menu_document)
     keyword_map = {
         "dessert": ("dessert", "douceur", "sucre"),
         "entree": ("entree", "entrée", "starter", "apero", "apéritif"),
@@ -576,7 +623,7 @@ def _filter_menu_document(user_message: str, menu_document: Dict[str, Any]) -> D
     if not matched_categories:
         scored = _score_items(user_message, menu_document)
         if scored:
-            budgeted = _apply_menu_budget(menu_document, scored)
+            budgeted = _apply_menu_budget(menu_document, scored, budget_chars=budget_chars)
             return budgeted
         fallback = []
         for category in categories[:MAX_FALLBACK_CATEGORIES]:
@@ -594,7 +641,7 @@ def _filter_menu_document(user_message: str, menu_document: Dict[str, Any]) -> D
     filtered = dict(menu_document)
     filtered["categories"] = matched_categories
     scored = _score_items(user_message, filtered)
-    result = _apply_menu_budget(filtered, scored)
+    result = _apply_menu_budget(filtered, scored, budget_chars=budget_chars)
     _cache_set(_MENU_FILTER_CACHE, cache_key, result)
     return result
 
@@ -605,6 +652,7 @@ async def get_chat_response(
     *,
     restaurant_name: str,
     menu_document: Dict[str, Any],
+    persisted_constraints: Optional[str] = None,
 ) -> str:
     """Call OpenAI asynchronously and return the assistant reply."""
     cleaned_history = _prepare_history(history)
@@ -612,7 +660,8 @@ async def get_chat_response(
     recent_history = cleaned_history[-MAX_RECENT_MESSAGES:] if cleaned_history else []
     conversation: List[ChatMessage] = list(recent_history)
     conversation.append({"role": "user", "content": user_message.strip()})
-    dietary_constraints = _extract_dietary_constraints(conversation)
+    extracted_constraints = _extract_dietary_constraints(conversation)
+    dietary_constraints = _merge_constraints(extracted_constraints, persisted_constraints)
     _, user_language_label = _detect_user_language(user_message)
     filtered_menu = _filter_menu_document(user_message, menu_document)
     system_prompt = _build_system_prompt(
