@@ -86,6 +86,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const titleEl = document.getElementById("chat-restaurant-name");
     if (titleEl) titleEl.textContent = restaurantName;
 
+    // Update restaurant name in welcome message
+    const restaurantDisplay = document.getElementById("chat-restaurant-display");
+    if (restaurantDisplay) {
+      restaurantDisplay.textContent = restaurantName;
+    }
+
     const statusEl = document.getElementById("chat-status");
     if (statusEl) statusEl.innerHTML = '<span class="status-dot"></span><span>En ligne</span>';
 
@@ -240,9 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initSurface();
 
-  if (isStandalone) {
-    greetIfNeeded();
-  }
+  // The welcome message will be shown in the empty state instead of an automatic greeting
 
   async function loadOptimizedMenu(targetRestaurantId, menuSection, menuEmpty) {
     if (!menuSection) return;

@@ -151,6 +151,12 @@ function syncChatbotControls() {
         }
     }
 
+    // Update restaurant name display in welcome message
+    const restaurantDisplay = document.getElementById("chatbot-restaurant-display");
+    if (restaurantDisplay) {
+        restaurantDisplay.textContent = state.chatbot.restaurantName || "votre restaurant";
+    }
+
     let statusMessage = "";
     let isError = false;
     if (!hasRestaurants) {

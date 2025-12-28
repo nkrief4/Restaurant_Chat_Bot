@@ -22,13 +22,11 @@
     <p>Chargement de l'expérience RestauBot…</p>
   </div>
 
-  <header class="chat-hero client">
-    <div class="chat-hero-inner client">
+  <header class="chat-hero">
+    <div class="chat-hero-inner">
       <div class="client-branding">
         <div class="client-brand-mark">RestauBot</div>
-        <div>
-          <h1 id="chat-restaurant-name">Restaurant en cours de chargement…</h1>
-        </div>
+        <h1 id="chat-restaurant-name">Restaurant</h1>
       </div>
     </div>
   </header>
@@ -37,8 +35,11 @@
     <section class="chat-panel" aria-label="Conversation avec le chatbot">
       <div class="chat-panel-header">
         <div>
-          <p class="status-label">Canal client</p>
-          <div id="chat-status" class="chat-status" role="status">Chargement du chatbot…</div>
+          <p class="status-label">Chatbot en ligne</p>
+          <div id="chat-status" class="chat-status">
+            <span class="status-dot"></span>
+            <span>Connecté</span>
+          </div>
         </div>
         <div class="session-chip" aria-hidden="true">Sécurisé SSL</div>
       </div>
@@ -46,8 +47,7 @@
         <div id="chat-messages" class="chatbot-thread chat-messages" aria-live="polite"
           aria-label="Historique des messages"></div>
         <div id="chat-empty-state" class="chatbot-empty chat-empty">
-          <h3>Bienvenue 👋</h3>
-          <p>Posez votre question au serveur virtuel du restaurant puis explorez la carte à droite.</p>
+          <p>Chatbot connecté à <span class="restaurant-name" id="chat-restaurant-display">votre restaurant</span></p>
         </div>
         <div id="typing-indicator" class="chatbot-typing typing-indicator" role="status" aria-live="polite" hidden>
           <span class="typing-dot"></span>
@@ -57,8 +57,7 @@
       </div>
       <form id="chat-form" class="chatbot-form chat-input-area" autocomplete="off">
         <label for="chat-input" class="sr-only">Votre message</label>
-        <textarea id="chat-input" name="message"
-          placeholder="Demandez une recommandation, une allergie ou un service personnalisé" rows="1" autocomplete="off"
+        <textarea id="chat-input" name="message" placeholder="Posez votre question…" rows="1" autocomplete="off"
           required></textarea>
         <div class="chat-input-actions">
           <button type="submit" id="chat-send" class="chat-btn primary">Envoyer</button>
