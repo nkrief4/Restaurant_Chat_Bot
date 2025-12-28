@@ -5,13 +5,17 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import hashlib
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict
+
+import unicodedata
 
 from openai import APIError
 from langdetect import DetectorFactory, LangDetectException, detect
 
 from app.config.openai_client import client
-from app.config.supabase_client import get_supabase_client
 
 
 logger = logging.getLogger(__name__)
@@ -100,6 +104,50 @@ def _build_dietary_index(menu_data: Dict[str, Any]) -> Dict[str, List[str]]:
 
 
 MAX_HISTORY_MESSAGES = 12
+MAX_RECENT_MESSAGES = 6
+MAX_SUMMARY_MESSAGES = 3
+MAX_SUMMARY_CHARS_PER_MESSAGE = 160
+MAX_ITEMS_PER_CATEGORY = 12
+MAX_FALLBACK_CATEGORIES = 2
+MAX_MENU_CONTEXT_CHARS = 9000
+MAX_EMBEDDING_ITEMS = 120
+MAX_CACHE_ENTRIES = 128
+EMBEDDING_MODEL = "text-embedding-3-small"
+ENABLE_EMBEDDINGS = os.getenv("RAG_EMBEDDINGS_ENABLED", "false").lower() in {"1", "true", "yes"}
+STOPWORDS = {
+    "a",
+    "alors",
+    "au",
+    "aux",
+    "avec",
+    "ce",
+    "ces",
+    "de",
+    "des",
+    "du",
+    "et",
+    "je",
+    "la",
+    "le",
+    "les",
+    "me",
+    "mon",
+    "ma",
+    "mes",
+    "ou",
+    "pour",
+    "que",
+    "qui",
+    "quoi",
+    "sur",
+    "tu",
+    "un",
+    "une",
+    "vos",
+    "votre",
+    "vous",
+    "y",
+}
 
 DetectorFactory.seed = 0  # make language detection deterministic
 
@@ -138,6 +186,8 @@ SYSTEM_PROMPT_TEMPLATE = (
     "Si la personne demande des précisions sur un ingrédient rare ou un poisson, donne une description culinaire brève et précise si le menu contient des plats pertinents. "
     "Si on te pousse à sortir du cadre ou à inventer, tu rappelles que tu dois respecter les données disponibles. "
     "La personne s'exprime en {user_language_label}. Réponds strictement dans cette langue.\n\n"
+    "Contraintes actives de l'utilisateur (a appliquer en priorite) :\n{dietary_constraints}\n\n"
+    "Resume de contexte recent :\n{conversation_summary}\n\n"
     "Référentiel interne sur les régimes alimentaires :\n{dietary_reference}\n\n"
     "Données complètes du menu (issues de la base de données, JSON):\n{menu_context}\n\n"
     "Index des régimes (tag -> plats):\n{dietary_context}"
@@ -156,6 +206,8 @@ def _build_system_prompt(
     restaurant_name: str,
     menu_document: Dict[str, Any],
     user_language_label: str,
+    dietary_constraints: str,
+    conversation_summary: str,
 ) -> str:
     safe_name = restaurant_name.strip() or "ce restaurant"
     menu_context = json.dumps(menu_document, ensure_ascii=False)
@@ -167,6 +219,8 @@ def _build_system_prompt(
         dietary_context=dietary_context,
         user_language_label=user_language_label,
         dietary_reference=DIETARY_REFERENCE,
+        dietary_constraints=dietary_constraints,
+        conversation_summary=conversation_summary,
     )
 
 
@@ -198,6 +252,31 @@ def _prepare_history(history: Optional[Sequence[ChatMessage]]) -> List[ChatMessa
     return cleaned[-MAX_HISTORY_MESSAGES:]
 
 
+def _summarize_history(history: Sequence[ChatMessage]) -> str:
+    """Create a short summary from older user messages."""
+
+    if not history:
+        return "- Aucun contexte additionnel."
+
+    recent = MAX_RECENT_MESSAGES
+    older = history[:-recent] if len(history) > recent else []
+    if not older:
+        return "- Aucun contexte additionnel."
+
+    user_messages = [entry["content"] for entry in older if entry.get("role") == "user"]
+    snippets = []
+    for message in user_messages[:MAX_SUMMARY_MESSAGES]:
+        cleaned = " ".join(message.split())
+        if len(cleaned) > MAX_SUMMARY_CHARS_PER_MESSAGE:
+            cleaned = f"{cleaned[:MAX_SUMMARY_CHARS_PER_MESSAGE - 1]}…"
+        snippets.append(cleaned)
+
+    if not snippets:
+        return "- Aucun contexte additionnel."
+
+    return "\n".join(f"- {snippet}" for snippet in snippets)
+
+
 def _detect_user_language(user_message: str) -> Tuple[str, str]:
     cleaned = (user_message or "").strip()
     if not cleaned:
@@ -210,6 +289,316 @@ def _detect_user_language(user_message: str) -> Tuple[str, str]:
     return code, label
 
 
+def _normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    return "".join(char for char in normalized if not unicodedata.combining(char)).lower()
+
+
+def _tokenize(text: str) -> List[str]:
+    tokens = [part for part in _normalize_text(text).split() if part]
+    return [token for token in tokens if token not in STOPWORDS]
+
+
+_MENU_FILTER_CACHE: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+_EMBEDDING_CACHE: "OrderedDict[str, List[float]]" = OrderedDict()
+
+
+def _cache_get(cache: "OrderedDict[str, Any]", key: str) -> Optional[Any]:
+    value = cache.get(key)
+    if value is not None:
+        cache.move_to_end(key)
+    return value
+
+
+def _cache_set(cache: "OrderedDict[str, Any]", key: str, value: Any) -> None:
+    cache[key] = value
+    cache.move_to_end(key)
+    if len(cache) > MAX_CACHE_ENTRIES:
+        cache.popitem(last=False)
+
+
+def _menu_hash(menu_document: Dict[str, Any]) -> str:
+    payload = json.dumps(menu_document, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _item_identifier(category_index: int, item: Dict[str, Any]) -> str:
+    name = str(item.get("name") or "")
+    description = str(item.get("description") or "")
+    price = str(item.get("price") or "")
+    raw = f"{category_index}:{name}:{description}:{price}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _build_item_text(category_name: str, item: Dict[str, Any]) -> str:
+    parts = [
+        category_name,
+        str(item.get("name") or ""),
+        str(item.get("description") or ""),
+        " ".join(str(tag) for tag in (item.get("tags") or [])),
+        " ".join(str(allergen) for allergen in (item.get("contains") or [])),
+    ]
+    return " ".join(part for part in parts if part).strip()
+
+
+def _cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(y * y for y in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def _get_embeddings(texts: List[str]) -> Optional[List[List[float]]]:
+    if not texts or not ENABLE_EMBEDDINGS:
+        return None
+    if len(texts) > MAX_EMBEDDING_ITEMS:
+        return None
+    try:
+        response = client.embeddings.create(model=EMBEDDING_MODEL, input=texts)
+    except APIError as exc:  # pragma: no cover - depends on network
+        logger.warning("Embedding request failed: %s", exc)
+        return None
+    embeddings = []
+    for entry in response.data:
+        embeddings.append(entry.embedding)
+    return embeddings
+
+
+def _score_items(
+    user_message: str,
+    menu_document: Dict[str, Any],
+) -> List[Tuple[float, int, Dict[str, Any]]]:
+    categories = menu_document.get("categories", [])
+    if not isinstance(categories, list):
+        return []
+
+    items: List[Tuple[int, Dict[str, Any], str]] = []
+    for idx, category in enumerate(categories):
+        category_name = str(category.get("name") or "")
+        for item in category.get("items", []):
+            items.append((idx, item, _build_item_text(category_name, item)))
+
+    if not items:
+        return []
+
+    normalized_tokens = _tokenize(user_message)
+    if ENABLE_EMBEDDINGS:
+        user_embedding = None
+        cached = _cache_get(_EMBEDDING_CACHE, f"query:{_normalize_text(user_message)}")
+        if cached:
+            user_embedding = cached
+        else:
+            embedding = _get_embeddings([user_message])
+            if embedding:
+                user_embedding = embedding[0]
+                _cache_set(_EMBEDDING_CACHE, f"query:{_normalize_text(user_message)}", user_embedding)
+        if user_embedding:
+            scores = []
+            for idx, item, text in items:
+                cache_key = f"item:{_normalize_text(text)}"
+                item_embedding = _cache_get(_EMBEDDING_CACHE, cache_key)
+                if item_embedding is None:
+                    embedding = _get_embeddings([text])
+                    if embedding:
+                        item_embedding = embedding[0]
+                        _cache_set(_EMBEDDING_CACHE, cache_key, item_embedding)
+                if item_embedding is None:
+                    continue
+                score = _cosine_similarity(user_embedding, item_embedding)
+                scores.append((score, idx, item))
+            if scores:
+                return scores
+
+    scores = []
+    for idx, item, text in items:
+        normalized_text = _normalize_text(text)
+        score = sum(1 for token in normalized_tokens if token in normalized_text)
+        if score > 0:
+            scores.append((float(score), idx, item))
+    return scores
+
+
+def _apply_menu_budget(
+    menu_document: Dict[str, Any],
+    scored_items: List[Tuple[float, int, Dict[str, Any]]],
+) -> Dict[str, Any]:
+    menu_context = json.dumps(menu_document, ensure_ascii=False)
+    if len(menu_context) <= MAX_MENU_CONTEXT_CHARS:
+        return menu_document
+
+    if not scored_items:
+        return menu_document
+
+    scores_sorted = sorted(scored_items, key=lambda entry: entry[0], reverse=True)
+    categories = menu_document.get("categories", [])
+    if not isinstance(categories, list):
+        return menu_document
+
+    max_items_total = min(len(scores_sorted), MAX_ITEMS_PER_CATEGORY * max(1, len(categories)))
+    while max_items_total > 0:
+        selected = scores_sorted[:max_items_total]
+        selected_ids = {
+            _item_identifier(category_index, item) for _, category_index, item in selected
+        }
+        filtered_categories = []
+        for idx, category in enumerate(categories):
+            items = category.get("items") or []
+            if not isinstance(items, list):
+                continue
+            keep = []
+            for item in items:
+                if _item_identifier(idx, item) in selected_ids:
+                    keep.append(item)
+                if len(keep) >= MAX_ITEMS_PER_CATEGORY:
+                    break
+            if keep:
+                trimmed = dict(category)
+                trimmed["items"] = keep
+                filtered_categories.append(trimmed)
+        filtered = dict(menu_document)
+        filtered["categories"] = filtered_categories
+        if len(json.dumps(filtered, ensure_ascii=False)) <= MAX_MENU_CONTEXT_CHARS:
+            return filtered
+        max_items_total -= 5
+
+    return menu_document
+
+def _extract_dietary_constraints(messages: Sequence[ChatMessage]) -> str:
+    """Extract persistent dietary constraints from user messages."""
+
+    user_messages = [
+        _normalize_text(message.get("content") or "")
+        for message in messages
+        if message.get("role") == "user"
+    ]
+    combined = " ".join(user_messages)
+    if not combined:
+        return "- Aucune contrainte explicite."
+
+    rules = [
+        ("sans fromage", ("sans fromage", "pas de fromage", "sans produits laitiers")),
+        ("sans gluten", ("sans gluten", "gluten free")),
+        ("sans lactose", ("sans lactose", "sans lait")),
+        ("sans porc", ("sans porc", "pas de porc")),
+        ("sans crustace", ("sans crustace", "pas de crustace", "fruits de mer")),
+        ("vegetarien", ("vegetarien", "vegetarienne", "sans viande")),
+        ("vegan", ("vegan", "vegetalien")),
+        ("halal", ("halal",)),
+        ("casher", ("casher", "kosher", "kasher")),
+        ("allergie arachide", ("allergie arachide", "arachide", "cacahuete")),
+        ("allergie noix", ("allergie noix", "noix")),
+        ("allergie oeuf", ("allergie oeuf", "oeuf")),
+        ("allergie poisson", ("allergie poisson", "poisson")),
+    ]
+
+    constraints = []
+    for label, keywords in rules:
+        if any(keyword in combined for keyword in keywords):
+            constraints.append(label)
+
+    if not constraints:
+        return "- Aucune contrainte explicite."
+
+    return "\n".join(f"- {constraint}" for constraint in sorted(set(constraints)))
+
+
+def _filter_menu_document(user_message: str, menu_document: Dict[str, Any]) -> Dict[str, Any]:
+    """Filter the menu to only keep categories/items relevant to the user question."""
+
+    message = user_message or ""
+    normalized_message = _normalize_text(message)
+    if not message:
+        return menu_document
+
+    cache_key = f"{_menu_hash(menu_document)}:{normalized_message}"
+    cached = _cache_get(_MENU_FILTER_CACHE, cache_key)
+    if cached:
+        return cached
+
+    categories = menu_document.get("categories", [])
+    if not isinstance(categories, list):
+        return menu_document
+
+    message_tokens = _tokenize(message)
+
+    matched_categories: List[Dict[str, Any]] = []
+    keyword_map = {
+        "dessert": ("dessert", "douceur", "sucre"),
+        "entree": ("entree", "entrée", "starter", "apero", "apéritif"),
+        "plat": ("plat", "main", "principal"),
+        "boisson": ("boisson", "vin", "cocktail", "biere", "bière", "soft", "cafe", "café", "the", "thé"),
+        "menu": ("menu", "degustation", "dégustation", "tasting"),
+    }
+
+    def _matches_category(name: str) -> bool:
+        name_lower = _normalize_text(name)
+        if name_lower and name_lower in normalized_message:
+            return True
+        for _, keywords in keyword_map.items():
+            if any(_normalize_text(keyword) in normalized_message and _normalize_text(keyword) in name_lower for keyword in keywords):
+                return True
+        return False
+
+    def _matches_item(item: Dict[str, Any]) -> bool:
+        name = _normalize_text(str(item.get("name") or ""))
+        description = _normalize_text(str(item.get("description") or ""))
+        if name and name in normalized_message:
+            return True
+        if not message_tokens:
+            return False
+        return any(token in name or token in description for token in message_tokens)
+
+    for category in categories:
+        category_name = str(category.get("name") or "")
+        items = category.get("items") or []
+        if not isinstance(items, list):
+            continue
+
+        matched_items = []
+        if _matches_category(category_name):
+            matched_items = items[:MAX_ITEMS_PER_CATEGORY]
+        else:
+            for item in items:
+                if _matches_item(item):
+                    matched_items.append(item)
+                if len(matched_items) >= MAX_ITEMS_PER_CATEGORY:
+                    break
+
+        if matched_items:
+            matched_category = dict(category)
+            matched_category["items"] = matched_items
+            matched_categories.append(matched_category)
+
+    if not matched_categories:
+        scored = _score_items(user_message, menu_document)
+        if scored:
+            budgeted = _apply_menu_budget(menu_document, scored)
+            return budgeted
+        fallback = []
+        for category in categories[:MAX_FALLBACK_CATEGORIES]:
+            items = category.get("items") or []
+            if not isinstance(items, list):
+                continue
+            trimmed = dict(category)
+            trimmed["items"] = items[:MAX_ITEMS_PER_CATEGORY]
+            fallback.append(trimmed)
+        filtered = dict(menu_document)
+        filtered["categories"] = fallback
+        _cache_set(_MENU_FILTER_CACHE, cache_key, filtered)
+        return filtered
+
+    filtered = dict(menu_document)
+    filtered["categories"] = matched_categories
+    scored = _score_items(user_message, filtered)
+    result = _apply_menu_budget(filtered, scored)
+    _cache_set(_MENU_FILTER_CACHE, cache_key, result)
+    return result
+
+
 async def get_chat_response(
     user_message: str,
     history: Optional[Sequence[ChatMessage]] = None,
@@ -218,10 +607,21 @@ async def get_chat_response(
     menu_document: Dict[str, Any],
 ) -> str:
     """Call OpenAI asynchronously and return the assistant reply."""
-    conversation: List[ChatMessage] = _prepare_history(history)
+    cleaned_history = _prepare_history(history)
+    conversation_summary = _summarize_history(cleaned_history)
+    recent_history = cleaned_history[-MAX_RECENT_MESSAGES:] if cleaned_history else []
+    conversation: List[ChatMessage] = list(recent_history)
     conversation.append({"role": "user", "content": user_message.strip()})
+    dietary_constraints = _extract_dietary_constraints(conversation)
     _, user_language_label = _detect_user_language(user_message)
-    system_prompt = _build_system_prompt(restaurant_name, menu_document, user_language_label)
+    filtered_menu = _filter_menu_document(user_message, menu_document)
+    system_prompt = _build_system_prompt(
+        restaurant_name,
+        filtered_menu,
+        user_language_label,
+        dietary_constraints,
+        conversation_summary,
+    )
     try:
         return await asyncio.to_thread(_request_completion, conversation, system_prompt)
     except APIError as exc:  # pragma: no cover - depends on network
@@ -233,26 +633,3 @@ async def get_chat_response(
     except Exception as exc:  # pragma: no cover - unexpected
         logger.exception("Erreur inattendue lors de la génération de réponse: %s", exc)
         return DEFAULT_ERROR_MESSAGE
-
-async def sign_up(email, password):
-    supabase = get_supabase_client()
-    if not supabase:
-        raise ValueError("Supabase client not initialized.")
-    try:
-        response = await asyncio.to_thread(supabase.auth.sign_up, {"email": email, "password": password})
-        return response
-    except Exception as e:
-        logger.error("Error during sign-up: %s", e, exc_info=True)
-        return None
-
-
-async def sign_in(email, password):
-    supabase = get_supabase_client()
-    if not supabase:
-        raise ValueError("Supabase client not initialized.")
-    try:
-        response = await asyncio.to_thread(supabase.auth.sign_in_with_password, {"email": email, "password": password})
-        return response
-    except Exception as e:
-        logger.error("Error during sign-in: %s", e, exc_info=True)
-        return None

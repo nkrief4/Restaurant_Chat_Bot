@@ -9,6 +9,7 @@ import json
 import logging
 import mimetypes
 import re
+import unicodedata
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -240,7 +241,80 @@ def _parse_menu_json(raw_response: str) -> Dict[str, Any]:
     categories = payload.get("categories")
     if not isinstance(categories, list) or not categories:
         raise MenuExtractionError("Le JSON généré ne contient aucune catégorie.")
-    return payload
+    return _normalize_menu_document(payload)
+
+
+def _normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    return "".join(char for char in normalized if not unicodedata.combining(char)).lower().strip()
+
+
+def _normalize_tag(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        candidate = value.get("label") or value.get("name") or value.get("value") or value.get("title")
+    else:
+        candidate = value
+    if candidate is None:
+        return None
+    label = str(candidate).strip()
+    if not label:
+        return None
+    return _normalize_text(label)
+
+
+def _normalize_menu_document(menu: Dict[str, Any]) -> Dict[str, Any]:
+    categories = menu.get("categories", [])
+    if not isinstance(categories, list):
+        return menu
+
+    normalized_categories = []
+    for category in categories:
+        if not isinstance(category, dict):
+            continue
+        name = str(category.get("name") or "").strip() or "Autres"
+        items = category.get("items") or []
+        normalized_items = []
+        if isinstance(items, list):
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                tags = []
+                for tag in item.get("tags") or []:
+                    normalized = _normalize_tag(tag)
+                    if normalized:
+                        tags.append(normalized)
+                contains = []
+                for allergen in item.get("contains") or []:
+                    normalized = _normalize_tag(allergen)
+                    if normalized:
+                        contains.append(normalized)
+                normalized_item = dict(item)
+                normalized_item["tags"] = tags
+                normalized_item["contains"] = contains
+                normalized_items.append(normalized_item)
+        normalized_categories.append({"name": name, "items": normalized_items})
+
+    normalized_menu = dict(menu)
+    normalized_menu["categories"] = normalized_categories
+
+    dietary_guides = menu.get("dietaryGuide") or []
+    normalized_guides = []
+    if isinstance(dietary_guides, list):
+        for entry in dietary_guides:
+            if not isinstance(entry, dict):
+                continue
+            label = _normalize_tag(entry.get("label"))
+            if not label:
+                continue
+            items = entry.get("items") or []
+            normalized_items = [str(item).strip() for item in items if str(item).strip()]
+            normalized_guides.append({"label": label, "items": normalized_items})
+    if normalized_guides:
+        normalized_menu["dietaryGuide"] = normalized_guides
+
+    return normalized_menu
 
 
 def _strip_code_fences(raw_text: str) -> str:
@@ -326,7 +400,10 @@ async def analyze_menu_image(image_bytes: bytes) -> Dict[str, Any]:
             ],
         )
         content = completion.choices[0].message.content or ""
-        return json.loads(content)
+        payload = json.loads(content)
+        if isinstance(payload, dict):
+            return _normalize_menu_document(payload)
+        return DEFAULT_EMPTY_MENU.copy()
     except json.JSONDecodeError as exc:
         logger.error("Menu parser JSON invalide: %s", exc)
     except Exception as exc:  # pragma: no cover - network/service issues
@@ -350,7 +427,7 @@ def merge_menu_documents(*documents: Dict[str, Any]) -> Dict[str, Any]:
         raise MenuExtractionError("Aucun document de menu valide à fusionner.")
     
     if len(valid_docs) == 1:
-        return valid_docs[0]
+        return _normalize_menu_document(valid_docs[0])
     
     merged_categories = []
     category_map = {}  # Track categories by name for merging
@@ -428,7 +505,7 @@ def merge_menu_documents(*documents: Dict[str, Any]) -> Dict[str, Any]:
     if merged_dietary_guide:
         result["dietaryGuide"] = merged_dietary_guide
     
-    return result
+    return _normalize_menu_document(result)
 
 
 async def build_menu_document_from_multiple_uploads(

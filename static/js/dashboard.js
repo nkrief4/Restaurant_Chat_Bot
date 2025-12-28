@@ -211,12 +211,36 @@ async function refreshDashboardData(options = {}) {
 // --- Global Date Filters ---
 
 function setupGlobalDateFilters() {
-  const form = document.getElementById("date-range-form");
-  const startInput = document.getElementById("filter-start-date");
-  const endInput = document.getElementById("filter-end-date");
-  const messageEl = document.getElementById("date-filter-message");
-  if (!form || !startInput || !endInput) {
+  const forms = Array.from(document.querySelectorAll(".date-range-form"));
+  const formBindings = forms
+    .map((form) => {
+      const start = form.querySelector("[data-role='date-start']");
+      const end = form.querySelector("[data-role='date-end']");
+      return start && end ? { form, start, end } : null;
+    })
+    .filter(Boolean);
+  const messageEls = Array.from(document.querySelectorAll("[data-role='date-error']"));
+  if (!formBindings.length) {
     return;
+  }
+
+  const restoreFromStorage = () => {
+    try {
+      const storedStart = localStorage.getItem("global_start_date");
+      const storedEnd = localStorage.getItem("global_end_date");
+      if (storedStart && storedEnd) {
+        state.filters.startDate = storedStart;
+        state.filters.endDate = storedEnd;
+        return true;
+      }
+    } catch (_) {
+      // ignore storage errors
+    }
+    return false;
+  };
+
+  if (!state.filters.startDate || !state.filters.endDate) {
+    restoreFromStorage();
   }
 
   if (!state.filters.startDate || !state.filters.endDate) {
@@ -225,23 +249,30 @@ function setupGlobalDateFilters() {
     fallbackStart.setDate(today.getDate() - 6);
     state.filters.startDate = formatInputDate(fallbackStart);
     state.filters.endDate = formatInputDate(today);
+    state.statistics.startDate = state.filters.startDate;
+    state.statistics.endDate = state.filters.endDate;
+    state.statistics.activeRangePreset = null;
   }
 
-  startInput.value = state.filters.startDate;
-  endInput.value = state.filters.endDate;
+  const syncInputs = () => {
+    formBindings.forEach(({ start, end }) => {
+      start.value = state.filters.startDate;
+      end.value = state.filters.endDate;
+    });
+  };
 
-  async function handleDateChange() {
-    const startValue = startInput.value;
-    const endValue = endInput.value;
+  syncInputs();
+
+  async function handleDateChange(startValue, endValue) {
     const error = validateRange(startValue, endValue);
 
-    if (messageEl) {
+    messageEls.forEach((messageEl) => {
       if (error) {
         messageEl.innerHTML = `<div class="date-error-message">${error.message}</div>`;
       } else {
         messageEl.innerHTML = '';
       }
-    }
+    });
 
     if (error) {
       return;
@@ -251,40 +282,42 @@ function setupGlobalDateFilters() {
     }
     state.filters.startDate = startValue;
     state.filters.endDate = endValue;
+    state.statistics.startDate = startValue;
+    state.statistics.endDate = endValue;
+    state.statistics.activeRangePreset = null;
+    try {
+      localStorage.setItem("global_start_date", startValue);
+      localStorage.setItem("global_end_date", endValue);
+    } catch (_) {
+      // ignore storage errors
+    }
+    syncInputs();
     await refreshDashboardData().catch((refreshError) => {
       console.error("Range refresh failed", refreshError);
-      if (messageEl) {
+      messageEls.forEach((messageEl) => {
         messageEl.textContent = refreshError.message || "Actualisation impossible.";
-      }
+      });
     });
+    fetchStatisticsData();
+    refreshPurchasingDashboard();
   }
 
-  startInput.addEventListener("change", () => {
-    handleDateChange();
-  });
-  endInput.addEventListener("change", () => {
-    handleDateChange();
-  });
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    handleDateChange();
+  formBindings.forEach(({ start, end }) => {
+    const onChange = () => {
+      handleDateChange(start.value, end.value);
+    };
+    start.addEventListener("change", onChange);
+    end.addEventListener("change", onChange);
   });
 
-  const presetButtons = form.querySelectorAll("[data-range-preset]");
-  presetButtons.forEach((button) => {
-    button.addEventListener("click", (event) => {
+  forms.forEach((form) => {
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
-      const days = parseInt(button.dataset.rangePreset || "", 10);
-      if (!Number.isFinite(days)) {
+      const binding = formBindings.find((entry) => entry.form === form);
+      if (!binding) {
         return;
       }
-      const today = new Date();
-      const start = new Date(today.getTime());
-      start.setDate(today.getDate() - (days - 1));
-      startInput.value = formatInputDate(start);
-      endInput.value = formatInputDate(today);
-      handleDateChange();
+      handleDateChange(binding.start.value, binding.end.value);
     });
   });
 }

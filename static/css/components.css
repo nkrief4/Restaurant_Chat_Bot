@@ -643,12 +643,16 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator {
 }
 
 /* Style pour les messages d'erreur de date */
-#date-filter-message {
+.date-filter-message {
     margin: 8px 0;
     min-height: 20px;
 }
 
-#date-filter-message .date-error-message {
+.date-filter-message:empty {
+    display: none;
+}
+
+.date-filter-message .date-error-message {
     color: var(--danger);
     background-color: rgba(198, 60, 60, 0.1);
     border-left: 3px solid var(--danger);
@@ -662,7 +666,7 @@ input[type="date"]:focus::-webkit-calendar-picker-indicator {
     margin: 0;
 }
 
-#date-filter-message .date-error-message::before {
+.date-filter-message .date-error-message::before {
     content: '⚠️';
     font-size: 1.2rem;
     flex-shrink: 0;

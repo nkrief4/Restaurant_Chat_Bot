@@ -2,34 +2,11 @@
     <div class="section-header stats-section-header">
         <div>
             <h2>Statistiques détaillées</h2>
-            <p id="statistics-range-label">Analyse des 7 derniers jours</p>
         </div>
         <p class="muted" id="statistics-selection-label">Tous vos établissements</p>
     </div>
 
     <div class="stats-filter-panel" aria-label="Filtres d'analyse">
-        <div class="stats-filter-block">
-            <p class="filter-label">Période analysée</p>
-            <div class="stats-range-pills" role="group" aria-label="Choisir la période">
-                <button type="button" class="range-pill active" data-stats-range="7">7 jours</button>
-                <button type="button" class="range-pill" data-stats-range="30">30 jours</button>
-                <button type="button" class="range-pill" data-stats-range="90">3 mois</button>
-                <button type="button" class="range-pill" data-stats-range="180">6 mois</button>
-            </div>
-            <div class="stats-custom-range">
-                <label>
-                    <span>Du</span>
-                    <input type="date" id="stats-start-date" />
-                </label>
-                <label>
-                    <span>Au</span>
-                    <input type="date" id="stats-end-date" />
-                </label>
-                <button type="button" class="ghost-btn" id="stats-apply-range">Appliquer</button>
-                <p class="form-error" id="stats-range-message" role="status" aria-live="polite"></p>
-            </div>
-        </div>
-
         <div class="stats-filter-block">
             <p class="filter-label">Restaurants analysés</p>
             <div class="multi-select" id="stats-restaurant-picker">

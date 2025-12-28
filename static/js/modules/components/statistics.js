@@ -304,25 +304,6 @@ function renderDietBreakdown(breakdown) {
 
 export function bindStatisticsUI() {
     ensureStatsRangeDefaults();
-    const rangeButtons = document.querySelectorAll("[data-stats-range]");
-    rangeButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-            const days = parseInt(button.dataset.statsRange || "", 10);
-            if (!Number.isFinite(days)) {
-                return;
-            }
-            setStatsRangeFromPreset(days);
-        });
-    });
-
-    const applyButton = document.getElementById("stats-apply-range");
-    if (applyButton) {
-        applyButton.addEventListener("click", (event) => {
-            event.preventDefault();
-            handleStatsRangeApply();
-        });
-    }
-
     const toggle = document.getElementById("stats-restaurant-toggle");
     if (toggle) {
         toggle.addEventListener("click", () => {
@@ -381,12 +362,19 @@ export function bindStatisticsUI() {
 function ensureStatsRangeDefaults() {
     const stats = state.statistics;
     if (!stats.startDate || !stats.endDate) {
-        const today = new Date();
-        const start = new Date(today.getTime());
-        start.setDate(today.getDate() - 6);
-        stats.startDate = formatInputDate(start);
-        stats.endDate = formatInputDate(today);
-        stats.activeRangePreset = 7;
+        const fallbackStart = state.filters.startDate;
+        const fallbackEnd = state.filters.endDate;
+        if (fallbackStart && fallbackEnd) {
+            stats.startDate = fallbackStart;
+            stats.endDate = fallbackEnd;
+        } else {
+            const today = new Date();
+            const start = new Date(today.getTime());
+            start.setDate(today.getDate() - 6);
+            stats.startDate = formatInputDate(start);
+            stats.endDate = formatInputDate(today);
+        }
+        stats.activeRangePreset = null;
     }
     syncStatsRangeInputs();
     highlightStatsPreset();
@@ -648,6 +636,10 @@ function validateRange(start, end) {
 export async function fetchStatisticsData() {
     if (state.statistics.isFetching) {
         return;
+    }
+    if (state.filters.startDate && state.filters.endDate) {
+        state.statistics.startDate = state.filters.startDate;
+        state.statistics.endDate = state.filters.endDate;
     }
     const { startDate, endDate, selectedRestaurants } = state.statistics;
     if (!selectedRestaurants.length) {

@@ -28,6 +28,41 @@
     color: var(--text-muted);
 }
 
+.sidebar-date-range {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0 12px;
+}
+
+.sidebar-section-title {
+    margin: 0;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.sidebar-date-range .filter-inputs {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.sidebar-date-range .range-arrow {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.sidebar-date-range input[type="date"] {
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: #f8fafc;
+    font-size: 0.9rem;
+    min-width: 120px;
+}
+
 .nav {
     display: flex;
     flex-direction: column;
@@ -261,6 +296,10 @@
 }
 
 @media (max-width: 1023px) {
+    .sidebar-date-range {
+        display: flex;
+    }
+
     .nav-dropdown-menu {
         position: relative;
         left: auto;

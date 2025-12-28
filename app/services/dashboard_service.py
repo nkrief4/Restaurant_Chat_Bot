@@ -7,6 +7,7 @@ import base64
 import json
 import logging
 import re
+import unicodedata
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from math import ceil
@@ -1188,12 +1189,12 @@ def _compute_resolution_rate(chat_sessions: Dict[str, Dict[str, Any]]) -> float:
 def _summarize_questions(chat_rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     counter = Counter()
     for row in chat_rows:
-        message = (_extract_user_prompt(row) or "").lower()
+        message = _normalize_text(_extract_user_prompt(row) or "")
         if not message:
             continue
         matched = False
         for label, keywords in QUESTION_KEYWORDS.items():
-            if any(keyword in message for keyword in keywords):
+            if any(_normalize_text(keyword) in message for keyword in keywords):
                 counter[label] += 1
                 matched = True
                 break
@@ -1210,8 +1211,26 @@ def _diet_breakdown(restaurants: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         document = restaurant.get("menu_document") or {}
         for category in document.get("categories", []):
             for item in category.get("items", []):
-                for tag in item.get("tags", []):
-                    tag_counter[tag.lower()] += 1
+                raw_tags = item.get("tags") or []
+                normalized_tags = set()
+                for tag in raw_tags:
+                    label = _normalize_diet_label(tag)
+                    if label:
+                        normalized_tags.add(_normalize_text(label))
+                for label in normalized_tags:
+                    tag_counter[label] += 1
+
+        dietary_guides = document.get("dietaryGuide") or []
+        for guide in dietary_guides:
+            if not isinstance(guide, dict):
+                continue
+            label = _normalize_diet_label(guide.get("label"))
+            if not label:
+                continue
+            items = guide.get("items") or []
+            unique_items = {str(item).strip() for item in items if str(item).strip()}
+            if unique_items:
+                tag_counter[_normalize_text(label)] += len(unique_items)
     return [
         {"label": label.title(), "count": count}
         for label, count in tag_counter.most_common(5)
@@ -1236,6 +1255,29 @@ def _extract_last_message(row: Dict[str, Any], role: str) -> str:
         if entry.get("role") == role:
             return entry.get("content") or ""
     return ""
+
+
+def _normalize_text(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value)
+    return "".join(char for char in normalized if not unicodedata.combining(char)).lower()
+
+
+def _normalize_diet_label(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        label = value.strip()
+    elif isinstance(value, dict):
+        label = (
+            value.get("label")
+            or value.get("name")
+            or value.get("value")
+            or value.get("title")
+        )
+        label = label.strip() if isinstance(label, str) else None
+    else:
+        label = str(value).strip()
+    return label or None
 
 
 def _parse_timestamp(value: Optional[str]) -> Optional[datetime]:

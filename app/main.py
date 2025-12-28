@@ -1,9 +1,12 @@
 """FastAPI application exposing chat endpoint and serving static frontend."""
 
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Dict, Optional
+from uuid import uuid4
+from contextvars import ContextVar
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -24,8 +27,30 @@ from app.api.routes.menu_optimization import router as menu_optimization_router
 from app.services import dashboard_service as dashboard_service_module, restaurant_service
 from app.services.postgrest_client import extract_bearer_token
 
-app = FastAPI(title="Restaurant Chatbot")
 logger = logging.getLogger(__name__)
+
+correlation_id_ctx: ContextVar[str] = ContextVar("correlation_id", default="-")
+
+
+def _configure_logging() -> None:
+    level = os.getenv("LOG_LEVEL", "INFO").upper()
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(name)s [cid=%(correlation_id)s] %(message)s",
+    )
+    factory = logging.getLogRecordFactory()
+
+    def record_factory(*args, **kwargs):
+        record = factory(*args, **kwargs)
+        record.correlation_id = correlation_id_ctx.get()
+        return record
+
+    logging.setLogRecordFactory(record_factory)
+
+
+_configure_logging()
+
+app = FastAPI(title="Restaurant Chatbot")
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
@@ -52,6 +77,16 @@ app.include_router(sales_router)
 app.include_router(ingredient_categories_router)
 app.include_router(menu_optimization_router)
 
+@app.middleware("http")
+async def add_correlation_id(request: Request, call_next):
+    correlation_id = request.headers.get("X-Correlation-Id") or uuid4().hex
+    token = correlation_id_ctx.set(correlation_id)
+    try:
+        response = await call_next(request)
+    finally:
+        correlation_id_ctx.reset(token)
+    response.headers["X-Correlation-Id"] = correlation_id
+    return response
 
 
 @app.get("/", response_class=FileResponse)

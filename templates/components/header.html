@@ -12,6 +12,16 @@
             <span class="global-select-icon" aria-hidden="true"></span>
         </div>
     </div>
+    <div class="global-date-range">
+        <form class="range-filter global-range-form date-range-form" aria-label="Choisir la période analysée">
+            <div class="filter-inputs">
+                <input type="date" data-role="date-start" required />
+                <span class="range-arrow" aria-hidden="true">→</span>
+                <input type="date" data-role="date-end" required />
+            </div>
+        </form>
+        <p class="form-error date-filter-message" data-role="date-error" role="status" aria-live="polite"></p>
+    </div>
     <div class="global-toolbar-spacer" aria-hidden="true"></div>
     <button type="button" class="profile-action-btn" data-open-section="profile">
         <span class="profile-icon" aria-hidden="true"></span>

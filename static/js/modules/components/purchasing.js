@@ -6,8 +6,6 @@ import { ensureChartJsLibrary } from "../utils/charts.js";
 
 // --- Purchasing Logic ---
 
-const PURCHASING_RANGE_DEFAULT_DAYS = 30;
-
 const purchasingEmbedRuntime = {
     iframe: null,
     loader: null,
@@ -35,7 +33,6 @@ let activeStatusFilter = 'all';
 export function bindPurchasingSectionUI() {
     setupPurchasingEmbed();
     setupPurchasingViewSwitcher();
-    setupPurchasingDateFilters();
     setupIngredientStatusTabs();
     refreshPurchasingDashboard();
     document.addEventListener('salesDataChanged', refreshPurchasingDashboard);
@@ -98,70 +95,14 @@ function updateStatusTabCounts(recommendations) {
 }
 
 
-function ensurePurchasingRangeDefaults() {
-    if (!state.purchasingRange) {
-        state.purchasingRange = { startDate: null, endDate: null };
-    }
-    if (!state.purchasingRange.startDate || !state.purchasingRange.endDate) {
-        const today = new Date();
-        const start = new Date(today);
-        start.setDate(today.getDate() - (PURCHASING_RANGE_DEFAULT_DAYS - 1));
-        state.purchasingRange.startDate = formatInputDate(start);
-        state.purchasingRange.endDate = formatInputDate(today);
-    }
-}
-
-function setupPurchasingDateFilters() {
-    const form = document.getElementById("purchasing-range-form");
-    const startInput = document.getElementById("purchasing-start-date");
-    const endInput = document.getElementById("purchasing-end-date");
-    const messageEl = document.getElementById("purchasing-range-message");
-    if (!form || !startInput || !endInput) {
-        return;
-    }
-
-    ensurePurchasingRangeDefaults();
-    startInput.value = state.purchasingRange.startDate;
-    endInput.value = state.purchasingRange.endDate;
-    updatePurchasingRangeDisplay(new Date(startInput.value), new Date(endInput.value));
-
-    const handleRangeChange = async () => {
-        const startValue = startInput.value;
-        const endValue = endInput.value;
-        const error = validateRange(startValue, endValue);
-        if (messageEl) {
-            messageEl.textContent = error ? error.message : "";
-        }
-        if (error) {
-            return;
-        }
-        if (
-            state.purchasingRange.startDate === startValue &&
-            state.purchasingRange.endDate === endValue
-        ) {
-            return;
-        }
-        state.purchasingRange.startDate = startValue;
-        state.purchasingRange.endDate = endValue;
-        refreshPurchasingDashboard();
-    };
-
-    startInput.addEventListener("change", handleRangeChange);
-    endInput.addEventListener("change", handleRangeChange);
-    form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        handleRangeChange();
-    });
-}
-
 function resolvePurchasingDateRange() {
-    ensurePurchasingRangeDefaults();
-    const { startDate, endDate } = state.purchasingRange;
+    const startDate = state.filters.startDate;
+    const endDate = state.filters.endDate;
     let start = startDate ? new Date(startDate) : null;
     let end = endDate ? new Date(endDate) : null;
     if (!start || Number.isNaN(start.getTime())) {
         start = new Date();
-        start.setDate(start.getDate() - (PURCHASING_RANGE_DEFAULT_DAYS - 1));
+        start.setDate(start.getDate() - 6);
     }
     if (!end || Number.isNaN(end.getTime())) {
         end = new Date();
@@ -774,16 +715,4 @@ function formatInputDate(date) {
     const d = new Date(date);
     if (Number.isNaN(d.getTime())) return "";
     return d.toISOString().split("T")[0];
-}
-
-function validateRange(start, end) {
-    if (!start || !end) {
-        return { message: "Veuillez sélectionner deux dates.", type: "error" };
-    }
-    const s = new Date(start);
-    const e = new Date(end);
-    if (s > e) {
-        return { message: "La date de début doit être antérieure à la fin.", type: "error" };
-    }
-    return null;
 }
